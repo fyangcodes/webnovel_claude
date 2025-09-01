@@ -1,0 +1,124 @@
+{% extends "books/reader/base.html" %}
+
+{% block title %}{{ book.title }}{% endblock %}
+
+{% block breadcrumb_items %}
+<li class="breadcrumb-item active">{{ book.title }}</li>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- Book Information -->
+    <div class="col-lg-8">
+        <div class="mb-4">
+            <h1 class="display-5 mb-3">{{ book.title }}</h1>
+            
+            {% if book.author %}
+            <p class="lead text-muted mb-3">by {{ book.author }}</p>
+            {% endif %}
+            
+            <!-- Book Stats -->
+            <div class="row mb-4">
+                <div class="col-sm-4">
+                    <div class="text-center p-3 bg-light rounded">
+                        <div class="fw-bold text-primary">{{ total_chapters }}</div>
+                        <small class="text-muted">Chapter{{ total_chapters|pluralize }}</small>
+                    </div>
+                </div>
+                <div class="col-sm-4">
+                    <div class="text-center p-3 bg-light rounded">
+                        <div class="fw-bold text-primary">{{ total_words|floatformat:0 }}</div>
+                        <small class="text-muted">Words</small>
+                    </div>
+                </div>
+                <div class="col-sm-4">
+                    <div class="text-center p-3 bg-light rounded">
+                        <div class="fw-bold text-primary">{{ book.get_progress_display|default:"Unknown" }}</div>
+                        <small class="text-muted">Status</small>
+                    </div>
+                </div>
+            </div>
+            
+            {% if book.description %}
+            <div class="mb-4">
+                <h5>Description</h5>
+                <p class="text-muted">{{ book.description|linebreaks }}</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <!-- Sidebar -->
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="card-title mb-0">Book Information</h6>
+            </div>
+            <div class="card-body">
+                <dl class="row small">
+                    <dt class="col-sm-5">Language:</dt>
+                    <dd class="col-sm-7">{{ book.language.name }}</dd>
+                    
+                    {% if book.published_at %}
+                    <dt class="col-sm-5">Published:</dt>
+                    <dd class="col-sm-7">{{ book.published_at|date:"M d, Y" }}</dd>
+                    {% endif %}
+                    
+                    <dt class="col-sm-5">Last Updated:</dt>
+                    <dd class="col-sm-7">{{ book.updated_at|date:"M d, Y" }}</dd>
+                </dl>
+                
+                {% if chapters %}
+                <div class="d-grid mt-3">
+                    <a href="{% url 'books_reader:chapter_detail' current_language.code book.slug chapters.0.slug %}" 
+                       class="btn btn-primary">
+                        Start Reading
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Chapter List -->
+<div class="row mt-5">
+    <div class="col-12">
+        <h3 class="mb-4">Chapters</h3>
+        
+        {% if chapters %}
+        <div class="list-group">
+            {% for chapter in chapters %}
+            <a href="{% url 'books_reader:chapter_detail' current_language.code book.slug chapter.slug %}" 
+               class="list-group-item list-group-item-action d-flex justify-content-between align-items-start">
+                <div class="ms-2 me-auto">
+                    <div class="fw-bold">{{ chapter.title }}</div>
+                    {% if chapter.excerpt %}
+                    <small class="text-muted">{{ chapter.excerpt|truncatewords:15 }}</small>
+                    {% endif %}
+                </div>
+                <div class="text-end">
+                    <span class="badge bg-light text-dark">
+                        Chapter {{ chapter.chaptermaster.chapter_number }}
+                    </span>
+                    {% if chapter.word_count %}
+                    <br><small class="text-muted">{{ chapter.word_count }} words</small>
+                    {% endif %}
+                    {% if chapter.published_at %}
+                    <br><small class="text-muted">{{ chapter.published_at|timesince }} ago</small>
+                    {% endif %}
+                </div>
+            </a>
+            {% endfor %}
+        </div>
+        {% else %}
+        <!-- No Chapters State -->
+        <div class="text-center py-5">
+            <div class="display-3 text-muted mb-3">📄</div>
+            <h5 class="text-muted">No chapters published yet</h5>
+            <p class="text-muted">This book doesn't have any published chapters available for reading.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

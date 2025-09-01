@@ -1,0 +1,187 @@
+{% extends "books/base_books.html" %}
+{% load static %}
+
+{% block title %}{{ book.title }}{% endblock %}
+
+{% block books_content %}
+<div class="mb-4">
+    <div class="d-flex justify-content-between align-items-start">
+        <div>
+            <h1>{{ book.title }}</h1>
+        </div>
+        <div class="btn-group" role="group">
+            <a href="{% url 'books_admin:bookmaster_detail' book.bookmaster.pk %}" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left"></i> Back to Books
+            </a>
+            <a href="{% url 'books_admin:book_update' book.pk %}" class="btn btn-outline-primary">
+                <i class="fas fa-edit"></i> Edit Book
+            </a>
+            <a href="{% url 'books_admin:book_delete' book.pk %}" class="btn btn-outline-danger">
+                <i class="fas fa-trash"></i> Delete Book
+            </a>
+        </div>
+    </div>
+    <div class="mt-3">
+        {% include "books/partials/status_badge.html" with status=book.progress %}
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h3>Book Information</h3>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <small class="text-muted">
+                            <strong>Author:</strong> 
+                            {% if book.author %}
+                                {{ book.author.localized_name }}
+                            {% else %}
+                                Unknown
+                            {% endif %}<br>
+                            <strong>Language:</strong> 
+                            {% if book.language %}
+                                {{ book.language.name }}
+                            {% else %}
+                                Not specified
+                            {% endif %}<br>
+                            <strong>Total Chapters:</strong> {{ book.total_chapters }}
+                        </small>
+                    </div>
+                    <div class="col-md-6">
+                        <small class="text-muted">
+                            <strong>Total Words:</strong> {{ book.total_words|default:"0" }}<br>
+                            <strong>Total Characters:</strong> {{ book.total_characters|default:"0" }}<br>
+                            <strong>Created:</strong> {{ book.created_at|date:"M d, Y" }}<br>
+                            <strong>Updated:</strong> {{ book.updated_at|date:"M d, Y" }}
+                        </small>
+                    </div>
+                </div>
+                {% if book.description %}
+                    <br>
+                    <p class="card-text">{{ book.description }}</p>
+                {% endif %}
+            </div>
+        </div>
+        
+        {% if book.language == book.bookmaster.original_language %}
+        <div class="card">
+            <div class="card-header">
+                <h4>Quick Actions</h4>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2 d-md-flex">
+                    <a href="{% url 'books_admin:bookfile_upload' book.id %}" class="btn btn-primary">
+                        <i class="fas fa-upload"></i> Upload File
+                    </a>
+                    <a href="{% url 'books_admin:chapter_create' book.id %}" class="btn btn-success">
+                        <i class="fas fa-plus"></i> Add Chapter
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+    <div class="col-md-4">
+        
+    </div>
+</div>
+
+<div class="mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h3>Chapters ({{ chapters.paginator.count }})</h3>
+    </div>
+    
+    <!-- Chapters List -->
+    <div class="list-group">
+        {% for chapter in chapters %}
+            <div class="list-group-item py-2">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div class="flex-grow-1">
+                        <!-- First row: Chapter number, title, word count, character count -->
+                        <div class="d-flex align-items-center gap-3 mb-1">
+                            <span class="text-primary">#{{ chapter.chaptermaster.chapter_number }}</span>
+                            <h6 class="mb-0 flex-grow-1">{{ chapter.title }}</h6>
+                            <small class="text-muted">{{ chapter.word_count }} words</small>
+                            <small class="text-muted">{{ chapter.character_count }} chars</small>
+                        </div>
+                        
+                        <!-- Second row: Progress status, is_public attribute with full date -->
+                        <div class="d-flex align-items-center gap-2">
+                            {% include "books/partials/status_badge.html" with status=chapter.progress %}
+                            {% if chapter.is_public %}
+                                <span class="badge bg-success">Public</span>
+                                {% if chapter.published_at %}
+                                    <small class="text-success">Published: {{ chapter.published_at|date:"F d, Y H:i" }}</small>
+                                {% endif %}
+                            {% else %}
+                                <span class="badge bg-secondary">Private</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <!-- Action buttons -->
+                    <div class="d-flex gap-1 ms-3">
+                        <a href="{% url 'books_admin:chapter_detail' chapter.pk %}" class="btn btn-sm btn-outline-primary" title="View">
+                            <i class="fas fa-eye"></i>
+                        </a>
+                        <div class="dropdown">
+                            <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" title="Actions">
+                                <i class="fas fa-ellipsis-v"></i>
+                            </button>
+                            <ul class="dropdown-menu">
+                                <li><a class="dropdown-item" href="{% url 'books_admin:chapter_update' chapter.pk %}">
+                                    <i class="fas fa-edit"></i> Edit
+                                </a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item text-danger" href="{% url 'books_admin:chapter_delete' chapter.pk %}">
+                                    <i class="fas fa-trash"></i> Delete
+                                </a></li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        {% empty %}
+            <div class="list-group-item">
+                {% include "books/partials/empty_state.html" with icon="file-text" title="No chapters yet" message="Add your first chapter to get started!" action_url=chapter_create_url action_text="Add Chapter" %}
+            </div>
+        {% endfor %}
+    </div>
+    
+    <!-- Pagination -->
+    {% if chapters.has_other_pages %}
+    <nav aria-label="Chapter pagination" class="mt-4">
+        <ul class="pagination justify-content-center">
+            {% if chapters.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?page=1">&laquo; First</a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ chapters.previous_page_number }}">Previous</a>
+                </li>
+            {% endif %}
+            
+            <li class="page-item active">
+                <span class="page-link">
+                    Page {{ chapters.number }} of {{ chapters.paginator.num_pages }}
+                </span>
+            </li>
+            
+            {% if chapters.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ chapters.next_page_number }}">Next</a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ chapters.paginator.num_pages }}">Last &raquo;</a>
+                </li>
+            {% endif %}
+        </ul>
+    </nav>
+    {% endif %}
+</div>
+
+{% endblock %} 

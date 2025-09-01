@@ -1,0 +1,106 @@
+{% extends "books/base_books.html" %}
+{% load static %}
+{% load books_extras %}
+
+{% block title %}{{ chapter.title }} - {{ chapter.book.title }}{% endblock %}
+
+{% block books_content %}
+<div class="mb-4">
+    <div class="d-flex justify-content-between align-items-start">
+        <div>
+            <h1>{{ chapter.title }}</h1>
+            <h5 class="text-muted">Chapter {{ chapter.chaptermaster.chapter_number }} of {{ chapter.book.title }}</h5>
+        </div>
+        <div class="btn-group" role="group">
+            <a href="{% url 'books_admin:book_detail' chapter.book.id %}" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left"></i> Back to Book
+            </a>
+            <a href="{% url 'books_admin:chapter_update' chapter.pk %}" class="btn btn-outline-primary">
+                <i class="fas fa-edit"></i> Edit
+            </a>         
+            <a href="{% url 'books_admin:chapter_delete' chapter.pk %}" class="btn btn-outline-danger">
+                <i class="fas fa-trash"></i> Delete
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <!-- Chapter Content -->
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title mb-0">
+                    <i class="fas fa-book-open text-secondary"></i> Content
+                </h3>
+            </div>
+            <div class="card-body">
+                <div class="chapter-content" style="font-size: 1.1em; line-height: 1.6; white-space: pre-wrap;">
+                    {{ chapter.content|default:"No content available." }}
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h4 class="card-title mb-0">Chapter Information</h4>
+            </div>
+            <div class="card-body">
+                <dl class="row">
+                    <dt class="col-sm-6">Progress:</dt>
+                    <dd class="col-sm-6">
+                        {% include "books/partials/status_badge.html" with status=chapter.progress %}
+                    </dd>
+                    
+                    <dt class="col-sm-6">Chapter Number:</dt>
+                    <dd class="col-sm-6">{{ chapter.chaptermaster.chapter_number }}</dd>
+                    
+                    <dt class="col-sm-6">Word Count:</dt>
+                    <dd class="col-sm-6">{{ chapter.word_count|default:0 }}</dd>
+                    
+                    <dt class="col-sm-6">Character Count:</dt>
+                    <dd class="col-sm-6">{{ chapter.character_count|default:0 }}</dd>
+                    
+                    <dt class="col-sm-6">Language:</dt>
+                    <dd class="col-sm-6">{{ chapter.book.language.name|default:"Not specified" }}</dd>
+                    
+                    <dt class="col-sm-6">Public:</dt>
+                    <dd class="col-sm-6">
+                        {% if chapter.is_public %}
+                            <span class="badge bg-success">Yes</span>
+                        {% else %}
+                            <span class="badge bg-secondary">No</span>
+                        {% endif %}
+                    </dd>
+                    
+                    <dt class="col-sm-6">Created:</dt>
+                    <dd class="col-sm-6">{{ chapter.created_at|date:"M d, Y" }}</dd>
+                    
+                    <dt class="col-sm-6">Updated:</dt>
+                    <dd class="col-sm-6">{{ chapter.updated_at|date:"M d, Y" }}</dd>
+                    
+                    {% if chapter.published_at %}
+                    <dt class="col-sm-6">Published:</dt>
+                    <dd class="col-sm-6">{{ chapter.published_at|date:"M d, Y" }}</dd>
+                    {% endif %}
+                    
+                    {% if chapter.scheduled_at %}
+                    <dt class="col-sm-6">Scheduled:</dt>
+                    <dd class="col-sm-6">{{ chapter.scheduled_at|date:"M d, Y H:i" }}</dd>
+                    {% endif %}
+                </dl>
+                
+                {% if chapter.excerpt %}
+                <div class="mt-3">
+                    <h6>Excerpt:</h6>
+                    <p class="text-muted small">{{ chapter.excerpt }}</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

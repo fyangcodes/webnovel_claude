@@ -1,0 +1,145 @@
+{% extends "books/base_books.html" %}
+{% load books_extras %}
+
+{% block books_content %}
+<div class="row justify-content-center">
+    <div class="col-md-10">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h2 class="card-title mb-0">{{ bookmaster.canonical_title }}</h2>
+            </div>
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h4>Book Overview ({{ bookmaster.books.count }} languages)</h4>
+                    <a href="{% url 'books_admin:book_create' bookmaster.id %}" class="btn btn-success mb-3">
+                        <i class="fas fa-plus"></i> Add Book
+                    </a>
+                </div>
+                <ul class="list-group mb-4">
+                    {% for book in books %}
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <span>
+                                <a href="{% url 'books_admin:book_detail' book.id %}">{{ book.language.name }} - {{ book.title }}</a>
+                            </span>
+                            <span>
+                                <a href="{% url 'books_admin:book_update' book.id %}" class="btn btn-sm btn-primary">Edit</a>
+                                <a href="{% url 'books_admin:book_delete' book.id %}" class="btn btn-sm btn-danger">Delete</a>
+                            </span>
+                        </li>
+                    {% empty %}
+                        <li class="list-group-item">No books yet.</li>
+                    {% endfor %}
+                </ul>
+
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h4>Chapter Overview ({{ chaptermasters.paginator.count }} chapters)</h4>
+                    <a href="{% url 'books_admin:chaptermaster_create' bookmaster.id %}" class="btn btn-success">
+                        <i class="fas fa-plus"></i> Add Chapter
+                    </a>
+                </div>
+
+                {% if chapter_table %}
+                <div class="table-responsive">
+                    <table class="table table-bordered table-hover table-sm">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="min-width: 200px;">Chapter</th>
+                                {% for language in languages %}
+                                <th class="text-center" style="min-width: 100px;">{{ language.name }}</th>
+                                {% endfor %}
+                                <th style="min-width: 80px;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for row in chapter_table %}
+                            <tr>
+                                <td class="align-middle">
+                                    <span class="text-primary fw-bold">#{{ row.chaptermaster.chapter_number }}</span>
+                                    <a href="{% url 'books_admin:chaptermaster_detail' row.chaptermaster.id %}" class="ms-2 text-decoration-none">
+                                        {{ row.chaptermaster.canonical_title }}
+                                    </a>
+                                </td>
+                                {% for language in languages %}
+                                <td class="text-center align-middle">
+                                    {% with chapter_info=row.chapters|get_item:language.code %}
+                                        {% if chapter_info.chapter %}
+                                            <div class="d-flex align-items-center justify-content-center gap-1">
+                                                <span class="badge 
+                                                    {% if chapter_info.status_code == 'completed' %}bg-success
+                                                    {% elif chapter_info.status_code == 'translating' %}bg-warning
+                                                    {% else %}bg-secondary{% endif %} 
+                                                    badge-sm">
+                                                    {{ chapter_info.status }}
+                                                </span>
+                                                {% if chapter_info.is_public %}
+                                                    <i class="fas fa-eye text-success" title="Public" style="font-size: 0.8rem;"></i>
+                                                {% else %}
+                                                    <i class="fas fa-eye-slash text-muted" title="Private" style="font-size: 0.8rem;"></i>
+                                                {% endif %}
+                                            </div>
+                                        {% else %}
+                                            <span class="badge bg-light text-dark badge-sm">Not Created</span>
+                                        {% endif %}
+                                    {% endwith %}
+                                </td>
+                                {% endfor %}
+                                <td class="text-center align-middle">
+                                    <div class="btn-group btn-group-sm">
+                                        <a href="{% url 'books_admin:chaptermaster_update' row.chaptermaster.id %}" 
+                                           class="btn btn-outline-primary btn-sm" title="Edit">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
+                                        <a href="{% url 'books_admin:chaptermaster_delete' row.chaptermaster.id %}" 
+                                           class="btn btn-outline-danger btn-sm" title="Delete">
+                                            <i class="fas fa-trash"></i>
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                
+                <!-- Pagination -->
+                {% if chaptermasters.has_other_pages %}
+                <nav aria-label="Chapter pagination" class="mt-4">
+                    <ul class="pagination justify-content-center">
+                        {% if chaptermasters.has_previous %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page=1">&laquo; First</a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ chaptermasters.previous_page_number }}">Previous</a>
+                            </li>
+                        {% endif %}
+                        
+                        <li class="page-item active">
+                            <span class="page-link">
+                                Page {{ chaptermasters.number }} of {{ chaptermasters.paginator.num_pages }}
+                            </span>
+                        </li>
+                        
+                        {% if chaptermasters.has_next %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ chaptermasters.next_page_number }}">Next</a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ chaptermasters.paginator.num_pages }}">Last &raquo;</a>
+                            </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+                {% endif %}
+                {% else %}
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i> No chapter masters created yet. 
+                        <a href="{% url 'books_admin:chaptermaster_create' bookmaster.id %}" class="alert-link">Create your first chapter master</a> to get started.
+                    </div>
+                {% endif %}
+
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

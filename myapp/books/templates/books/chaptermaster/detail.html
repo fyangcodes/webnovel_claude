@@ -1,0 +1,186 @@
+{% extends "books/base_books.html" %}
+
+{% block books_content %}
+<div class="row justify-content-center">
+    <div class="col-md-10">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h2 class="card-title mb-0">{{ chaptermaster.canonical_name }}</h2>
+            </div>
+            <div class="card-body">
+                <h4>Chapters</h4>
+                <ul class="list-group mb-3">
+                    {% for chapter in chapters %}
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <span>
+                                <strong>#{{ chapter.chaptermaster.chapter_number }}:</strong> {{ chapter.title }} 
+                                ({{ chapter.book.language.name }})
+                            </span>
+                            <span>
+                                <a href="{% url 'books_admin:chapter_detail' chapter.id %}" class="btn btn-sm btn-outline-secondary">View</a>
+                                <a href="{% url 'books_admin:chapter_delete' chapter.id %}" class="btn btn-sm btn-outline-danger">Delete</a>
+                            </span>
+                        </li>
+                    {% empty %}
+                        <li class="list-group-item">No chapters found for this chapter master.</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+        <div class="card mb-4">
+            <div class="card-header">
+                <h4>Available Languages</h4>
+            </div>
+            <div class="card-body">
+                <ul class="list-group mb-3">
+                    {% for lang in available_languages %}
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <span>{{ lang.name }}</span>
+                            <span>
+                                {% if chapter_original %}
+                                    <form method="post" action="{% url 'books_admin:chapter_translate' chapter_id=chapter_original.id language_code=lang.code %}" class="translation-form" data-language="{{ lang.code }}" style="display:inline;">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="language_code" value="{{ lang.code }}">
+                                        <button type="submit" class="btn btn-sm btn-primary translate-btn">
+                                            <span class="btn-text">Translate</span>
+                                            <span class="spinner-border spinner-border-sm d-none" role="status"></span>
+                                        </button>
+                                    </form>
+                                    <div class="translation-status d-none mt-1" data-language="{{ lang.code }}">
+                                        <small class="status-text"></small>
+                                    </div>
+                                {% else %}
+                                    <span class="text-muted">No original chapter available for translation</span>
+                                {% endif %}
+                            </span>
+                        </li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const translationForms = document.querySelectorAll('.translation-form');
+    
+    translationForms.forEach(form => {
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const language = form.dataset.language;
+            const button = form.querySelector('.translate-btn');
+            const btnText = button.querySelector('.btn-text');
+            const spinner = button.querySelector('.spinner-border');
+            const statusDiv = document.querySelector(`.translation-status[data-language="${language}"]`);
+            const statusText = statusDiv.querySelector('.status-text');
+            
+            // Show loading state
+            btnText.textContent = 'Translating...';
+            spinner.classList.remove('d-none');
+            button.disabled = true;
+            statusDiv.classList.remove('d-none');
+            statusText.textContent = 'Starting translation...';
+            statusText.className = 'status-text text-info';
+            
+            // Submit the form via AJAX
+            const formData = new FormData(form);
+            fetch(form.action, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    statusText.textContent = data.message;
+                    statusText.className = 'status-text text-success';
+                    
+                    // Start polling for status if we got a status URL
+                    if (data.status_url) {
+                        pollTranslationStatus(data.status_url, language);
+                    }
+                } else {
+                    statusText.textContent = data.error || 'Translation failed';
+                    statusText.className = 'status-text text-danger';
+                    resetButton(button, btnText, spinner);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                statusText.textContent = 'Network error occurred';
+                statusText.className = 'status-text text-danger';
+                resetButton(button, btnText, spinner);
+            });
+        });
+    });
+    
+    function pollTranslationStatus(statusUrl, language) {
+        const statusDiv = document.querySelector(`.translation-status[data-language="${language}"]`);
+        const statusText = statusDiv.querySelector('.status-text');
+        const button = document.querySelector(`.translation-form[data-language="${language}"] .translate-btn`);
+        const btnText = button.querySelector('.btn-text');
+        const spinner = button.querySelector('.spinner-border');
+        
+        const poll = () => {
+            fetch(statusUrl)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    statusText.textContent = data.message;
+                    
+                    if (data.is_success) {
+                        statusText.className = 'status-text text-success';
+                        resetButton(button, btnText, spinner);
+                        
+                        // Optionally redirect to the translated chapter
+                        if (data.redirect_url) {
+                            setTimeout(() => {
+                                window.location.href = data.redirect_url;
+                            }, 2000);
+                        } else {
+                            // Refresh the page to show updated status
+                            setTimeout(() => {
+                                window.location.reload();
+                            }, 2000);
+                        }
+                        
+                    } else if (data.is_failure) {
+                        statusText.className = 'status-text text-danger';
+                        resetButton(button, btnText, spinner);
+                        
+                    } else if (data.is_processing || data.is_pending) {
+                        statusText.className = 'status-text text-info';
+                        // Continue polling
+                        setTimeout(poll, 3000);
+                    }
+                } else {
+                    statusText.textContent = data.error || 'Status check failed';
+                    statusText.className = 'status-text text-danger';
+                    resetButton(button, btnText, spinner);
+                }
+            })
+            .catch(error => {
+                console.error('Status polling error:', error);
+                statusText.textContent = 'Status check failed';
+                statusText.className = 'status-text text-danger';
+                resetButton(button, btnText, spinner);
+            });
+        };
+        
+        // Start polling after a short delay
+        setTimeout(poll, 2000);
+    }
+    
+    function resetButton(button, btnText, spinner) {
+        btnText.textContent = 'Translate';
+        spinner.classList.add('d-none');
+        button.disabled = false;
+    }
+});
+</script>
+
+{% endblock %} 

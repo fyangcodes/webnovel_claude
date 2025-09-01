@@ -1,0 +1,208 @@
+{% extends "books/reader/base.html" %}
+{% load books_extras %}
+
+{% block title %}{{ chapter.title }} - {{ book.title }}{% endblock %}
+
+{% block breadcrumb_items %}
+<li class="breadcrumb-item">
+    <a href="{% url 'books_reader:book_detail' current_language.code book.slug %}">{{ book.title }}</a>
+</li>
+<li class="breadcrumb-item active">{{ chapter.title }}</li>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .chapter-content {
+        font-size: 1.1rem;
+        line-height: 1.8;
+        color: #2d3436;
+        max-width: 800px;
+        margin: 0 auto;
+    }
+    .chapter-content p {
+        margin-bottom: 1.2rem;
+        text-align: justify;
+    }
+    .chapter-header {
+        border-bottom: 2px solid #e9ecef;
+        padding-bottom: 1rem;
+        margin-bottom: 2rem;
+    }
+    .reading-progress {
+        position: sticky;
+        top: 20px;
+        z-index: 1000;
+    }
+    .nav-button {
+        min-width: 120px;
+    }
+    @media (max-width: 768px) {
+        .chapter-content {
+            font-size: 1rem;
+            line-height: 1.6;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- Reading Progress Sidebar (Desktop) -->
+    <div class="col-lg-3 d-none d-lg-block">
+        <div class="reading-progress">
+            <div class="card">
+                <div class="card-body text-center">
+                    <h6 class="card-title">Reading Progress</h6>
+                    <div class="mb-3">
+                        <div class="display-6 text-primary">{{ chapter_position }}</div>
+                        <small class="text-muted">of {{ total_chapters }} chapters</small>
+                    </div>
+                    <div class="progress mb-3">
+                        <div class="progress-bar" role="progressbar" 
+                             style="width: {% widthratio chapter_position total_chapters 100 %}%"
+                             aria-valuenow="{{ chapter_position }}" 
+                             aria-valuemin="0" 
+                             aria-valuemax="{{ total_chapters }}">
+                        </div>
+                    </div>
+                    <a href="{% url 'books_reader:book_detail' current_language.code book.slug %}" 
+                       class="btn btn-outline-primary btn-sm">
+                        All Chapters
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Main Content -->
+    <div class="col-lg-9">
+        <!-- Chapter Header -->
+        <div class="chapter-header text-center">
+            <h1 class="display-6 mb-3">{{ chapter.title }}</h1>
+            <div class="d-flex justify-content-center align-items-center gap-3 text-muted">
+                <span>Chapter {{ chapter.chaptermaster.chapter_number }}</span>
+                {% if chapter.word_count %}
+                <span>•</span>
+                <span>{{ chapter.word_count }} words</span>
+                {% endif %}
+                {% if chapter.published_at %}
+                <span>•</span>
+                <span>{{ chapter.published_at|date:"M d, Y" }}</span>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Chapter Navigation (Top) -->
+        <div class="chapter-nav d-flex justify-content-between mb-4">
+            {% if previous_chapter %}
+            <a href="{% url 'books_reader:chapter_detail' current_language.code book.slug previous_chapter.slug %}" 
+               class="btn btn-outline-secondary nav-button">
+                ← Previous
+            </a>
+            {% else %}
+            <span class="nav-button"></span>
+            {% endif %}
+            
+            <!-- Progress indicator (Mobile) -->
+            <div class="d-lg-none text-center">
+                <small class="text-muted">{{ chapter_position }} of {{ total_chapters }}</small>
+            </div>
+            
+            {% if next_chapter %}
+            <a href="{% url 'books_reader:chapter_detail' current_language.code book.slug next_chapter.slug %}" 
+               class="btn btn-outline-secondary nav-button">
+                Next →
+            </a>
+            {% else %}
+            <span class="nav-button"></span>
+            {% endif %}
+        </div>
+        
+        <!-- Chapter Content -->
+        <div class="chapter-content">
+            {{ chapter.content|markdown }}
+        </div>
+        
+        <!-- Chapter Navigation (Bottom) -->
+        <div class="chapter-nav d-flex justify-content-between mt-5 pt-4">
+            {% if previous_chapter %}
+            <div>
+                <a href="{% url 'books_reader:chapter_detail' current_language.code book.slug previous_chapter.slug %}" 
+                   class="btn btn-primary nav-button">
+                    ← Previous
+                </a>
+                <div class="mt-2">
+                    <small class="text-muted">{{ previous_chapter.title|truncatechars:30 }}</small>
+                </div>
+            </div>
+            {% else %}
+            <div></div>
+            {% endif %}
+            
+            <div class="text-center">
+                <a href="{% url 'books_reader:book_detail' current_language.code book.slug %}" 
+                   class="btn btn-outline-primary">
+                    All Chapters
+                </a>
+            </div>
+            
+            {% if next_chapter %}
+            <div class="text-end">
+                <a href="{% url 'books_reader:chapter_detail' current_language.code book.slug next_chapter.slug %}" 
+                   class="btn btn-primary nav-button">
+                    Next →
+                </a>
+                <div class="mt-2">
+                    <small class="text-muted">{{ next_chapter.title|truncatechars:30 }}</small>
+                </div>
+            </div>
+            {% else %}
+            <div></div>
+            {% endif %}
+        </div>
+        
+        <!-- End of Book Message -->
+        {% if not next_chapter %}
+        <div class="text-center mt-5 p-4 bg-light rounded">
+            <h5 class="text-muted">🎉 You've reached the end!</h5>
+            <p class="text-muted mb-3">Thanks for reading {{ book.title }}!</p>
+            <a href="{% url 'books_reader:book_list' current_language.code %}" 
+               class="btn btn-primary">
+                Explore More Books
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Auto-scroll to content on mobile for better reading experience
+document.addEventListener('DOMContentLoaded', function() {
+    if (window.innerWidth <= 768) {
+        document.querySelector('.chapter-content').scrollIntoView({ 
+            behavior: 'smooth', 
+            block: 'start' 
+        });
+    }
+});
+
+// Reading progress tracking (optional enhancement)
+window.addEventListener('scroll', function() {
+    const content = document.querySelector('.chapter-content');
+    if (content) {
+        const rect = content.getBoundingClientRect();
+        const progress = Math.max(0, Math.min(100, 
+            (window.innerHeight - rect.top) / rect.height * 100
+        ));
+        
+        // Update progress bar if needed
+        const progressBar = document.querySelector('.reading-progress .progress-bar');
+        if (progressBar && progress > 0) {
+            // Optional: add reading progress within chapter
+        }
+    }
+});
+</script>
+{% endblock %}

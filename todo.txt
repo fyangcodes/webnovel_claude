@@ -1,0 +1,2 @@
+check all templates for VariableDeosNotExistException
+fix renumbering chapter_number after deleting chaptermaster

@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+            
+            <nav aria-label="breadcrumb" class="mb-4">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item">
+                        <a href="{% url 'books_admin:bookmaster_list' %}">
+                            <i class="fas fa-home"></i> Home
+                        </a>
+                    </li>
+                    {% if bookmaster %}
+                        <li class="breadcrumb-item">
+                            <a href="{% url 'books_admin:bookmaster_detail' bookmaster.id %}">{{ bookmaster.canonical_title }} (bookmaster)</a>
+                        </li>
+                    {% endif %}
+                    {% if book %}
+                        <li class="breadcrumb-item">
+                            <a href="{% url 'books_admin:book_detail' book.id %}">{{ book.title }} (book)</a>
+                        </li>
+                    {% endif %}
+                    {% if chaptermaster %}
+                        <li class="breadcrumb-item">
+                            <a href="{% url 'books_admin:chaptermaster_detail' chaptermaster.id %}">{{ chaptermaster.canonical_title }} (chaptermaster)</a>
+                        </li>
+                    {% endif %}
+                    {% if chapter %}
+                        {% if chapter.book != book %}
+                            <li class="breadcrumb-item">
+                                <a href="{% url 'books_admin:book_detail' chapter.book.id %}">{{ chapter.book.title }} (book)</a>
+                            </li>
+                        {% endif %}
+                        <li class="breadcrumb-item active" aria-current="page">{{ chapter.title }} (chapter)</li>
+                    {% endif %}
+                </ol>
+            </nav>
+            
+            {% block books_content %}{% endblock %}
+        </div>
+    </div>
+</div>
+{% endblock %} 
