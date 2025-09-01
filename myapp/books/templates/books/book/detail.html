@@ -86,7 +86,40 @@
         {% endif %}
     </div>
     <div class="col-md-4">
-        
+        <!-- Cover Image Section -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-image"></i> Cover Image
+                </h5>
+            </div>
+            <div class="card-body text-center">
+                <img src="{{ book.effective_cover_image }}" 
+                     class="img-fluid rounded mb-3" 
+                     alt="{{ book.title }} cover"
+                     style="max-width: 100%; max-height: 300px; object-fit: cover;">
+                
+                {% if book.cover_image %}
+                    <div class="alert alert-success small mb-0">
+                        <i class="fas fa-check-circle"></i> 
+                        <strong>Book-specific cover</strong><br>
+                        <small class="text-muted">This book has its own cover image</small>
+                    </div>
+                {% elif book.bookmaster.cover_image %}
+                    <div class="alert alert-info small mb-0">
+                        <i class="fas fa-share-alt"></i> 
+                        <strong>Inherited from BookMaster</strong><br>
+                        <small class="text-muted">Using cover from "{{ book.bookmaster.canonical_title }}"</small>
+                    </div>
+                {% else %}
+                    <div class="alert alert-warning small mb-0">
+                        <i class="fas fa-image"></i> 
+                        <strong>Default cover</strong><br>
+                        <small class="text-muted">No custom cover uploaded yet</small>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
     </div>
 </div>
 

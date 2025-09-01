@@ -193,13 +193,13 @@ LOGGING = {
         },
         "django": {
             "handlers": ["file", "console"],
-            "level": "DEBUG",
+            "level": "INFO",
             "propagate": False,
         },
     },
     "root": {
         "handlers": ["console"],
-        "level": "DEBUG",
+        "level": "INFO",
     },
 }
 

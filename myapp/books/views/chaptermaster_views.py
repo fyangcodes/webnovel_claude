@@ -77,7 +77,7 @@ class ChapterMasterDeleteView(LoginRequiredMixin, DeleteView):
         return context
 
     @transaction.atomic
-    def delete(self, request, *args, **kwargs):
+    def form_valid(self, form):
         chaptermaster = self.get_object()
         bookmaster = chaptermaster.bookmaster
         deleted_chapter_number = chaptermaster.chapter_number
@@ -93,7 +93,7 @@ class ChapterMasterDeleteView(LoginRequiredMixin, DeleteView):
             total_remaining = len(chapters_to_renumber)
 
             # Delete the chaptermaster (and its associated chapters via CASCADE)
-            response = super().delete(request, *args, **kwargs)
+            response = super().form_valid(form)
 
             # Renumber all remaining chapters to be sequential starting from 1
             renumbered_count = 0
@@ -106,13 +106,13 @@ class ChapterMasterDeleteView(LoginRequiredMixin, DeleteView):
             # Add success message with debug information
             if renumbered_count > 0:
                 messages.success(
-                    request,
+                    self.request,
                     f"Chapter {deleted_chapter_number} '{deleted_chapter_title}' deleted successfully. "
                     f"{renumbered_count} of {total_remaining} remaining chapters were automatically renumbered.",
                 )
             else:
                 messages.success(
-                    request,
+                    self.request,
                     f"Chapter {deleted_chapter_number} '{deleted_chapter_title}' deleted successfully. "
                     f"No renumbering was needed for the {total_remaining} remaining chapters.",
                 )
@@ -121,7 +121,7 @@ class ChapterMasterDeleteView(LoginRequiredMixin, DeleteView):
 
         except Exception as e:
             messages.error(
-                request, f"Error deleting chapter: {str(e)}. Please try again."
+                self.request, f"Error deleting chapter: {str(e)}. Please try again."
             )
             # Re-raise to trigger rollback
             raise
