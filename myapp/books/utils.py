@@ -178,6 +178,32 @@ def extract_text_from_file(uploaded_file, include_chapters=False):
     return text
 
 
+def _format_content_for_markdown(lines):
+    """
+    Format content lines for markdown compliance with proper paragraph separation.
+    Handles both Chinese and Western text appropriately.
+    
+    Args:
+        lines: List of content lines
+        
+    Returns:
+        str: Markdown-formatted content with double newlines for paragraph separation
+    """
+    if not lines:
+        return ""
+    
+    paragraphs = []
+    
+    for line in lines:
+        line = line.strip()
+        if line:  # Non-empty line
+            paragraphs.append(line)
+    
+    # Join all lines with double newlines for proper markdown paragraph separation
+    # This treats each non-empty line as a separate paragraph
+    return "\n\n".join(paragraphs)
+
+
 def divide_text_into_chapters(text):
     """
     Simple chapter division for MVP - uses basic pattern matching.
@@ -186,7 +212,7 @@ def divide_text_into_chapters(text):
         text: Full text content
         
     Returns:
-        list: List of chapter dictionaries with title and content
+        list: List of chapter dictionaries with title and markdown-compliant content
     """
     chapters = []
     
@@ -216,13 +242,14 @@ def divide_text_into_chapters(text):
         if is_chapter_start:
             # Save previous chapter if it exists
             if current_chapter is not None:
+                formatted_content = _format_content_for_markdown(current_content)
                 chapters.append(
                     {
                         "title": current_chapter,
-                        "content": "\n".join(current_content).strip(),
+                        "content": formatted_content,
                         "chapter_number": len(chapters) + 1,
-                        "word_count": len(" ".join(current_content).split()),
-                        "character_count": len("\n".join(current_content)),
+                        "word_count": len(formatted_content.split()),
+                        "character_count": len(formatted_content),
                     }
                 )
             
@@ -232,30 +259,32 @@ def divide_text_into_chapters(text):
             chapter_number += 1
         else:
             # Add line to current chapter content
-            if line:  # Skip empty lines
-                current_content.append(line)
+            current_content.append(line)
     
     # Add the last chapter
     if current_chapter is not None:
+        formatted_content = _format_content_for_markdown(current_content)
         chapters.append(
             {
                 "title": current_chapter,
-                "content": "\n".join(current_content).strip(),
+                "content": formatted_content,
                 "chapter_number": len(chapters) + 1,
-                "word_count": len(" ".join(current_content).split()),
-                "character_count": len("\n".join(current_content)),
+                "word_count": len(formatted_content.split()),
+                "character_count": len(formatted_content),
             }
         )
     
     # If no chapters were found, create a single chapter
     if not chapters:
+        # Format the entire text for markdown compliance
+        formatted_text = _format_content_for_markdown(text.split('\n'))
         chapters = [
             {
                 "title": "Full Text",
-                "content": text,
+                "content": formatted_text,
                 "chapter_number": 1,
-                "word_count": len(text.split()),
-                "character_count": len(text),
+                "word_count": len(formatted_text.split()),
+                "character_count": len(formatted_text),
             }
         ]
     

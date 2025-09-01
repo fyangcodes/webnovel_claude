@@ -20,24 +20,9 @@ class ProcessingStatus(models.TextChoices):
     FAILED = "failed", "Failed"
 
 
-class MediaType(models.TextChoices):
-    IMAGE = "image", "Image"
-    AUDIO = "audio", "Audio"
-    VIDEO = "video", "Video"
-    DOCUMENT = "document", "Document"
-    OTHER = "other", "Other"
-
-
-class ParagraphStyle(models.TextChoices):
-    SINGLE_NEWLINE = "single_newline", "Single Newline"
-    DOUBLE_NEWLINE = "double_newline", "Double Newline"
-    AUTO_DETECT = "auto_detect", "Auto Detect"
-
-
-class ChangeType(models.TextChoices):
-    TRANSLATION = "translation", "Translation"
-    EDIT = "edit", "Edit/Correction"
-    OTHER = "other", "Other"
+class CountUnits(models.TextChoices):
+    WORDS = "words", "Words"
+    CHARS = "chars", "Characters"
 
 
 class Rating(models.TextChoices):

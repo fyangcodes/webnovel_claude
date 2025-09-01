@@ -4,7 +4,7 @@ from django.utils import timezone
 from django.utils.text import slugify
 
 from common.models import TimeStampedModel
-from .choices import BookProgress, ChapterProgress, ProcessingStatus
+from .choices import BookProgress, ChapterProgress, ProcessingStatus, CountUnits
 from .validators import unicode_slug_validator
 
 
@@ -46,6 +46,11 @@ class Language(TimeStampedModel):
     code = models.CharField(max_length=10, unique=True)  # e.g., 'zh-CN'
     name = models.CharField(max_length=50)  # e.g., 'Chinese (Simplified)'
     local_name = models.CharField(max_length=50)  # e.g., '中文（简体）'
+    count_units = models.CharField(
+        max_length=20,
+        choices=CountUnits.choices,
+        default=CountUnits.WORDS,
+    )
 
     def __str__(self):
         return self.name
@@ -55,6 +60,12 @@ class BookMaster(TimeStampedModel):
     """Master book entity for translation management"""
 
     canonical_title = models.CharField(max_length=255)
+    cover_image = models.ImageField(
+        upload_to="book_covers/masters/",
+        blank=True,
+        null=True,
+        help_text="Default cover image for all language versions of this book",
+    )
     owner = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
@@ -98,6 +109,12 @@ class Book(TimeStampedModel, SlugGeneratorMixin):
     )
     author = models.CharField(max_length=255, blank=True)
     description = models.TextField(blank=True)
+    cover_image = models.ImageField(
+        upload_to="book_covers/books",
+        blank=True,
+        null=True,
+        help_text="Cover image for the book",
+    )
     bookmaster = models.ForeignKey(
         BookMaster, on_delete=models.CASCADE, related_name="books"
     )
@@ -144,6 +161,22 @@ class Book(TimeStampedModel, SlugGeneratorMixin):
         self.total_words = sum(chapter.word_count for chapter in chapters)
         self.total_characters = sum(chapter.character_count for chapter in chapters)
         self.save(update_fields=["total_chapters", "total_words", "total_characters"])
+
+    @property
+    def effective_count(self):
+        if self.language.count_units == CountUnits.WORDS:
+            return self.total_words
+        return self.total_characters
+    
+    @property
+    def effective_cover_image(self):
+        if self.cover_image:
+            return self.cover_image.url
+        elif self.bookmaster.cover_image:
+            return self.bookmaster.cover_image.url
+        else:
+            from django.conf import settings
+            return f"{settings.MEDIA_URL}book_covers/default_book_cover.png" 
 
 
 class ChapterMaster(TimeStampedModel):
@@ -244,9 +277,10 @@ class Chapter(TimeStampedModel, SlugGeneratorMixin):
         self.save()
 
     @property
-    def is_published(self):
-        """Alias for is_public for backward compatibility"""
-        return self.is_public
+    def effective_count(self):
+        if self.book.language.count_units == CountUnits.WORDS:
+            return self.word_count
+        return self.character_count
 
 
 # Simple translation job tracking
