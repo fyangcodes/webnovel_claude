@@ -81,9 +81,9 @@
             <h1 class="display-6 mb-3">{{ chapter.title }}</h1>
             <div class="d-flex justify-content-center align-items-center gap-3 text-muted">
                 <span>Chapter {{ chapter.chaptermaster.chapter_number }}</span>
-                {% if chapter.word_count %}
+                {% if chapter.reading_time_minutes %}
                 <span>•</span>
-                <span>{{ chapter.word_count }} words</span>
+                <span>{{ chapter.reading_time_minutes }} minutes</span>
                 {% endif %}
                 {% if chapter.published_at %}
                 <span>•</span>

@@ -34,7 +34,7 @@
             </div>
             <div class="card-body">
                 <div class="row">
-                    <div class="col-md-6">
+                    <div class="col-md-4">
                         <small class="text-muted">
                             <strong>Author:</strong> 
                             {% if book.author %}
@@ -47,16 +47,19 @@
                                 {{ book.language.name }}
                             {% else %}
                                 Not specified
-                            {% endif %}<br>
-                            <strong>Total Chapters:</strong> {{ book.total_chapters }}
+                            {% endif %}                         
                         </small>
                     </div>
-                    <div class="col-md-6">
+                    <div class="col-md-4">
                         <small class="text-muted">
-                            <strong>Total Words:</strong> {{ book.total_words|default:"0" }}<br>
-                            <strong>Total Characters:</strong> {{ book.total_characters|default:"0" }}<br>
-                            <strong>Created:</strong> {{ book.created_at|date:"M d, Y" }}<br>
-                            <strong>Updated:</strong> {{ book.updated_at|date:"M d, Y" }}
+                            <strong>Total Chapters:</strong> {{ book.total_chapters }}<br>  
+                            <strong>Total Words:</strong> {{ book.effective_count|default:"0" }}                          
+                        </small>
+                    </div>
+                    <div class="col-md-4">
+                        <small class="text-muted">
+                            <strong>Created:</strong> {{ book.created_at|date:"Y-m-d" }}<br>
+                            <strong>Updated:</strong> {{ book.updated_at|date:"Y-m-d" }}
                         </small>
                     </div>
                 </div>

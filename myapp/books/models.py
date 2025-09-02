@@ -51,6 +51,9 @@ class Language(TimeStampedModel):
         choices=CountUnits.choices,
         default=CountUnits.WORDS,
     )
+    wpm = models.PositiveSmallIntegerField(
+        default=400, help_text="Reading speed words per minute"
+    )
 
     def __str__(self):
         return self.name
@@ -167,7 +170,21 @@ class Book(TimeStampedModel, SlugGeneratorMixin):
         if self.language.count_units == CountUnits.WORDS:
             return self.total_words
         return self.total_characters
-    
+
+    @property
+    def reading_time_minutes(self):
+        """Calculate estimated reading time for the entire book in minutes"""
+        if not self.language or not self.language.wpm:
+            return 0
+        
+        effective_count = self.effective_count
+        if effective_count == 0:
+            return 0
+            
+        # Convert to minutes, rounding up to nearest minute
+        import math
+        return math.ceil(effective_count / self.language.wpm)
+
     @property
     def effective_cover_image(self):
         if self.cover_image:
@@ -176,7 +193,8 @@ class Book(TimeStampedModel, SlugGeneratorMixin):
             return self.bookmaster.cover_image.url
         else:
             from django.conf import settings
-            return f"{settings.MEDIA_URL}book_covers/default_book_cover.png" 
+
+            return f"{settings.MEDIA_URL}book_covers/default_book_cover.png"
 
 
 class ChapterMaster(TimeStampedModel):
@@ -281,6 +299,20 @@ class Chapter(TimeStampedModel, SlugGeneratorMixin):
         if self.book.language.count_units == CountUnits.WORDS:
             return self.word_count
         return self.character_count
+
+    @property
+    def reading_time_minutes(self):
+        """Calculate estimated reading time in minutes based on language reading speed"""
+        if not self.book.language or not self.book.language.wpm:
+            return 0
+        
+        effective_count = self.effective_count
+        if effective_count == 0:
+            return 0
+            
+        # Convert to minutes, rounding up to nearest minute
+        import math
+        return math.ceil(effective_count / self.book.language.wpm)
 
 
 # Simple translation job tracking
