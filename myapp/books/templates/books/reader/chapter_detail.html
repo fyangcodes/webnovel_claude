@@ -1,5 +1,6 @@
 {% extends "books/reader/base.html" %}
 {% load books_extras %}
+{% load humanize %}
 
 {% block title %}{{ chapter.title }} - {{ book.title }}{% endblock %}
 
@@ -83,11 +84,11 @@
                 <span>Chapter {{ chapter.chaptermaster.chapter_number }}</span>
                 {% if chapter.reading_time_minutes %}
                 <span>•</span>
-                <span>{{ chapter.reading_time_minutes }} minutes</span>
+                <span>{{ chapter.reading_time_minutes }} minutes read</span>
                 {% endif %}
                 {% if chapter.published_at %}
                 <span>•</span>
-                <span>{{ chapter.published_at|date:"M d, Y" }}</span>
+                <span>{{ chapter.published_at|naturaltime }}</span>
                 {% endif %}
             </div>
         </div>

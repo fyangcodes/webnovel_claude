@@ -1,4 +1,5 @@
 {% extends "books/reader/base.html" %}
+{% load humanize %}
 
 {% block title %}{{ book.title }}{% endblock %}
 
@@ -19,22 +20,33 @@
             
             <!-- Book Stats -->
             <div class="row mb-4">
-                <div class="col-sm-4">
+                <div class="col-sm-3">
                     <div class="text-center p-3 bg-light rounded">
                         <div class="fw-bold text-primary">{{ total_chapters }}</div>
                         <small class="text-muted">Chapter{{ total_chapters|pluralize }}</small>
                     </div>
                 </div>
-                <div class="col-sm-4">
+                <div class="col-sm-3">
                     <div class="text-center p-3 bg-light rounded">
                         <div class="fw-bold text-primary">{{ total_words|floatformat:0 }}</div>
                         <small class="text-muted">Words</small>
                     </div>
                 </div>
-                <div class="col-sm-4">
+                <div class="col-sm-3">
                     <div class="text-center p-3 bg-light rounded">
                         <div class="fw-bold text-primary">{{ book.get_progress_display|default:"Unknown" }}</div>
                         <small class="text-muted">Status</small>
+                    </div>
+                </div>
+                <div class="col-sm-3">
+                    <div class="text-center p-3 bg-light rounded">
+                        {% if last_update %}
+                        <div class="fw-bold text-primary">{{ last_update|naturaltime }}</div>
+                        <small class="text-muted">Last Update</small>
+                        {% else %}
+                        <div class="fw-bold text-muted">No updates</div>
+                        <small class="text-muted">Last Update</small>
+                        {% endif %}
                     </div>
                 </div>
             </div>
@@ -54,33 +66,6 @@
             <img src="{{ book.effective_cover_image }}" class="card-img-top" alt="{{ book.title }} cover" 
                  style="max-height: 400px; object-fit: cover;">
         </div>
-        <div class="card">
-            <div class="card-header">
-                <h6 class="card-title mb-0">Book Information</h6>
-            </div>
-            <div class="card-body">
-                <dl class="row small">
-                    <dt class="col-sm-5">Language:</dt>
-                    <dd class="col-sm-7">{{ book.language.name }}</dd>
-                    
-                    {% if book.published_at %}
-                    <dt class="col-sm-5">Published:</dt>
-                    <dd class="col-sm-7">{{ book.published_at|date:"M d, Y" }}</dd>
-                    {% endif %}
-                    
-                    <dt class="col-sm-5">Last Updated:</dt>
-                    <dd class="col-sm-7">{{ book.updated_at|date:"M d, Y" }}</dd>
-                </dl>
-                
-                {% if chapters %}
-                <div class="d-grid mt-3">
-                    <a href="{% url 'books_reader:chapter_detail' current_language.code book.slug chapters.0.slug %}" 
-                       class="btn btn-primary">
-                        Start Reading
-                    </a>
-                </div>
-                {% endif %}
-            </div>
         </div>
     </div>
 </div>
@@ -91,30 +76,48 @@
         <h3 class="mb-4">Chapters</h3>
         
         {% if chapters %}
-        <div class="list-group">
+        <div class="row">
             {% for chapter in chapters %}
-            <a href="{% url 'books_reader:chapter_detail' current_language.code book.slug chapter.slug %}" 
-               class="list-group-item list-group-item-action d-flex justify-content-between align-items-start">
-                <div class="ms-2 me-auto">
-                    <div class="fw-bold">{{ chapter.title }}</div>
-                    {% if chapter.excerpt %}
-                    <small class="text-muted">{{ chapter.excerpt|truncatewords:15 }}</small>
-                    {% endif %}
-                </div>
-                <div class="text-end">
-                    <span class="badge bg-light text-dark">
-                        Chapter {{ chapter.chaptermaster.chapter_number }}
-                    </span>
-                    {% if chapter.word_count %}
-                    <br><small class="text-muted">{{ chapter.word_count }} words</small>
-                    {% endif %}
-                    {% if chapter.published_at %}
-                    <br><small class="text-muted">{{ chapter.published_at|timesince }} ago</small>
-                    {% endif %}
-                </div>
-            </a>
+            <div class="col-lg-3 col-md-4 col-sm-6 mb-3">
+                <a href="{% url 'books_reader:chapter_detail' current_language.code book.slug chapter.slug %}" 
+                   class="btn btn-outline-primary w-100 text-start p-3" 
+                   style="min-height: 60px; display: flex; align-items: center;">
+                    <span class="fw-medium">{{ chapter.title }}</span>
+                </a>
+            </div>
             {% endfor %}
         </div>
+
+        <!-- Simple Pagination -->
+        {% if is_paginated %}
+        <nav aria-label="Chapter pagination" class="mt-4">
+            <div class="d-flex justify-content-center">
+                <div class="btn-group" role="group">
+                    {% if page_obj.has_previous %}
+                        <a href="?page=1" class="btn btn-outline-secondary btn-sm">1</a>
+                        {% if page_obj.previous_page_number > 2 %}
+                            {% if page_obj.previous_page_number > 3 %}
+                                <span class="btn btn-outline-secondary btn-sm disabled">...</span>
+                            {% endif %}
+                            <a href="?page={{ page_obj.previous_page_number }}" class="btn btn-outline-secondary btn-sm">{{ page_obj.previous_page_number }}</a>
+                        {% endif %}
+                    {% endif %}
+                    
+                    <span class="btn btn-primary btn-sm">{{ page_obj.number }}</span>
+                    
+                    {% if page_obj.has_next %}
+                        {% if page_obj.next_page_number < page_obj.paginator.num_pages %}
+                            <a href="?page={{ page_obj.next_page_number }}" class="btn btn-outline-secondary btn-sm">{{ page_obj.next_page_number }}</a>
+                            {% if page_obj.next_page_number < page_obj.paginator.num_pages|add:"-1" %}
+                                <span class="btn btn-outline-secondary btn-sm disabled">...</span>
+                            {% endif %}
+                        {% endif %}
+                        <a href="?page={{ page_obj.paginator.num_pages }}" class="btn btn-outline-secondary btn-sm">{{ page_obj.paginator.num_pages }}</a>
+                    {% endif %}
+                </div>
+            </div>
+        </nav>
+        {% endif %}
         {% else %}
         <!-- No Chapters State -->
         <div class="text-center py-5">

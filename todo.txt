@@ -2,7 +2,6 @@ book genre
 check all templates for VariableDeosNotExistException
 
 improve reader views design
-- introduction
 - slogan
 - i18n
 - visual design

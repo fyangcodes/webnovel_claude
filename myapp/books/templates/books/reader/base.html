@@ -109,14 +109,13 @@
                 {% if languages %}
                 <div class="language-switcher dropdown">
                     <button class="btn btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
-                        {{ current_language.name|default:"Select Language" }}
+                        {{ current_language.local_name|default:"Select Language" }}
                     </button>
                     <ul class="dropdown-menu">
                         {% for lang in languages %}
                         <li>
-                            <a class="dropdown-item {% if lang == current_language %}active{% endif %}" 
-                               href="{% url 'books_reader:book_list' lang.code %}">
-                                {{ lang.name }} ({{ lang.local_name }})
+                            <a class="dropdown-item {% if lang == current_language %}active{% endif %}" href="{% url 'books_reader:book_list' lang.code %}">
+                                {{ lang.local_name }}
                             </a>
                         </li>
                         {% endfor %}
@@ -135,7 +134,7 @@
             <ol class="breadcrumb py-2 mb-0">
                 <li class="breadcrumb-item">
                     <a href="{% url 'books_reader:book_list' current_language.code %}">
-                        {{ current_language.name }}
+                        Home
                     </a>
                 </li>
                 {% block breadcrumb_items %}{% endblock %}
@@ -153,7 +152,7 @@
     <!-- Footer -->
     <footer class="bg-light mt-5 py-4">
         <div class="container text-center">
-            <p class="text-muted mb-0">© 2024 WebNovel Translation Platform</p>
+            <p class="text-muted mb-0">© 2025 WebNovel Translation Platform</p>
         </div>
     </footer>
 

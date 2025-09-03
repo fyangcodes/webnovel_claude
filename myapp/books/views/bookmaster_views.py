@@ -85,7 +85,7 @@ class BookMasterDetailView(LoginRequiredMixin, DetailView):
         )
 
         # Add pagination
-        paginator = Paginator(chaptermasters_queryset, 25)  # 25 chapters per page
+        paginator = Paginator(chaptermasters_queryset, 20) 
         page_number = self.request.GET.get("page")
         chaptermasters_page = paginator.get_page(page_number)
 
