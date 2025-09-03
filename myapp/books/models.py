@@ -277,10 +277,12 @@ class Chapter(TimeStampedModel, SlugGeneratorMixin):
     def generate_excerpt(self, max_length=200):
         """Generate excerpt from content"""
         if not self.content:
-            return ""
-        if len(self.content) <= max_length:
-            return self.content
-        return self.content[:max_length].rsplit(None, 1)[0] + "..."
+            self.excerpt = ""
+        elif len(self.content) <= max_length:
+            self.excerpt = self.content
+        else:
+            self.excerpt = self.content[:max_length].rsplit(None, 1)[0] + "..."
+        self.save(update_fields=["excerpt"])
 
     def publish(self):
         """Publish this chapter"""
@@ -305,11 +307,11 @@ class Chapter(TimeStampedModel, SlugGeneratorMixin):
         """Calculate estimated reading time in minutes based on language reading speed"""
         if not self.book.language or not self.book.language.wpm:
             return 0
-        
+
         effective_count = self.effective_count
         if effective_count == 0:
             return 0
-            
+
         # Convert to minutes, rounding up to nearest minute
         import math
         return math.ceil(effective_count / self.book.language.wpm)

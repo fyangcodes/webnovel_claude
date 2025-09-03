@@ -4,6 +4,7 @@ from .bookmaster_views import (
     BookMasterDetailView,
     BookMasterUpdateView,
     BookMasterDeleteView,
+    BatchChapterActionView,
 )
 from .book_views import (
     BookCreateView,
@@ -35,6 +36,7 @@ __all__ = [
     "BookMasterDetailView",
     "BookMasterUpdateView",
     "BookMasterDeleteView",
+    "BatchChapterActionView",
     "BookCreateView",
     "BookDetailView",
     "BookUpdateView",

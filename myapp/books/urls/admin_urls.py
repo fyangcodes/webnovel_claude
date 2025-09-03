@@ -28,6 +28,11 @@ urlpatterns = [
         views.BookMasterDeleteView.as_view(),
         name="bookmaster_delete",
     ),
+    path(
+        "bookmasters/<int:bookmaster_pk>/batch-chapter-action/",
+        views.BatchChapterActionView.as_view(),
+        name="batch_chapter_action",
+    ),
     # ChapterMaster (Chapter) views under a BookMaster
     path(
         "chaptermasters/create/to/bookmasters/<int:bookmaster_pk>/",

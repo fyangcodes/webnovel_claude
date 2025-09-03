@@ -1,8 +1,8 @@
+book genre
 check all templates for VariableDeosNotExistException
 
-batch processing button on bookmaster detail delete, publish, unpublish, translate
-move action buttons close to chaptermaster
-
-staff portal on reader nav bar
-book genre
 improve reader views design
+- introduction
+- slogan
+- i18n
+- visual design

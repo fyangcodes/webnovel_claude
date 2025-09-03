@@ -2,57 +2,111 @@
 {% load books_extras %}
 
 {% block books_content %}
+<div class="mb-4">
+    <div class="d-flex justify-content-between align-items-start">
+        <div>
+            <h1>{{ bookmaster.canonical_title }}</h1>
+        </div>
+        <div class="btn-group" role="group">
+            <a href="{% url 'books_admin:bookmaster_list' %}" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left"></i> Back to List
+            </a>
+            <a href="{% url 'books_admin:bookmaster_update' bookmaster.pk %}" class="btn btn-outline-primary">
+                <i class="fas fa-edit"></i> Edit
+            </a>         
+            <a href="{% url 'books_admin:bookmaster_delete' bookmaster.pk %}" class="btn btn-outline-danger">
+                <i class="fas fa-trash"></i> Delete
+            </a>
+        </div>
+    </div>
+</div>
+
 <div class="row justify-content-center">
     <div class="col-md-10">
-        <div class="card mb-4">
-            <div class="card-header">
-                <h2 class="card-title mb-0">{{ bookmaster.canonical_title }}</h2>
+        <div class="mb-4">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h4 class="mb-0">Book Overview ({{ bookmaster.books.count }} languages)</h4>
+                <a href="{% url 'books_admin:book_create' bookmaster.id %}" class="btn btn-success">
+                    <i class="fas fa-plus"></i> Add Book
+                </a>
             </div>
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <h4>Book Overview ({{ bookmaster.books.count }} languages)</h4>
-                    <a href="{% url 'books_admin:book_create' bookmaster.id %}" class="btn btn-success mb-3">
-                        <i class="fas fa-plus"></i> Add Book
-                    </a>
+            <ul class="list-group mb-4">
+                {% for book in books %}
+                    <li class="list-group-item d-flex justify-content-between align-items-center {% if book.language == bookmaster.original_language %}bg-light border-warning{% endif %}">
+                        <span>
+                            <a href="{% url 'books_admin:book_detail' book.id %}">{{ book.language.name }} - {{ book.title }}</a>
+                            {% if book.language == bookmaster.original_language %}
+                                <small class="text-muted ms-2">(Original)</small>
+                            {% endif %}
+                        </span>
+                        <span>
+                            <a href="{% url 'books_admin:book_update' book.id %}" class="btn btn-sm btn-primary">Edit</a>
+                            <a href="{% url 'books_admin:book_delete' book.id %}" class="btn btn-sm btn-danger">Delete</a>
+                        </span>
+                    </li>
+                {% empty %}
+                    <li class="list-group-item">No books yet.</li>
+                {% endfor %}
+            </ul>
+        </div>
+        
+        <div class="mb-4">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h4 class="mb-0">Chapter Overview ({{ chaptermasters.paginator.count }} chapters)</h4>
+                <a href="{% url 'books_admin:chaptermaster_create' bookmaster.id %}" class="btn btn-success">
+                    <i class="fas fa-plus"></i> Add Chapter
+                </a>
+            </div>
+            <div class="d-flex justify-content-start align-items-center mb-3">
+                <div id="batch-actions" class="d-none">
+                    <div class="btn-group" role="group">
+                        <button type="button" class="btn btn-success btn-sm" onclick="batchPublish()">
+                            <i class="fas fa-eye"></i> Publish
+                        </button>
+                        <button type="button" class="btn btn-warning btn-sm" onclick="batchUnpublish()">
+                            <i class="fas fa-eye-slash"></i> Unpublish
+                        </button>
+                        <div class="btn-group" role="group">
+                            <button type="button" class="btn btn-info btn-sm dropdown-toggle" data-bs-toggle="dropdown">
+                                <i class="fas fa-edit"></i> Status
+                            </button>
+                            <ul class="dropdown-menu">
+                                <li><a class="dropdown-item" href="#" onclick="batchChangeStatus('draft')">Draft</a></li>
+                                <li><a class="dropdown-item" href="#" onclick="batchChangeStatus('translating')">Translating</a></li>
+                                <li><a class="dropdown-item" href="#" onclick="batchChangeStatus('completed')">Completed</a></li>
+                            </ul>
+                        </div>
+                        <button type="button" class="btn btn-primary btn-sm" onclick="batchTranslate()">
+                            <i class="fas fa-language"></i> Translate
+                        </button>
+                        <button type="button" class="btn btn-danger btn-sm" onclick="batchDelete()">
+                            <i class="fas fa-trash"></i> Delete
+                        </button>
+                    </div>
                 </div>
-                <ul class="list-group mb-4">
-                    {% for book in books %}
-                        <li class="list-group-item d-flex justify-content-between align-items-center">
-                            <span>
-                                <a href="{% url 'books_admin:book_detail' book.id %}">{{ book.language.name }} - {{ book.title }}</a>
-                            </span>
-                            <span>
-                                <a href="{% url 'books_admin:book_update' book.id %}" class="btn btn-sm btn-primary">Edit</a>
-                                <a href="{% url 'books_admin:book_delete' book.id %}" class="btn btn-sm btn-danger">Delete</a>
-                            </span>
-                        </li>
-                    {% empty %}
-                        <li class="list-group-item">No books yet.</li>
-                    {% endfor %}
-                </ul>
-
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <h4>Chapter Overview ({{ chaptermasters.paginator.count }} chapters)</h4>
-                    <a href="{% url 'books_admin:chaptermaster_create' bookmaster.id %}" class="btn btn-success">
-                        <i class="fas fa-plus"></i> Add Chapter
-                    </a>
-                </div>
+            </div>
 
                 {% if chapter_table %}
                 <div class="table-responsive">
                     <table class="table table-bordered table-hover table-sm">
                         <thead class="table-light">
                             <tr>
+                                <th style="width: 40px;" class="text-center align-middle">
+                                    <input type="checkbox" id="select-all" class="form-check-input" onchange="toggleAllChapters()">
+                                </th>
                                 <th style="min-width: 200px;">Chapter</th>
                                 {% for language in languages %}
                                 <th class="text-center" style="min-width: 100px;">{{ language.name }}</th>
                                 {% endfor %}
-                                <th style="min-width: 80px;">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
                             {% for row in chapter_table %}
                             <tr>
+                                <td class="text-center align-middle">
+                                    <input type="checkbox" class="form-check-input chapter-checkbox" 
+                                           value="{{ row.chaptermaster.id }}" onchange="updateBatchActions()">
+                                </td>
                                 <td class="align-middle">
                                     <span class="text-primary fw-bold">#{{ row.chaptermaster.chapter_number }}</span>
                                     <a href="{% url 'books_admin:chaptermaster_detail' row.chaptermaster.id %}" class="ms-2 text-decoration-none">
@@ -83,18 +137,6 @@
                                     {% endwith %}
                                 </td>
                                 {% endfor %}
-                                <td class="text-center align-middle">
-                                    <div class="btn-group btn-group-sm">
-                                        <a href="{% url 'books_admin:chaptermaster_update' row.chaptermaster.id %}" 
-                                           class="btn btn-outline-primary btn-sm" title="Edit">
-                                            <i class="fas fa-edit"></i>
-                                        </a>
-                                        <a href="{% url 'books_admin:chaptermaster_delete' row.chaptermaster.id %}" 
-                                           class="btn btn-outline-danger btn-sm" title="Delete">
-                                            <i class="fas fa-trash"></i>
-                                        </a>
-                                    </div>
-                                </td>
                             </tr>
                             {% endfor %}
                         </tbody>
@@ -131,15 +173,194 @@
                     </ul>
                 </nav>
                 {% endif %}
-                {% else %}
-                    <div class="alert alert-info">
-                        <i class="fas fa-info-circle"></i> No chapter masters created yet. 
-                        <a href="{% url 'books_admin:chaptermaster_create' bookmaster.id %}" class="alert-link">Create your first chapter master</a> to get started.
-                    </div>
-                {% endif %}
+            {% else %}
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i> No chapter masters created yet. 
+                    <a href="{% url 'books_admin:chaptermaster_create' bookmaster.id %}" class="alert-link">Create your first chapter master</a> to get started.
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
 
+<!-- Batch Action Modal for Language Selection -->
+<div class="modal fade" id="batchTranslateModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Translate Selected Chapters</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="batchTranslateForm">
+                    <div class="mb-3">
+                        <label for="target-language" class="form-label">Target Language:</label>
+                        <select id="target-language" class="form-select" required>
+                            <option value="">Select language...</option>
+                            {% for language in all_languages %}
+                            <option value="{{ language.code }}">{{ language.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="executeBatchTranslate()">Start Translation</button>
             </div>
         </div>
     </div>
 </div>
+
+<script>
+function toggleAllChapters() {
+    const selectAll = document.getElementById('select-all');
+    const checkboxes = document.querySelectorAll('.chapter-checkbox');
+    
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = selectAll.checked;
+    });
+    
+    updateBatchActions();
+}
+
+function updateBatchActions() {
+    const checkedBoxes = document.querySelectorAll('.chapter-checkbox:checked');
+    const batchActions = document.getElementById('batch-actions');
+    
+    if (checkedBoxes.length > 0) {
+        batchActions.classList.remove('d-none');
+    } else {
+        batchActions.classList.add('d-none');
+    }
+    
+    // Update select all checkbox state
+    const allCheckboxes = document.querySelectorAll('.chapter-checkbox');
+    const selectAll = document.getElementById('select-all');
+    
+    if (checkedBoxes.length === allCheckboxes.length) {
+        selectAll.checked = true;
+        selectAll.indeterminate = false;
+    } else if (checkedBoxes.length > 0) {
+        selectAll.checked = false;
+        selectAll.indeterminate = true;
+    } else {
+        selectAll.checked = false;
+        selectAll.indeterminate = false;
+    }
+}
+
+function getSelectedChapters() {
+    const checkedBoxes = document.querySelectorAll('.chapter-checkbox:checked');
+    return Array.from(checkedBoxes).map(cb => cb.value);
+}
+
+function batchPublish() {
+    const selectedChapters = getSelectedChapters();
+    if (selectedChapters.length === 0) return;
+    
+    if (confirm(`Are you sure you want to publish ${selectedChapters.length} chapter(s)?`)) {
+        performBatchAction('publish', selectedChapters);
+    }
+}
+
+function batchUnpublish() {
+    const selectedChapters = getSelectedChapters();
+    if (selectedChapters.length === 0) return;
+    
+    if (confirm(`Are you sure you want to unpublish ${selectedChapters.length} chapter(s)?`)) {
+        performBatchAction('unpublish', selectedChapters);
+    }
+}
+
+function batchChangeStatus(status) {
+    const selectedChapters = getSelectedChapters();
+    if (selectedChapters.length === 0) return;
+    
+    if (confirm(`Are you sure you want to change status of ${selectedChapters.length} chapter(s) to ${status}?`)) {
+        performBatchAction('change_status', selectedChapters, { status: status });
+    }
+}
+
+function batchTranslate() {
+    const selectedChapters = getSelectedChapters();
+    if (selectedChapters.length === 0) return;
+    
+    // Show modal for language selection
+    const modal = new bootstrap.Modal(document.getElementById('batchTranslateModal'));
+    modal.show();
+}
+
+function executeBatchTranslate() {
+    const selectedChapters = getSelectedChapters();
+    const targetLanguage = document.getElementById('target-language').value;
+    
+    if (!targetLanguage) {
+        alert('Please select a target language.');
+        return;
+    }
+    
+    // Close modal
+    const modal = bootstrap.Modal.getInstance(document.getElementById('batchTranslateModal'));
+    modal.hide();
+    
+    performBatchAction('translate', selectedChapters, { target_language: targetLanguage });
+}
+
+function batchDelete() {
+    const selectedChapters = getSelectedChapters();
+    if (selectedChapters.length === 0) return;
+    
+    if (confirm(`Are you sure you want to delete ${selectedChapters.length} chapter(s)? This action cannot be undone.`)) {
+        performBatchAction('delete', selectedChapters);
+    }
+}
+
+function performBatchAction(action, chapterIds, extraData = {}) {
+    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value || 
+                     document.querySelector('meta[name=csrf-token]')?.getAttribute('content');
+    
+    if (!csrfToken) {
+        console.error('CSRF token not found');
+        alert('Error: CSRF token not found. Please refresh the page and try again.');
+        return;
+    }
+    
+    const data = {
+        action: action,
+        chapter_ids: chapterIds,
+        ...extraData
+    };
+    
+    fetch(`{% url 'books_admin:batch_chapter_action' bookmaster.id %}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message || 'Action completed successfully!');
+            location.reload(); // Reload to show updated status
+        } else {
+            alert('Error: ' + (data.message || 'Action failed'));
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error: Failed to perform action');
+    });
+}
+
+// Add CSRF token to page if not already present
+if (!document.querySelector('[name=csrfmiddlewaretoken]') && !document.querySelector('meta[name=csrf-token]')) {
+    const meta = document.createElement('meta');
+    meta.name = 'csrf-token';
+    meta.content = '{{ csrf_token }}';
+    document.head.appendChild(meta);
+}
+</script>
 {% endblock %} 

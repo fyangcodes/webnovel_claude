@@ -97,24 +97,33 @@
                 📚 WebNovel
             </a>
             
-            <!-- Language Switcher -->
-            {% if languages %}
-            <div class="language-switcher dropdown">
-                <button class="btn btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
-                    {{ current_language.name|default:"Select Language" }}
-                </button>
-                <ul class="dropdown-menu">
-                    {% for lang in languages %}
-                    <li>
-                        <a class="dropdown-item {% if lang == current_language %}active{% endif %}" 
-                           href="{% url 'books_reader:book_list' lang.code %}">
-                            {{ lang.name }} ({{ lang.local_name }})
-                        </a>
-                    </li>
-                    {% endfor %}
-                </ul>
+            <div class="d-flex align-items-center gap-3">
+                <!-- Staff Panel Link -->
+                {% if user.is_authenticated and user.role != 'reader' %}
+                <a href="{% url 'books_admin:bookmaster_list' %}" class="btn btn-outline-primary">
+                    <i class="bi bi-tools"></i> Staff Panel
+                </a>
+                {% endif %}
+                
+                <!-- Language Switcher -->
+                {% if languages %}
+                <div class="language-switcher dropdown">
+                    <button class="btn btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                        {{ current_language.name|default:"Select Language" }}
+                    </button>
+                    <ul class="dropdown-menu">
+                        {% for lang in languages %}
+                        <li>
+                            <a class="dropdown-item {% if lang == current_language %}active{% endif %}" 
+                               href="{% url 'books_reader:book_list' lang.code %}">
+                                {{ lang.name }} ({{ lang.local_name }})
+                            </a>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endif %}
             </div>
-            {% endif %}
         </div>
     </nav>
 

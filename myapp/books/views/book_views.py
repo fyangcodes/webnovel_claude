@@ -269,9 +269,7 @@ class BookFileUploadView(LoginRequiredMixin, FormView):
                     )
 
                     # Generate excerpt if content exists
-                    if chapter.content:
-                        chapter.excerpt = chapter.generate_excerpt()
-                        chapter.save(update_fields=["excerpt"])
+                    chapter.generate_excerpt()
 
                     created_chapters += 1
 

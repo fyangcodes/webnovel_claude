@@ -1,24 +1,43 @@
 {% extends "books/base_books.html" %}
 
 {% block books_content %}
+<div class="mb-4">
+    <div class="d-flex justify-content-between align-items-start">
+        <div>
+            <h1>{{ chaptermaster.canonical_title }}</h1>
+            <h5 class="text-muted">Chapter {{ chaptermaster.chapter_number }} of {{ chaptermaster.bookmaster.canonical_title }}</h5>
+        </div>
+        <div class="btn-group" role="group">
+            <a href="{% url 'books_admin:bookmaster_detail' chaptermaster.bookmaster.id %}" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left"></i> Back to Book
+            </a>
+            <a href="{% url 'books_admin:chaptermaster_update' chaptermaster.pk %}" class="btn btn-outline-primary">
+                <i class="fas fa-edit"></i> Edit
+            </a>         
+            <a href="{% url 'books_admin:chaptermaster_delete' chaptermaster.pk %}" class="btn btn-outline-danger">
+                <i class="fas fa-trash"></i> Delete
+            </a>
+        </div>
+    </div>
+</div>
+
 <div class="row justify-content-center">
     <div class="col-md-10">
         <div class="card mb-4">
             <div class="card-header">
-                <h2 class="card-title mb-0">{{ chaptermaster.canonical_name }}</h2>
+                <h4 class="card-title mb-0">Current Translations</h4>
             </div>
             <div class="card-body">
-                <h4>Chapters</h4>
                 <ul class="list-group mb-3">
                     {% for chapter in chapters %}
                         <li class="list-group-item d-flex justify-content-between align-items-center">
-                            <span>
+                            <a href="{% url 'books_admin:chapter_detail' chapter.id %}">
                                 <strong>#{{ chapter.chaptermaster.chapter_number }}:</strong> {{ chapter.title }} 
                                 ({{ chapter.book.language.name }})
-                            </span>
+                            </a>
                             <span>
-                                <a href="{% url 'books_admin:chapter_detail' chapter.id %}" class="btn btn-sm btn-outline-secondary">View</a>
-                                <a href="{% url 'books_admin:chapter_delete' chapter.id %}" class="btn btn-sm btn-outline-danger">Delete</a>
+                                <a href="{% url 'books_admin:chapter_update' chapter.id %}" class="btn btn-sm btn-primary">Edit</a>
+                                <a href="{% url 'books_admin:chapter_delete' chapter.id %}" class="btn btn-sm btn-danger">Delete</a>
                             </span>
                         </li>
                     {% empty %}
