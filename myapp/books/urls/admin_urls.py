@@ -68,6 +68,11 @@ urlpatterns = [
         views.BookFileUploadView.as_view(),
         name="bookfile_upload",
     ),
+    path(
+        "books/<int:book_pk>/batch-chapter-action/",
+        views.BookBatchChapterActionView.as_view(),
+        name="book_batch_chapter_action",
+    ),
     # Chapter CRUD views
     path(
         "chapters/create/to/books/<int:book_pk>/",

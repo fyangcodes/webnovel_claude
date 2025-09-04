@@ -12,6 +12,7 @@ from .book_views import (
     BookUpdateView,
     BookDeleteView,
     BookFileUploadView,
+    BatchChapterActionView as BookBatchChapterActionView,
 )
 from .chapter_views import (
     ChapterCreateView,
@@ -42,6 +43,7 @@ __all__ = [
     "BookUpdateView",
     "BookDeleteView",
     "BookFileUploadView",
+    "BookBatchChapterActionView",
     "ChapterCreateView",
     "ChapterDetailView",
     "ChapterUpdateView",

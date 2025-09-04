@@ -18,7 +18,7 @@ class Command(BaseCommand):
         self.stdout.write(f"Processing up to {max_jobs} translation jobs...")
 
         try:
-            process_translation_jobs()
+            process_translation_jobs(max_jobs)
             self.stdout.write(
                 self.style.SUCCESS("Translation job processing completed")
             )

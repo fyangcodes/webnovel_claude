@@ -128,11 +128,42 @@
 
 <div class="mt-4">  
     <!-- Chapters List -->
+    <div class="d-flex justify-content-start align-items-center mb-3">
+        <div id="batch-actions" class="d-none">
+            <div class="btn-group" role="group">
+                <button type="button" class="btn btn-success btn-sm" onclick="batchPublish()">
+                    <i class="fas fa-eye"></i> Publish
+                </button>
+                <button type="button" class="btn btn-warning btn-sm" onclick="batchUnpublish()">
+                    <i class="fas fa-eye-slash"></i> Unpublish
+                </button>
+                <div class="btn-group" role="group">
+                    <button type="button" class="btn btn-info btn-sm dropdown-toggle" data-bs-toggle="dropdown">
+                        <i class="fas fa-edit"></i> Status
+                    </button>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="#" onclick="batchChangeStatus('draft')">Draft</a></li>
+                        <li><a class="dropdown-item" href="#" onclick="batchChangeStatus('translating')">Translating</a></li>
+                        <li><a class="dropdown-item" href="#" onclick="batchChangeStatus('completed')">Completed</a></li>
+                    </ul>
+                </div>
+                <button type="button" class="btn btn-primary btn-sm" onclick="batchTranslate()">
+                    <i class="fas fa-language"></i> Translate
+                </button>
+                <button type="button" class="btn btn-danger btn-sm" onclick="batchDelete()">
+                    <i class="fas fa-trash"></i> Delete
+                </button>
+            </div>
+        </div>
+    </div>
     <div class="table-responsive">
         <table class="table table-hover">
             <thead class="table-light">
                 <tr>
-                    <th style="width: 40%;">Chapter ({{ chapters.paginator.count }})</th>
+                    <th style="width: 40px;" class="text-center align-middle">
+                        <input type="checkbox" id="select-all" class="form-check-input" onchange="toggleAllChapters()">
+                    </th>
+                    <th style="width: 35%;">Chapter ({{ chapters.paginator.count }})</th>
                     <th style="width: 15%;" class="text-center">Status</th>
                     <th style="width: 15%;" class="text-center">Publication</th>
                     <th style="width: 15%;" class="text-center">Statistics</th>
@@ -142,6 +173,10 @@
             <tbody>
                 {% for chapter in chapters %}
                 <tr>
+                    <td class="text-center align-middle">
+                        <input type="checkbox" class="form-check-input chapter-checkbox" 
+                               value="{{ chapter.id }}" onchange="updateBatchActions()">
+                    </td>
                     <td class="align-middle">
                         <a href="{% url 'books_admin:chapter_detail' chapter.pk %}" class="text-decoration-none">
                             <strong>#{{ chapter.chaptermaster.chapter_number }}:</strong> {{ chapter.title }}
@@ -177,7 +212,7 @@
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="5" class="text-center text-muted py-4">
+                    <td colspan="6" class="text-center text-muted py-4">
                         <i class="fas fa-file-text fa-2x mb-2"></i>
                         <div>No chapters found for this book.</div>
                     </td>
@@ -218,5 +253,205 @@
     </nav>
     {% endif %}
 </div>
+
+<!-- Hidden form for CSRF token -->
+<form style="display: none;">
+    {% csrf_token %}
+</form>
+
+<!-- Batch Action Modal for Language Selection -->
+<div class="modal fade" id="batchTranslateModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Translate Selected Chapters</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="batchTranslateForm">
+                    <div class="mb-3">
+                        <label for="target-language" class="form-label">Target Language:</label>
+                        <select id="target-language" class="form-select" required>
+                            <option value="">Select language...</option>
+                            {% for language in all_languages %}
+                            <option value="{{ language.code }}">{{ language.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="executeBatchTranslate()">Start Translation</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function toggleAllChapters() {
+    const selectAll = document.getElementById('select-all');
+    const checkboxes = document.querySelectorAll('.chapter-checkbox');
+    
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = selectAll.checked;
+    });
+    
+    updateBatchActions();
+}
+
+function updateBatchActions() {
+    const checkedBoxes = document.querySelectorAll('.chapter-checkbox:checked');
+    const batchActions = document.getElementById('batch-actions');
+    
+    if (checkedBoxes.length > 0) {
+        batchActions.classList.remove('d-none');
+    } else {
+        batchActions.classList.add('d-none');
+    }
+    
+    // Update select all checkbox state
+    const allCheckboxes = document.querySelectorAll('.chapter-checkbox');
+    const selectAll = document.getElementById('select-all');
+    
+    if (checkedBoxes.length === allCheckboxes.length) {
+        selectAll.checked = true;
+        selectAll.indeterminate = false;
+    } else if (checkedBoxes.length > 0) {
+        selectAll.checked = false;
+        selectAll.indeterminate = true;
+    } else {
+        selectAll.checked = false;
+        selectAll.indeterminate = false;
+    }
+}
+
+function getSelectedChapters() {
+    const checkedBoxes = document.querySelectorAll('.chapter-checkbox:checked');
+    return Array.from(checkedBoxes).map(cb => cb.value);
+}
+
+function batchPublish() {
+    const selectedChapters = getSelectedChapters();
+    if (selectedChapters.length === 0) return;
+    
+    if (confirm(`Are you sure you want to publish ${selectedChapters.length} chapter(s)?`)) {
+        performBatchAction('publish', selectedChapters);
+    }
+}
+
+function batchUnpublish() {
+    const selectedChapters = getSelectedChapters();
+    if (selectedChapters.length === 0) return;
+    
+    if (confirm(`Are you sure you want to unpublish ${selectedChapters.length} chapter(s)?`)) {
+        performBatchAction('unpublish', selectedChapters);
+    }
+}
+
+function batchChangeStatus(status) {
+    const selectedChapters = getSelectedChapters();
+    if (selectedChapters.length === 0) return;
+    
+    if (confirm(`Are you sure you want to change status of ${selectedChapters.length} chapter(s) to ${status}?`)) {
+        performBatchAction('change_status', selectedChapters, { status: status });
+    }
+}
+
+function batchTranslate() {
+    const selectedChapters = getSelectedChapters();
+    if (selectedChapters.length === 0) return;
+    
+    // Show modal for language selection
+    const modal = new bootstrap.Modal(document.getElementById('batchTranslateModal'));
+    modal.show();
+}
+
+function executeBatchTranslate() {
+    const selectedChapters = getSelectedChapters();
+    const targetLanguage = document.getElementById('target-language').value;
+    
+    if (!targetLanguage) {
+        alert('Please select a target language.');
+        return;
+    }
+    
+    // Close modal
+    const modal = bootstrap.Modal.getInstance(document.getElementById('batchTranslateModal'));
+    modal.hide();
+    
+    performBatchAction('translate', selectedChapters, { target_language: targetLanguage });
+}
+
+function batchDelete() {
+    const selectedChapters = getSelectedChapters();
+    if (selectedChapters.length === 0) return;
+    
+    if (confirm(`Are you sure you want to delete ${selectedChapters.length} chapter(s)? This action cannot be undone.`)) {
+        performBatchAction('delete', selectedChapters);
+    }
+}
+
+function performBatchAction(action, chapterIds, extraData = {}) {
+    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value || 
+                     document.querySelector('meta[name=csrf-token]')?.getAttribute('content');
+    
+    if (!csrfToken) {
+        console.error('CSRF token not found');
+        alert('Error: CSRF token not found. Please refresh the page and try again.');
+        return;
+    }
+    
+    const data = {
+        action: action,
+        chapter_ids: chapterIds,
+        ...extraData
+    };
+    
+    console.log('Sending batch action request:', {
+        url: `{% url 'books_admin:book_batch_chapter_action' book.id %}`,
+        data: data,
+        csrfToken: csrfToken ? 'present' : 'missing'
+    });
+    
+    fetch(`{% url 'books_admin:book_batch_chapter_action' book.id %}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => {
+        console.log('Response status:', response.status);
+        console.log('Response headers:', response.headers);
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+    })
+    .then(data => {
+        console.log('Response data:', data);
+        if (data.success) {
+            alert(data.message || 'Action completed successfully!');
+            location.reload(); // Reload to show updated status
+        } else {
+            alert('Error: ' + (data.message || 'Action failed'));
+        }
+    })
+    .catch(error => {
+        console.error('Detailed error:', error);
+        alert('Error: Failed to perform action. Check console for details.');
+    });
+}
+
+// Add CSRF token to page if not already present
+if (!document.querySelector('[name=csrfmiddlewaretoken]') && !document.querySelector('meta[name=csrf-token]')) {
+    const meta = document.createElement('meta');
+    meta.name = 'csrf-token';
+    meta.content = '{{ csrf_token }}';
+    document.head.appendChild(meta);
+}
+</script>
 
 {% endblock %} 

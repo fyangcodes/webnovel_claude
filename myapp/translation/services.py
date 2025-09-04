@@ -335,11 +335,10 @@ class TranslationService:
             raise APIError(f"Database error creating translated chapter: {str(e)}")
 
 
-def process_translation_jobs():
+def process_translation_jobs(max_jobs):
     """Process pending translation jobs with concurrency protection"""
     service = TranslationService()
     processed_count = 0
-    max_jobs = 200
 
     while processed_count < max_jobs:
         # SQLite doesn't support row locking, use single job claiming

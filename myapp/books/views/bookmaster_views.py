@@ -17,7 +17,7 @@ import json
 
 from books.models import BookMaster, ChapterMaster, Chapter, Language, TranslationJob
 from books.forms import BookMasterForm
-from books.choices import ChapterProgress
+from books.choices import ChapterProgress, ProcessingStatus
 
 
 class BookMasterCreateView(LoginRequiredMixin, CreateView):
@@ -85,7 +85,7 @@ class BookMasterDetailView(LoginRequiredMixin, DetailView):
         )
 
         # Add pagination
-        paginator = Paginator(chaptermasters_queryset, 20) 
+        paginator = Paginator(chaptermasters_queryset, 20)
         page_number = self.request.GET.get("page")
         chaptermasters_page = paginator.get_page(page_number)
 
@@ -292,21 +292,26 @@ class BatchChapterActionView(LoginRequiredMixin, View):
         # Get the source chapter from the original language only
         original_language = chaptermaster.bookmaster.original_language
         if not original_language:
-            raise ValueError(f"BookMaster {chaptermaster.bookmaster.canonical_title} has no original language set")
+            raise ValueError(
+                f"BookMaster {chaptermaster.bookmaster.canonical_title} has no original language set"
+            )
 
         # Find the chapter in the original language
         source_chapter = Chapter.objects.filter(
-            chaptermaster=chaptermaster,
-            book__language=original_language
+            chaptermaster=chaptermaster, book__language=original_language
         ).first()
 
         if not source_chapter:
-            raise ValueError(f"No chapter found in original language ({original_language.name}) for {chaptermaster.canonical_title}")
+            raise ValueError(
+                f"No chapter found in original language ({original_language.name}) for {chaptermaster.canonical_title}"
+            )
 
         jobs_created = 0
         # Check if a translation job already exists for this combination
         existing_job = TranslationJob.objects.filter(
-            chapter=source_chapter, target_language=target_language
+            chapter=source_chapter,
+            target_language=target_language,
+            status__in=[ProcessingStatus.PENDING, ProcessingStatus.PROCESSING],
         ).first()
 
         if not existing_job:
