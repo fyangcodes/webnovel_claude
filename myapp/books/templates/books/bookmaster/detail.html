@@ -1,5 +1,6 @@
 {% extends "books/base_books.html" %}
 {% load books_extras %}
+{% load static %}
 
 {% block books_content %}
 <div class="mb-4">
@@ -212,7 +213,14 @@
     </div>
 </div>
 
+<!-- Add CSRF token for JavaScript access -->
+{% csrf_token %}
+
 <script>
+// Batch actions for chapter masters
+const BATCH_ACTION_URL = `{% url 'books_admin:bookmaster_batch_action' bookmaster.id %}`;
+const CSRF_TOKEN = '{{ csrf_token }}';
+
 function toggleAllChapters() {
     const selectAll = document.getElementById('select-all');
     const checkboxes = document.querySelectorAll('.chapter-checkbox');
@@ -259,7 +267,7 @@ function batchPublish() {
     const selectedChapters = getSelectedChapters();
     if (selectedChapters.length === 0) return;
     
-    if (confirm(`Are you sure you want to publish ${selectedChapters.length} chapter(s)?`)) {
+    if (confirm(`Are you sure you want to publish ${selectedChapters.length} chapter master(s)?`)) {
         performBatchAction('publish', selectedChapters);
     }
 }
@@ -268,7 +276,7 @@ function batchUnpublish() {
     const selectedChapters = getSelectedChapters();
     if (selectedChapters.length === 0) return;
     
-    if (confirm(`Are you sure you want to unpublish ${selectedChapters.length} chapter(s)?`)) {
+    if (confirm(`Are you sure you want to unpublish ${selectedChapters.length} chapter master(s)?`)) {
         performBatchAction('unpublish', selectedChapters);
     }
 }
@@ -277,7 +285,7 @@ function batchChangeStatus(status) {
     const selectedChapters = getSelectedChapters();
     if (selectedChapters.length === 0) return;
     
-    if (confirm(`Are you sure you want to change status of ${selectedChapters.length} chapter(s) to ${status}?`)) {
+    if (confirm(`Are you sure you want to change status of ${selectedChapters.length} chapter master(s) to ${status}?`)) {
         performBatchAction('change_status', selectedChapters, { status: status });
     }
 }
@@ -311,56 +319,44 @@ function batchDelete() {
     const selectedChapters = getSelectedChapters();
     if (selectedChapters.length === 0) return;
     
-    if (confirm(`Are you sure you want to delete ${selectedChapters.length} chapter(s)? This action cannot be undone.`)) {
+    if (confirm(`Are you sure you want to delete ${selectedChapters.length} chapter master(s)? This action cannot be undone.`)) {
         performBatchAction('delete', selectedChapters);
     }
 }
 
 function performBatchAction(action, chapterIds, extraData = {}) {
-    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value || 
-                     document.querySelector('meta[name=csrf-token]')?.getAttribute('content');
-    
-    if (!csrfToken) {
-        console.error('CSRF token not found');
-        alert('Error: CSRF token not found. Please refresh the page and try again.');
-        return;
-    }
-    
     const data = {
         action: action,
         chapter_ids: chapterIds,
         ...extraData
     };
     
-    fetch(`{% url 'books_admin:batch_chapter_action' bookmaster.id %}`, {
+    fetch(BATCH_ACTION_URL, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
-            'X-CSRFToken': csrfToken
+            'X-CSRFToken': CSRF_TOKEN
         },
         body: JSON.stringify(data)
     })
-    .then(response => response.json())
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+    })
     .then(data => {
         if (data.success) {
             alert(data.message || 'Action completed successfully!');
-            location.reload(); // Reload to show updated status
+            location.reload();
         } else {
             alert('Error: ' + (data.message || 'Action failed'));
         }
     })
     .catch(error => {
-        console.error('Error:', error);
-        alert('Error: Failed to perform action');
+        console.error('Batch action error:', error);
+        alert('Error: Failed to perform action. Please try again.');
     });
-}
-
-// Add CSRF token to page if not already present
-if (!document.querySelector('[name=csrfmiddlewaretoken]') && !document.querySelector('meta[name=csrf-token]')) {
-    const meta = document.createElement('meta');
-    meta.name = 'csrf-token';
-    meta.content = '{{ csrf_token }}';
-    document.head.appendChild(meta);
 }
 </script>
 {% endblock %} 

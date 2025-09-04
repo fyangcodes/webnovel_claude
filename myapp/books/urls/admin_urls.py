@@ -1,5 +1,5 @@
 from django.urls import path
-from .. import views
+from books import views
 
 
 app_name = "books_admin"
@@ -29,9 +29,9 @@ urlpatterns = [
         name="bookmaster_delete",
     ),
     path(
-        "bookmasters/<int:bookmaster_pk>/batch-chapter-action/",
-        views.BatchChapterActionView.as_view(),
-        name="batch_chapter_action",
+        "bookmasters/<int:bookmaster_pk>/batch-action/",
+        views.BatchActionView.as_view(),
+        name="bookmaster_batch_action",
     ),
     # ChapterMaster (Chapter) views under a BookMaster
     path(
@@ -69,9 +69,9 @@ urlpatterns = [
         name="bookfile_upload",
     ),
     path(
-        "books/<int:book_pk>/batch-chapter-action/",
-        views.BookBatchChapterActionView.as_view(),
-        name="book_batch_chapter_action",
+        "books/<int:book_pk>/batch-action/",
+        views.BatchActionView.as_view(),
+        name="book_batch_action",
     ),
     # Chapter CRUD views
     path(

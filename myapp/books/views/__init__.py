@@ -4,21 +4,6 @@ from .bookmaster_views import (
     BookMasterDetailView,
     BookMasterUpdateView,
     BookMasterDeleteView,
-    BatchChapterActionView,
-)
-from .book_views import (
-    BookCreateView,
-    BookDetailView,
-    BookUpdateView,
-    BookDeleteView,
-    BookFileUploadView,
-    BatchChapterActionView as BookBatchChapterActionView,
-)
-from .chapter_views import (
-    ChapterCreateView,
-    ChapterDetailView,
-    ChapterUpdateView,
-    ChapterDeleteView,
 )
 from .chaptermaster_views import (
     ChapterMasterCreateView,
@@ -26,32 +11,50 @@ from .chaptermaster_views import (
     ChapterMasterUpdateView,
     ChapterMasterDeleteView,
 )
+from .book_views import (
+    BookCreateView,
+    BookDetailView,
+    BookUpdateView,
+    BookDeleteView,
+    BookFileUploadView,
+)
+from .chapter_views import (
+    ChapterCreateView,
+    ChapterDetailView,
+    ChapterUpdateView,
+    ChapterDeleteView,
+)
 from .utils_views import (
     ChapterTranslationView,
     TaskStatusView,
+    BatchActionView,
 )
 
 __all__ = [
+    # Bookmaster
     "BookMasterCreateView",
     "BookMasterListView",
     "BookMasterDetailView",
     "BookMasterUpdateView",
     "BookMasterDeleteView",
-    "BatchChapterActionView",
+    # Chaptermaster
+    "ChapterMasterCreateView",
+    "ChapterMasterDetailView",
+    "ChapterMasterUpdateView",
+    "ChapterMasterDeleteView",
+    # Book
     "BookCreateView",
     "BookDetailView",
     "BookUpdateView",
     "BookDeleteView",
     "BookFileUploadView",
-    "BookBatchChapterActionView",
+    # Chapter
     "ChapterCreateView",
     "ChapterDetailView",
     "ChapterUpdateView",
     "ChapterDeleteView",
+    # Utils
     "ChapterTranslationView",
-    "ChapterMasterCreateView",
-    "ChapterMasterDetailView",
-    "ChapterMasterUpdateView",
-    "ChapterMasterDeleteView",
     "TaskStatusView",
+    "BatchActionView"
 ]

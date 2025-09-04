@@ -1,4 +1,3 @@
-import json
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.shortcuts import get_object_or_404, redirect
@@ -7,12 +6,8 @@ from django.views.generic import (
     DetailView,
     UpdateView,
     DeleteView,
-    ListView,
 )
 from django.views.generic.edit import FormView
-from django.views import View
-from django.views.decorators.csrf import csrf_exempt
-from django.utils.decorators import method_decorator
 from django.urls import reverse_lazy
 from django.http import JsonResponse
 from django.core.exceptions import ValidationError
@@ -25,10 +20,9 @@ from books.models import (
     Language,
     ChapterMaster,
     Chapter,
-    TranslationJob,
 )
 from books.forms import BookForm, BookFileUploadForm
-from books.choices import BookProgress, ChapterProgress, ProcessingStatus
+from books.choices import ChapterProgress
 from books.utils import extract_text_from_file
 
 
@@ -139,10 +133,6 @@ class BookDeleteView(LoginRequiredMixin, DeleteView):
         return Book.objects.filter(bookmaster__owner=self.request.user)
 
     def delete(self, request, *args, **kwargs):
-        book = self.get_object()
-        # Remove uploaded_file reference as it's not in the new model
-        # if book.uploaded_file:
-        #     book.uploaded_file.delete()
         messages.success(request, "Book deleted successfully.")
         return super().delete(request, *args, **kwargs)
 
@@ -300,124 +290,3 @@ class BookFileUploadView(LoginRequiredMixin, FormView):
         return created_chapters
 
 
-class BatchChapterActionView(LoginRequiredMixin, View):
-    """Handle batch operations on chapters within a book"""
-
-    def post(self, request, book_pk):
-        try:
-            # Get the book and verify ownership
-            book = get_object_or_404(Book, pk=book_pk)
-            if book.bookmaster.owner != request.user:
-                return JsonResponse({"success": False, "message": "Permission denied"})
-
-            # Parse JSON data
-            data = json.loads(request.body)
-            action = data.get("action")
-            chapter_ids = data.get("chapter_ids", [])
-
-            if not action or not chapter_ids:
-                return JsonResponse(
-                    {"success": False, "message": "Missing required data"}
-                )
-
-            # Get the chapters
-            chapters = Chapter.objects.filter(id__in=chapter_ids, book=book)
-
-            if not chapters.exists():
-                return JsonResponse(
-                    {"success": False, "message": "No valid chapters found"}
-                )
-
-            # Perform the requested action
-            result = self._perform_action(action, chapters, data)
-
-            return JsonResponse(result)
-
-        except json.JSONDecodeError:
-            return JsonResponse({"success": False, "message": "Invalid JSON data"})
-        except Exception as e:
-            return JsonResponse(
-                {"success": False, "message": f"An error occurred: {str(e)}"}
-            )
-
-    def _perform_action(self, action, chapters, data):
-        """Perform the batch action on the given chapters"""
-        success_count = 0
-        error_count = 0
-        errors = []
-
-        for chapter in chapters:
-            try:
-                if action == "publish":
-                    chapter.publish()
-                    success_count += 1
-                elif action == "unpublish":
-                    chapter.unpublish()
-                    success_count += 1
-                elif action == "change_status":
-                    status = data.get("status")
-                    if status in [choice[0] for choice in ChapterProgress.choices]:
-                        chapter.progress = status
-                        chapter.save()
-                        success_count += 1
-                    else:
-                        errors.append(f"Invalid status for {chapter.title}")
-                        error_count += 1
-                elif action == "translate":
-                    target_language_code = data.get("target_language")
-                    if target_language_code:
-                        self._create_translation_job(chapter, target_language_code)
-                        success_count += 1
-                    else:
-                        errors.append(
-                            f"No target language specified for {chapter.title}"
-                        )
-                        error_count += 1
-                elif action == "delete":
-                    chapter_title = chapter.title
-                    chapter.delete()
-                    success_count += 1
-                else:
-                    errors.append(f"Unknown action: {action}")
-                    error_count += 1
-            except Exception as e:
-                errors.append(f"Error with {chapter.title}: {str(e)}")
-                error_count += 1
-
-        # Prepare response message
-        if success_count > 0 and error_count == 0:
-            message = f"Successfully processed {success_count} chapter(s)"
-        elif success_count > 0 and error_count > 0:
-            message = f"Processed {success_count} chapter(s) successfully, {error_count} failed"
-        else:
-            message = f"Failed to process chapters: {'; '.join(errors[:3])}"
-            if len(errors) > 3:
-                message += f" (and {len(errors) - 3} more errors)"
-
-        return {
-            "success": success_count > 0,
-            "message": message,
-            "success_count": success_count,
-            "error_count": error_count,
-            "errors": errors,
-        }
-
-    def _create_translation_job(self, chapter, target_language_code):
-        """Create translation job for a chapter"""
-        target_language = get_object_or_404(Language, code=target_language_code)
-
-        # Check if a translation job already exists for this combination
-        existing_job = TranslationJob.objects.filter(
-            chapter=chapter,
-            target_language=target_language,
-            status__in=[ProcessingStatus.PENDING, ProcessingStatus.PROCESSING],
-        ).first()
-
-        if not existing_job:
-            TranslationJob.objects.create(
-                chapter=chapter,
-                target_language=target_language,
-                created_by=self.request.user,
-            )
-            return 1
-        return 0

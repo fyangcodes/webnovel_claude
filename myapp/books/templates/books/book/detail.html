@@ -288,7 +288,14 @@
     </div>
 </div>
 
+<!-- Add CSRF token for JavaScript access -->
+{% csrf_token %}
+
 <script>
+// Batch actions for chapters
+const BATCH_ACTION_URL = `{% url 'books_admin:book_batch_action' book.id %}`;
+const CSRF_TOKEN = '{{ csrf_token }}';
+
 function toggleAllChapters() {
     const selectAll = document.getElementById('select-all');
     const checkboxes = document.querySelectorAll('.chapter-checkbox');
@@ -393,64 +400,38 @@ function batchDelete() {
 }
 
 function performBatchAction(action, chapterIds, extraData = {}) {
-    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value || 
-                     document.querySelector('meta[name=csrf-token]')?.getAttribute('content');
-    
-    if (!csrfToken) {
-        console.error('CSRF token not found');
-        alert('Error: CSRF token not found. Please refresh the page and try again.');
-        return;
-    }
-    
     const data = {
         action: action,
         chapter_ids: chapterIds,
         ...extraData
     };
     
-    console.log('Sending batch action request:', {
-        url: `{% url 'books_admin:book_batch_chapter_action' book.id %}`,
-        data: data,
-        csrfToken: csrfToken ? 'present' : 'missing'
-    });
-    
-    fetch(`{% url 'books_admin:book_batch_chapter_action' book.id %}`, {
+    fetch(BATCH_ACTION_URL, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
-            'X-CSRFToken': csrfToken
+            'X-CSRFToken': CSRF_TOKEN
         },
         body: JSON.stringify(data)
     })
     .then(response => {
-        console.log('Response status:', response.status);
-        console.log('Response headers:', response.headers);
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
         return response.json();
     })
     .then(data => {
-        console.log('Response data:', data);
         if (data.success) {
             alert(data.message || 'Action completed successfully!');
-            location.reload(); // Reload to show updated status
+            location.reload();
         } else {
             alert('Error: ' + (data.message || 'Action failed'));
         }
     })
     .catch(error => {
-        console.error('Detailed error:', error);
-        alert('Error: Failed to perform action. Check console for details.');
+        console.error('Batch action error:', error);
+        alert('Error: Failed to perform action. Please try again.');
     });
-}
-
-// Add CSRF token to page if not already present
-if (!document.querySelector('[name=csrfmiddlewaretoken]') && !document.querySelector('meta[name=csrf-token]')) {
-    const meta = document.createElement('meta');
-    meta.name = 'csrf-token';
-    meta.content = '{{ csrf_token }}';
-    document.head.appendChild(meta);
 }
 </script>
 
