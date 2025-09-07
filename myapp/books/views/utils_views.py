@@ -395,16 +395,33 @@ class BatchActionView(LoginRequiredMixin, View):
                     created_by=self.request.user,
                 )
         else:
-            # Direct chapter - create translation job directly
+            # Direct chapter - find source chapter from original language
+            original_language = item.chaptermaster.bookmaster.original_language
+            if not original_language:
+                raise ValueError(
+                    f"BookMaster {item.chaptermaster.bookmaster.canonical_title} has no original language set"
+                )
+
+            # Find the chapter in the original language for this chaptermaster
+            source_chapter = Chapter.objects.filter(
+                chaptermaster=item.chaptermaster, book__language=original_language
+            ).first()
+
+            if not source_chapter:
+                raise ValueError(
+                    f"No chapter found in original language ({original_language.name}) for {item.chaptermaster.canonical_title}"
+                )
+
+            # Check if a translation job already exists for this combination
             existing_job = TranslationJob.objects.filter(
-                chapter=item,
+                chapter=source_chapter,
                 target_language=target_language,
                 status__in=[ProcessingStatus.PENDING, ProcessingStatus.PROCESSING],
             ).first()
 
             if not existing_job:
                 TranslationJob.objects.create(
-                    chapter=item,
+                    chapter=source_chapter,
                     target_language=target_language,
                     created_by=self.request.user,
                 )

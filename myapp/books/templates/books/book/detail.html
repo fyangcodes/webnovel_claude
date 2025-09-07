@@ -268,13 +268,23 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i>
+                    <strong>Translation Source:</strong> Chapters will be translated from the original language 
+                    {% if book.bookmaster.original_language %}
+                        (<strong>{{ book.bookmaster.original_language.name }}</strong>) 
+                    {% endif %}
+                    to your selected target language.
+                </div>
                 <form id="batchTranslateForm">
                     <div class="mb-3">
                         <label for="target-language" class="form-label">Target Language:</label>
                         <select id="target-language" class="form-select" required>
                             <option value="">Select language...</option>
                             {% for language in all_languages %}
+                            {% if language != book.bookmaster.original_language %}
                             <option value="{{ language.code }}">{{ language.name }}</option>
+                            {% endif %}
                             {% endfor %}
                         </select>
                     </div>
@@ -367,7 +377,10 @@ function batchChangeStatus(status) {
 
 function batchTranslate() {
     const selectedChapters = getSelectedChapters();
-    if (selectedChapters.length === 0) return;
+    if (selectedChapters.length === 0) {
+        alert('Please select chapters to translate.');
+        return;
+    }
     
     // Show modal for language selection
     const modal = new bootstrap.Modal(document.getElementById('batchTranslateModal'));
@@ -377,9 +390,14 @@ function batchTranslate() {
 function executeBatchTranslate() {
     const selectedChapters = getSelectedChapters();
     const targetLanguage = document.getElementById('target-language').value;
+    const targetLanguageText = document.querySelector(`#target-language option[value="${targetLanguage}"]`)?.text;
     
     if (!targetLanguage) {
         alert('Please select a target language.');
+        return;
+    }
+    
+    if (!confirm(`Start translation of ${selectedChapters.length} chapter(s) to ${targetLanguageText}? This will create translation jobs from the original language chapters.`)) {
         return;
     }
     

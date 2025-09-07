@@ -5,5 +5,3 @@ improve reader views design
 - slogan
 - i18n
 - visual design
-
-after a transalted chapter is deleted, the translation cannot be submitted to the jobpool again
