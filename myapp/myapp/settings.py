@@ -246,7 +246,8 @@ DATA_UPLOAD_MAX_MEMORY_SIZE = 5242880  # 5MB
 
 # Production security settings
 if not DEBUG:
-    SECURE_SSL_REDIRECT = True
+    # Don't use SECURE_SSL_REDIRECT on Railway - they handle SSL termination
+    # SECURE_SSL_REDIRECT = True
     SECURE_HSTS_SECONDS = 31536000  # 1 year
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_HSTS_PRELOAD = True
