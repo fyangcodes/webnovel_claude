@@ -20,8 +20,13 @@ from django.urls import include, path
 from django.views.generic import RedirectView
 from django.conf import settings
 from django.conf.urls.static import static
+from django.http import HttpResponse
+
+def health_check(request):
+    return HttpResponse("OK", content_type="text/plain")
 
 urlpatterns = [
+    path("health/", health_check, name="health_check"),
     path("admin/", admin.site.urls),
     path("staff/", include("books.urls.admin_urls")),
     #path("", RedirectView.as_view(url="/books/", permanent=False), name="home"),

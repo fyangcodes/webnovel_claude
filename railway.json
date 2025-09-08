@@ -5,7 +5,7 @@
   },
   "deploy": {
     "startCommand": "cd myapp && python manage.py collectstatic --noinput && python manage.py migrate && gunicorn myapp.wsgi --bind 0.0.0.0:$PORT",
-    "healthcheckPath": "/admin/",
+    "healthcheckPath": "/health/",
     "healthcheckTimeout": 300
   }
 }
