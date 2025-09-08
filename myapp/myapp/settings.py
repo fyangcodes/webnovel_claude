@@ -204,27 +204,17 @@ LOGGING = {
     "handlers": {
         "console": {
             "class": "logging.StreamHandler",
-            "formatter": "simple",
-        },
-        "file": {
-            "class": "logging.FileHandler",
-            "filename": BASE_DIR / "logs" / "django.log",
-            "formatter": "verbose",
-        },
-        "translation_file": {
-            "class": "logging.FileHandler",
-            "filename": BASE_DIR / "logs" / "translation.log",
             "formatter": "verbose",
         },
     },
     "loggers": {
         "translation": {
-            "handlers": ["translation_file", "console"],
+            "handlers": ["console"],
             "level": "INFO",
             "propagate": False,
         },
         "django": {
-            "handlers": ["file", "console"],
+            "handlers": ["console"],
             "level": "INFO",
             "propagate": False,
         },
@@ -234,6 +224,21 @@ LOGGING = {
         "level": "INFO",
     },
 }
+
+# Add file logging only in development (when logs directory exists)
+if DEBUG and (BASE_DIR / "logs").exists():
+    LOGGING["handlers"]["file"] = {
+        "class": "logging.FileHandler",
+        "filename": BASE_DIR / "logs" / "django.log",
+        "formatter": "verbose",
+    }
+    LOGGING["handlers"]["translation_file"] = {
+        "class": "logging.FileHandler", 
+        "filename": BASE_DIR / "logs" / "translation.log",
+        "formatter": "verbose",
+    }
+    LOGGING["loggers"]["django"]["handlers"] = ["file", "console"]
+    LOGGING["loggers"]["translation"]["handlers"] = ["translation_file", "console"]
 
 # File upload settings
 FILE_UPLOAD_MAX_MEMORY_SIZE = 5242880  # 5MB
