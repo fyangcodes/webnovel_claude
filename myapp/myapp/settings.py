@@ -67,6 +67,7 @@ INSTALLED_APPS = [
     # Third party - minimal
     "crispy_forms",
     "crispy_bootstrap5",
+    "storages",
     # Local apps - simplified
     "common.apps.CommonConfig",
     "books.apps.BooksConfig",
@@ -155,14 +156,46 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 STATIC_URL = "static/"
-STATIC_ROOT = BASE_DIR / "staticfiles"
+# STATIC_ROOT = BASE_DIR / "staticfiles"
 
 # WhiteNoise configuration for static files
-STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
+# STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
-# Media files - local storage
-MEDIA_URL = "media/"
-MEDIA_ROOT = BASE_DIR / "media"
+# Media files configuration
+if os.getenv("AWS_ACCESS_KEY_ID"):
+    # Production - use S3
+    AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID")
+    AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
+    AWS_STORAGE_BUCKET_NAME = os.getenv("AWS_STORAGE_BUCKET_NAME")
+    AWS_S3_REGION_NAME = os.getenv("AWS_S3_REGION_NAME")
+    AWS_S3_FILE_OVERWRITE = False
+    AWS_S3_CUSTOM_DOMAIN = f"{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com"
+
+    STORAGES = {
+        "default": {
+            "BACKEND": "storages.backends.s3boto3.S3StaticStorage",
+            "OPTIONS": {
+                "location": "media",
+            },
+        },
+        "staticfiles": {
+            "BACKEND": "storages.backends.s3boto3.S3StaticStorage",
+            "OPTIONS": {
+                "location": "static",
+            },
+        },
+    }
+
+else:
+    # Development - local storage
+    MEDIA_URL = "media/"
+    MEDIA_ROOT = BASE_DIR / "media"
+
+    STATIC_URL = "static/"
+    STATIC_ROOT = BASE_DIR / "staticfiles"
+    # WhiteNoise configuration for static files
+    STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
+
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
@@ -233,7 +266,7 @@ if DEBUG and (BASE_DIR / "logs").exists():
         "formatter": "verbose",
     }
     LOGGING["handlers"]["translation_file"] = {
-        "class": "logging.FileHandler", 
+        "class": "logging.FileHandler",
         "filename": BASE_DIR / "logs" / "translation.log",
         "formatter": "verbose",
     }
@@ -255,8 +288,8 @@ if not DEBUG:
     CSRF_COOKIE_SECURE = True
     SECURE_BROWSER_XSS_FILTER = True
     SECURE_CONTENT_TYPE_NOSNIFF = True
-    
+
     # Railway proxy settings for CSRF
-    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
     USE_X_FORWARDED_HOST = True
     USE_X_FORWARDED_PORT = True
