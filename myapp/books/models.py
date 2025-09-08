@@ -192,9 +192,8 @@ class Book(TimeStampedModel, SlugGeneratorMixin):
         elif self.bookmaster.cover_image:
             return self.bookmaster.cover_image.url
         else:
-            from django.conf import settings
-
-            return f"{settings.MEDIA_URL}book_covers/default_book_cover.png"
+            from django.templatetags.static import static
+            return static('books/images/default_book_cover.png')
 
 
 class ChapterMaster(TimeStampedModel):
