@@ -153,5 +153,3 @@ class BookMasterDeleteView(LoginRequiredMixin, DeleteView):
         context = super().get_context_data(**kwargs)
         context["bookmaster"] = self.object
         return context
-
-

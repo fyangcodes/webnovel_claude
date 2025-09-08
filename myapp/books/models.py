@@ -99,6 +99,15 @@ class BookMaster(TimeStampedModel):
             self.original_language = Language.objects.get(code="zh")
         super().save(*args, **kwargs)
 
+    @property
+    def effective_cover_image(self):
+        if self.cover_image:
+            return self.cover_image.url
+        else:
+            from django.templatetags.static import static
+
+            return static("books/images/default_book_cover.png")
+
 
 class Book(TimeStampedModel, SlugGeneratorMixin):
     """Language-specific version of a book"""
@@ -176,13 +185,14 @@ class Book(TimeStampedModel, SlugGeneratorMixin):
         """Calculate estimated reading time for the entire book in minutes"""
         if not self.language or not self.language.wpm:
             return 0
-        
+
         effective_count = self.effective_count
         if effective_count == 0:
             return 0
-            
+
         # Convert to minutes, rounding up to nearest minute
         import math
+
         return math.ceil(effective_count / self.language.wpm)
 
     @property
@@ -193,7 +203,8 @@ class Book(TimeStampedModel, SlugGeneratorMixin):
             return self.bookmaster.cover_image.url
         else:
             from django.templatetags.static import static
-            return static('books/images/default_book_cover.png')
+
+            return static("books/images/default_book_cover.png")
 
 
 class ChapterMaster(TimeStampedModel):
@@ -313,6 +324,7 @@ class Chapter(TimeStampedModel, SlugGeneratorMixin):
 
         # Convert to minutes, rounding up to nearest minute
         import math
+
         return math.ceil(effective_count / self.book.language.wpm)
 
 
