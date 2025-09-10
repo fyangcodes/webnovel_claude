@@ -71,8 +71,55 @@ class ChapterAdmin(admin.ModelAdmin):
 
 @admin.register(TranslationJob)
 class TranslationJobAdmin(admin.ModelAdmin):
-    list_display = ["chapter", "target_language", "status", "created_by", "created_at"]
+    list_display = ["chapter", "target_language", "status", "created_by", "created_at", "updated_at"]
     list_filter = ["status", "target_language", "created_at"]
     search_fields = ["chapter__title", "target_language__name", "created_by__username"]
     readonly_fields = ["created_at", "updated_at"]
     ordering = ["-created_at"]
+    actions = ["process_selected_jobs", "process_all_pending_jobs"]
+
+    def process_selected_jobs(self, request, queryset):
+        """Process selected translation jobs"""
+        from translation.services import TranslationService
+        from books.choices import ProcessingStatus
+        
+        service = TranslationService()
+        success_count = 0
+        error_count = 0
+        
+        for job in queryset.filter(status=ProcessingStatus.PENDING):
+            try:
+                job.status = ProcessingStatus.PROCESSING
+                job.save()
+                
+                service.translate_chapter(job.chapter, job.target_language.code)
+                
+                job.status = ProcessingStatus.COMPLETED
+                job.error_message = ""
+                job.save()
+                success_count += 1
+                
+            except Exception as e:
+                job.status = ProcessingStatus.FAILED
+                job.error_message = str(e)
+                job.save()
+                error_count += 1
+        
+        if success_count:
+            self.message_user(request, f"Successfully processed {success_count} translation jobs")
+        if error_count:
+            self.message_user(request, f"Failed to process {error_count} translation jobs", level="ERROR")
+    
+    process_selected_jobs.short_description = "Process selected translation jobs"
+
+    def process_all_pending_jobs(self, request, queryset=None):
+        """Process all pending translation jobs (up to 50 at once)"""
+        from translation.services import process_translation_jobs
+        
+        try:
+            process_translation_jobs(max_jobs=50)
+            self.message_user(request, "Translation job processing completed")
+        except Exception as e:
+            self.message_user(request, f"Error processing translation jobs: {e}", level="ERROR")
+    
+    process_all_pending_jobs.short_description = "Process all pending jobs (max 50)"

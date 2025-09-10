@@ -160,9 +160,8 @@ class Book(TimeStampedModel, SlugGeneratorMixin):
         return f"{self.title} ({self.bookmaster.canonical_title})"
 
     def save(self, *args, **kwargs):
-        if not self.slug:
-            base_slug = slugify(self.title, allow_unicode=True)
-            self.slug = self.generate_unique_slug(base_slug)
+        base_slug = slugify(self.title, allow_unicode=True)
+        self.slug = self.generate_unique_slug(base_slug)
 
         super().save(*args, **kwargs)
 
@@ -275,13 +274,13 @@ class Chapter(TimeStampedModel, SlugGeneratorMixin):
         return f"{self.title} ({self.chaptermaster.canonical_title})"
 
     def save(self, *args, **kwargs):
-        if not self.slug:
-            base_slug = slugify(self.title, allow_unicode=True)
-            self.slug = self.generate_unique_slug(base_slug, {"book": self.book})
+        base_slug = slugify(self.title, allow_unicode=True)
+        self.slug = self.generate_unique_slug(base_slug, {"book": self.book})
         # Update word count
         if self.content:
             self.word_count = len(self.content.split())
             self.character_count = len(self.content)
+            self.generate_excerpt()
         super().save(*args, **kwargs)
 
     def generate_excerpt(self, max_length=200):
@@ -292,7 +291,6 @@ class Chapter(TimeStampedModel, SlugGeneratorMixin):
             self.excerpt = self.content
         else:
             self.excerpt = self.content[:max_length].rsplit(None, 1)[0] + "..."
-        self.save(update_fields=["excerpt"])
 
     def publish(self):
         """Publish this chapter"""

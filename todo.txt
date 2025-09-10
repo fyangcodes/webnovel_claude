@@ -2,8 +2,6 @@ book genre
 check all templates for VariableDeosNotExistException
 
 improve reader views design
-- slogan
 - i18n
-- visual design
 
-how to use django command on railway
+fix the card height on the reader book list view

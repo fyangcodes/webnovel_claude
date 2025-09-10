@@ -322,7 +322,6 @@ class TranslationService:
                 book=target_book,
                 content=translated_content,
             )
-            translated_chapter.generate_excerpt()
 
             # Update book metadata
             target_book.update_metadata()

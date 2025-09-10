@@ -272,9 +272,6 @@ class BookFileUploadView(LoginRequiredMixin, FormView):
                         is_public=False,
                     )
 
-                    # Generate excerpt if content exists
-                    chapter.generate_excerpt()
-
                     created_chapters += 1
 
             except Exception as e:
