@@ -36,20 +36,9 @@ SECRET_KEY = os.getenv(
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv("DJANGO_DEBUG", "FALSE") == "True"
 
-# Railway specific hosts
-RAILWAY_STATIC_URL = os.getenv("RAILWAY_STATIC_URL")
-RAILWAY_DOMAIN = os.getenv("RAILWAY_DOMAIN")
+ALLOWED_HOSTS = os.getenv("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
 
-allowed_hosts = os.getenv("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
-
-# Add Railway hosts if available
-if RAILWAY_DOMAIN:
-    allowed_hosts.append(RAILWAY_DOMAIN)
-if RAILWAY_STATIC_URL:
-    allowed_hosts.append(RAILWAY_STATIC_URL)
-
-ALLOWED_HOSTS = allowed_hosts
-
+CSRF_TRUSTED_ORIGINS = [f"https://{os.getenv("RAILWAY_PUBLIC_DOMAIN")}"]
 
 # Application definition
 
