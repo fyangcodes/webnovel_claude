@@ -57,6 +57,7 @@ INSTALLED_APPS = [
     "crispy_forms",
     "crispy_bootstrap5",
     "storages",
+    "background_task",
     # Local apps - simplified
     "common.apps.CommonConfig",
     "books.apps.BooksConfig",

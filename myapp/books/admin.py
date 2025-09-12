@@ -1,4 +1,5 @@
 from django.contrib import admin
+from background_task import background
 from .models import Language, BookMaster, Book, ChapterMaster, Chapter, TranslationJob
 
 
@@ -79,47 +80,90 @@ class TranslationJobAdmin(admin.ModelAdmin):
     actions = ["process_selected_jobs", "process_all_pending_jobs"]
 
     def process_selected_jobs(self, request, queryset):
-        """Process selected translation jobs"""
-        from translation.services import TranslationService
+        """Queue selected translation jobs for background processing"""
         from books.choices import ProcessingStatus
         
-        service = TranslationService()
-        success_count = 0
-        error_count = 0
+        pending_jobs = queryset.filter(status=ProcessingStatus.PENDING)
+        job_count = pending_jobs.count()
         
-        for job in queryset.filter(status=ProcessingStatus.PENDING):
-            try:
-                job.status = ProcessingStatus.PROCESSING
-                job.save()
-                
-                service.translate_chapter(job.chapter, job.target_language.code)
-                
-                job.status = ProcessingStatus.COMPLETED
-                job.error_message = ""
-                job.save()
-                success_count += 1
-                
-            except Exception as e:
-                job.status = ProcessingStatus.FAILED
-                job.error_message = str(e)
-                job.save()
-                error_count += 1
+        if job_count == 0:
+            self.message_user(request, "No pending jobs selected")
+            return
+            
+        # Queue each job for background processing
+        for job in pending_jobs:
+            process_single_job(job.id)
         
-        if success_count:
-            self.message_user(request, f"Successfully processed {success_count} translation jobs")
-        if error_count:
-            self.message_user(request, f"Failed to process {error_count} translation jobs", level="ERROR")
+        self.message_user(
+            request, 
+            f"Queued {job_count} translation jobs for background processing. Check back in a few minutes."
+        )
     
     process_selected_jobs.short_description = "Process selected translation jobs"
 
     def process_all_pending_jobs(self, request, queryset=None):
-        """Process all pending translation jobs (up to 50 at once)"""
-        from translation.services import process_translation_jobs
+        """Queue all pending translation jobs for background processing"""
+        from books.choices import ProcessingStatus
         
-        try:
-            process_translation_jobs(max_jobs=50)
-            self.message_user(request, "Translation job processing completed")
-        except Exception as e:
-            self.message_user(request, f"Error processing translation jobs: {e}", level="ERROR")
+        pending_jobs = TranslationJob.objects.filter(status=ProcessingStatus.PENDING)[:50]
+        job_count = pending_jobs.count()
+        
+        if job_count == 0:
+            self.message_user(request, "No pending jobs found")
+            return
+            
+        # Queue jobs for background processing
+        for job in pending_jobs:
+            process_single_job(job.id)
+        
+        self.message_user(
+            request, 
+            f"Queued {job_count} translation jobs for background processing. Check back in a few minutes."
+        )
     
-    process_all_pending_jobs.short_description = "Process all pending jobs (max 50)"
+    process_all_pending_jobs.short_description = "Queue all pending jobs (max 50)"
+
+
+@background(schedule=0)  # Execute immediately
+def process_single_job(job_id):
+    """Background task to process a single translation job"""
+    from translation.services import TranslationService
+    from books.choices import ProcessingStatus
+    import logging
+    
+    logger = logging.getLogger(__name__)
+    
+    try:
+        job = TranslationJob.objects.get(id=job_id)
+        
+        # Skip if job is no longer pending
+        if job.status != ProcessingStatus.PENDING:
+            logger.info(f"Job {job_id} is no longer pending, skipping")
+            return
+            
+        # Mark as processing
+        job.status = ProcessingStatus.PROCESSING
+        job.save()
+        
+        # Process the translation
+        service = TranslationService()
+        service.translate_chapter(job.chapter, job.target_language.code)
+        
+        # Mark as completed
+        job.status = ProcessingStatus.COMPLETED
+        job.error_message = ""
+        job.save()
+        
+        logger.info(f"Successfully processed translation job {job_id}")
+        
+    except TranslationJob.DoesNotExist:
+        logger.error(f"Translation job {job_id} not found")
+    except Exception as e:
+        logger.error(f"Error processing translation job {job_id}: {str(e)}")
+        try:
+            job = TranslationJob.objects.get(id=job_id)
+            job.status = ProcessingStatus.FAILED
+            job.error_message = str(e)
+            job.save()
+        except TranslationJob.DoesNotExist:
+            pass
