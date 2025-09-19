@@ -20,7 +20,7 @@ class ProcessingStatus(models.TextChoices):
     FAILED = "failed", "Failed"
 
 
-class CountUnits(models.TextChoices):
+class CountUnit(models.TextChoices):
     WORDS = "words", "Words"
     CHARS = "chars", "Characters"
 
@@ -30,3 +30,9 @@ class Rating(models.TextChoices):
     TEEN = "teen", "Teen (13+)"
     MATURE = "mature", "Mature (16+)"
     ADULT = "adult", "Adult (18+)"
+
+
+class EntityType(models.TextChoices):
+    CHARACTER = "character", "Character"
+    PLACE = "place", "Place"
+    TERM = "term", "Term"

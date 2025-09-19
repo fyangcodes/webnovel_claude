@@ -4,4 +4,8 @@ check all templates for VariableDeosNotExistException
 improve reader views design
 - i18n
 
+consistence by translation
+
 fix the card height on the reader book list view
+add admin button on the staff panel
+remove words count from read view

@@ -2,6 +2,7 @@
 OpenAI translation service with improved error handling and validation
 """
 
+import json
 import logging
 import time
 from django.conf import settings
@@ -421,3 +422,123 @@ def process_translation_jobs(max_jobs):
         print("No translation jobs were processed")
     else:
         print(f"Processed {processed_count} translation jobs")
+
+
+class EntityExtractionService:
+    """AI-based entity extraction service for chapter analysis"""
+
+    def __init__(self):
+        """Initialize the entity extraction service"""
+        if not settings.OPENAI_API_KEY:
+            raise APIError("OpenAI API key is not configured")
+
+        self.client = OpenAI(api_key=settings.OPENAI_API_KEY)
+        self.max_content_length = 3000  # Limit for extraction to control costs
+
+    def extract_entities_and_summary(self, content, language_code="zh"):
+        """
+        Extract entities and summary from chapter content using AI
+
+        Args:
+            content (str): Chapter content to analyze
+            language_code (str): Source language code (default: zh for Chinese)
+
+        Returns:
+            dict: Extracted entities and summary
+        """
+        try:
+            # Truncate content if too long (cost control)
+            truncated_content = content[:self.max_content_length]
+            if len(content) > self.max_content_length:
+                logger.info(f"Content truncated from {len(content)} to {self.max_content_length} chars for extraction")
+
+            prompt = self._build_extraction_prompt(truncated_content, language_code)
+
+            response = self.client.chat.completions.create(
+                model="gpt-3.5-turbo",  # Cost-effective model for extraction
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.1,  # Low temperature for consistency
+                max_tokens=800  # Reasonable limit for response
+            )
+
+            response_text = response.choices[0].message.content.strip()
+            logger.debug(f"Raw extraction response: {response_text}")
+
+            # Parse JSON response
+            try:
+                result = json.loads(response_text)
+                self._validate_extraction_result(result)
+                logger.info(f"Successfully extracted entities: {len(result.get('characters', []))} chars, {len(result.get('places', []))} places, {len(result.get('terms', []))} terms")
+                return result
+
+            except json.JSONDecodeError as e:
+                logger.error(f"Failed to parse extraction JSON: {e}")
+                return self._get_fallback_result(content)
+
+        except Exception as e:
+            logger.error(f"Entity extraction failed: {e}")
+            return self._get_fallback_result(content)
+
+    def _build_extraction_prompt(self, content, language_code):
+        """Build the AI prompt for entity extraction"""
+        from books.models import Language
+
+        try:
+            language = Language.objects.get(code=language_code)
+            language_name = language.name
+        except Language.DoesNotExist:
+            language_name = language_code
+
+        return f"""
+        Analyze this {language_name} text and extract key entities for translation consistency.
+
+        Extract:
+        1. CHARACTER names (people, beings with names)
+        2. PLACE names (locations, buildings, realms)
+        3. TERM names (special concepts, techniques, items, titles)
+        4. A brief summary (2-3 sentences max)
+
+        Rules:
+        - Only extract proper nouns and named entities
+        - Exclude common words and generic terms
+        - Focus on entities that need consistent translation
+        - Limit each category to top 10 most important entities
+        - Write the summary in the same language as the source text
+
+        Format your response as valid JSON:
+        {{
+            "characters": ["name1", "name2"],
+            "places": ["place1", "place2"],
+            "terms": ["term1", "term2"],
+            "summary": "Brief summary of chapter content and key events"
+        }}
+
+        Text to analyze:
+        {content}
+        """
+
+    def _validate_extraction_result(self, result):
+        """Validate the extraction result structure"""
+        required_keys = ["characters", "places", "terms", "summary"]
+
+        for key in required_keys:
+            if key not in result:
+                raise ValidationError(f"Missing required key: {key}")
+
+        # Ensure lists are actually lists
+        for key in ["characters", "places", "terms"]:
+            if not isinstance(result[key], list):
+                raise ValidationError(f"{key} must be a list")
+
+        # Ensure summary is string
+        if not isinstance(result["summary"], str):
+            raise ValidationError("summary must be a string")
+
+    def _get_fallback_result(self, content):
+        """Return fallback result when AI extraction fails"""
+        return {
+            "characters": [],
+            "places": [],
+            "terms": [],
+            "summary": content[:200] + "..." if len(content) > 200 else content
+        }

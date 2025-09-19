@@ -1,6 +1,6 @@
 from django.contrib import admin
 from background_task import background
-from .models import Language, BookMaster, Book, ChapterMaster, Chapter, TranslationJob
+from .models import Language, BookMaster, Book, ChapterMaster, Chapter, TranslationJob, BookEntity, ChapterContext
 
 
 @admin.register(Language)
@@ -122,6 +122,105 @@ class TranslationJobAdmin(admin.ModelAdmin):
         )
     
     process_all_pending_jobs.short_description = "Queue all pending jobs (max 50)"
+
+
+@admin.register(BookEntity)
+class BookEntityAdmin(admin.ModelAdmin):
+    list_display = ["source_name", "entity_type", "bookmaster", "first_chapter", "created_at"]
+    list_filter = ["entity_type", "bookmaster", "created_at"]
+    search_fields = ["source_name", "bookmaster__canonical_title", "first_chapter__title"]
+    readonly_fields = ["created_at", "updated_at"]
+    ordering = ["bookmaster", "entity_type", "source_name"]
+
+    fieldsets = (
+        (None, {
+            'fields': ('bookmaster', 'entity_type', 'source_name', 'first_chapter')
+        }),
+        ('Translations', {
+            'fields': ('translations',),
+            'description': 'JSON field containing translations in different languages'
+        }),
+        ('Timestamps', {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',)
+        })
+    )
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related('bookmaster', 'first_chapter')
+
+
+@admin.register(ChapterContext)
+class ChapterContextAdmin(admin.ModelAdmin):
+    list_display = ["chapter", "entity_count", "has_summary", "created_at", "updated_at"]
+    list_filter = ["created_at", "updated_at", "chapter__book"]
+    search_fields = ["chapter__title", "chapter__book__title", "summary"]
+    readonly_fields = ["created_at", "updated_at", "entity_count"]
+    ordering = ["-updated_at"]
+    actions = ["extract_entities_for_selected", "clear_analysis"]
+
+    fieldsets = (
+        (None, {
+            'fields': ('chapter',)
+        }),
+        ('Analysis Results', {
+            'fields': ('key_terms', 'summary', 'entity_count'),
+            'description': 'AI-extracted entities and summary'
+        }),
+        ('Timestamps', {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',)
+        })
+    )
+
+    def entity_count(self, obj):
+        """Count total entities extracted"""
+        if not obj.key_terms:
+            return 0
+        total = 0
+        for category in ['characters', 'places', 'terms']:
+            if category in obj.key_terms:
+                total += len(obj.key_terms[category])
+        return total
+    entity_count.short_description = "Total entities"
+
+    def has_summary(self, obj):
+        """Check if summary exists"""
+        return bool(obj.summary)
+    has_summary.boolean = True
+    has_summary.short_description = "Has summary"
+
+    def extract_entities_for_selected(self, request, queryset):
+        """Trigger entity extraction for selected chapters"""
+        count = 0
+        errors = []
+
+        for context in queryset:
+            try:
+                context.analyze_with_ai()
+                count += 1
+            except Exception as e:
+                errors.append(f"{context.chapter.title}: {str(e)}")
+
+        if count > 0:
+            self.message_user(request, f"Successfully extracted entities for {count} chapters")
+
+        if errors:
+            self.message_user(
+                request,
+                f"Errors occurred: {'; '.join(errors[:3])}{'...' if len(errors) > 3 else ''}",
+                level='WARNING'
+            )
+    extract_entities_for_selected.short_description = "Extract entities with AI"
+
+    def clear_analysis(self, request, queryset):
+        """Clear analysis data for selected chapters"""
+        count = queryset.update(key_terms={}, summary="")
+        self.message_user(request, f"Cleared analysis for {count} chapters")
+    clear_analysis.short_description = "Clear analysis data"
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related('chapter', 'chapter__book')
 
 
 @background(schedule=0)  # Execute immediately

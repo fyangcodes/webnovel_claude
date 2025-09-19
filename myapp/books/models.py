@@ -4,7 +4,13 @@ from django.utils import timezone
 from django.utils.text import slugify
 
 from common.models import TimeStampedModel
-from .choices import BookProgress, ChapterProgress, ProcessingStatus, CountUnits
+from .choices import (
+    BookProgress,
+    ChapterProgress,
+    ProcessingStatus,
+    CountUnit,
+    EntityType,
+)
 from .validators import unicode_slug_validator
 
 
@@ -48,8 +54,8 @@ class Language(TimeStampedModel):
     local_name = models.CharField(max_length=50)  # e.g., '中文（简体）'
     count_units = models.CharField(
         max_length=20,
-        choices=CountUnits.choices,
-        default=CountUnits.WORDS,
+        choices=CountUnit.choices,
+        default=CountUnit.WORDS,
     )
     wpm = models.PositiveSmallIntegerField(
         default=400, help_text="Reading speed words per minute"
@@ -175,7 +181,7 @@ class Book(TimeStampedModel, SlugGeneratorMixin):
 
     @property
     def effective_count(self):
-        if self.language.count_units == CountUnits.WORDS:
+        if self.language.count_units == CountUnit.WORDS:
             return self.total_words
         return self.total_characters
 
@@ -281,7 +287,39 @@ class Chapter(TimeStampedModel, SlugGeneratorMixin):
             self.word_count = len(self.content.split())
             self.character_count = len(self.content)
             self.generate_excerpt()
+
+        # Track if this is a new chapter or content changed
+        is_new = self.pk is None
+        content_changed = False
+        if not is_new:
+            # Check if content changed by comparing with database
+            try:
+                old_chapter = Chapter.objects.get(pk=self.pk)
+                content_changed = old_chapter.content != self.content
+            except Chapter.DoesNotExist:
+                content_changed = True
+
         super().save(*args, **kwargs)
+
+        # Auto-trigger entity extraction for original language chapters
+        if (is_new or content_changed) and self.content:
+            # Only extract for original language chapters to avoid duplicates
+            if self.book.language == self.book.bookmaster.original_language:
+                self._trigger_entity_extraction()
+
+    def _trigger_entity_extraction(self):
+        """Trigger entity extraction for this chapter"""
+        try:
+            # ChapterContext is defined later in this same file, so we can reference it directly
+            context, created = ChapterContext.objects.get_or_create(chapter=self)
+            # Only extract if not already done or content is empty
+            if created or not context.key_terms:
+                context.analyze_with_ai()
+        except Exception as e:
+            # Log error but don't break the save process
+            import logging
+            logger = logging.getLogger("books")
+            logger.error(f"Failed to trigger entity extraction for chapter {self.id}: {e}")
 
     def generate_excerpt(self, max_length=200):
         """Generate excerpt from content"""
@@ -306,7 +344,7 @@ class Chapter(TimeStampedModel, SlugGeneratorMixin):
 
     @property
     def effective_count(self):
-        if self.book.language.count_units == CountUnits.WORDS:
+        if self.book.language.count_units == CountUnit.WORDS:
             return self.word_count
         return self.character_count
 
@@ -350,3 +388,127 @@ class TranslationJob(TimeStampedModel):
 
     def __str__(self):
         return f"Translation of {self.chapter.title} to {self.target_language.name}"
+
+
+class BookEntity(TimeStampedModel):
+
+    bookmaster = models.ForeignKey("BookMaster", on_delete=models.CASCADE)
+    entity_type = models.CharField(max_length=20, choices=EntityType.choices)
+    source_name = models.CharField(max_length=255)
+    translations = models.JSONField(default=dict)  # {"en": "Li Wei", "es": "Li Wei"}
+    first_chapter = models.ForeignKey("Chapter", on_delete=models.CASCADE)
+
+    class Meta:
+        unique_together = ["bookmaster", "source_name"]
+        indexes = [
+            models.Index(fields=["bookmaster", "entity_type"]),
+        ]
+
+    def get_translation(self, language_code):
+        return self.translations.get(language_code, self.source_name)
+
+    def set_translation(self, language_code, translated_name):
+        self.translations[language_code] = translated_name
+        self.save(update_fields=["translations"])
+
+
+class ChapterContext(TimeStampedModel):
+    """Chapter context and entity analysis for translation consistency"""
+
+    chapter = models.OneToOneField("Chapter", on_delete=models.CASCADE)
+    key_terms = models.JSONField(
+        default=dict
+    )  # {"characters": [], "places": [], "terms": []}
+    summary = models.TextField(blank=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["chapter"]),
+        ]
+
+    def __str__(self):
+        return f"Context for {self.chapter.title}"
+
+    def analyze_with_ai(self):
+        """Use AI to extract entities and summary from chapter content"""
+        from translation.services import EntityExtractionService
+
+        try:
+            extractor = EntityExtractionService()
+            result = extractor.extract_entities_and_summary(
+                self.chapter.content,
+                self.chapter.book.language.code if self.chapter.book.language else "zh",
+            )
+
+            # Store structured data
+            self.key_terms = {
+                "characters": result["characters"],
+                "places": result["places"],
+                "terms": result["terms"],
+            }
+            self.summary = result["summary"]
+            self.save()
+
+            # Create BookEntity records
+            self._create_book_entities(result)
+
+            return result
+
+        except Exception as e:
+            import logging
+
+            logger = logging.getLogger("books")
+            logger.error(f"Failed to analyze chapter {self.chapter.id} with AI: {e}")
+            return self._get_fallback_analysis()
+
+    def _create_book_entities(self, extraction_result):
+        """Create BookEntity records from AI extraction"""
+        entity_mappings = [
+            (extraction_result["characters"], EntityType.CHARACTER),
+            (extraction_result["places"], EntityType.PLACE),
+            (extraction_result["terms"], EntityType.TERM),
+        ]
+
+        entities = []
+        for entity_list, entity_type in entity_mappings:
+            for name in entity_list:
+                entity, created = BookEntity.objects.get_or_create(
+                    bookmaster=self.chapter.book.bookmaster,
+                    source_name=name,
+                    defaults={
+                        "entity_type": entity_type,
+                        "first_chapter": self.chapter,
+                        "translations": {},
+                    },
+                )
+                entities.append(entity)
+
+        return entities
+
+    def _get_fallback_analysis(self):
+        """Return fallback analysis when AI extraction fails"""
+        content = self.chapter.content
+        return {
+            "characters": [],
+            "places": [],
+            "terms": [],
+            "summary": content[:200] + "..." if len(content) > 200 else content,
+        }
+
+    def get_consistency_context(self, target_language_code):
+        """Get translation consistency data for this chapter"""
+        context_data = {
+            "known_translations": {},
+            "key_terms": self.key_terms,
+            "summary": self.summary,
+        }
+
+        # Get all entities for this book
+        entities = BookEntity.objects.filter(bookmaster=self.chapter.book.bookmaster)
+
+        for entity in entities:
+            translation = entity.get_translation(target_language_code)
+            if translation != entity.source_name:
+                context_data["known_translations"][entity.source_name] = translation
+
+        return context_data
