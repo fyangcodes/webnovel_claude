@@ -248,6 +248,10 @@ class Chapter(TimeStampedModel, SlugGeneratorMixin):
     # Simple content storage
     content = models.TextField(help_text="Chapter content as plain text")
     excerpt = models.TextField(max_length=1000, blank=True)
+    translator_notes = models.TextField(
+        blank=True,
+        help_text="Notes from the translator about assumptions, clarifications, or translation challenges"
+    )
     word_count = models.PositiveIntegerField(default=0)
     character_count = models.PositiveIntegerField(default=0)
 

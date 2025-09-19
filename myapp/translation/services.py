@@ -89,23 +89,26 @@ class TranslationService:
             # Rate limiting
             self._enforce_rate_limit()
 
-            # Create prompt for translation (title + content)
+            # Create prompt for translation (title + content + context)
             prompt = self._build_translation_prompt(
-                source_chapter.title,
-                source_chapter.content,
-                source_chapter.book.language.name,
-                target_language.name,
+                source_chapter,
+                target_language,
             )
 
             # Call OpenAI API with retry logic
             translation_result = self._call_openai_with_retry(prompt)
-            translated_title, translated_content = self._parse_translation_result(
-                translation_result
+            translated_title, translated_content, entity_mappings, translator_notes = (
+                self._parse_translation_result(translation_result)
             )
 
             # Create new chapter in target language with transaction safety
             translated_chapter = self._create_translated_chapter(
-                source_chapter, target_language, translated_title, translated_content
+                source_chapter,
+                target_language,
+                translated_title,
+                translated_content,
+                entity_mappings,
+                translator_notes,
             )
 
             logger.info(
@@ -205,41 +208,370 @@ class TranslationService:
 
         raise APIError(f"Failed after {self.MAX_RETRIES} attempts: {last_exception}")
 
-    def _build_translation_prompt(
-        self, title: str, content: str, source_lang: str, target_lang: str
+    def _get_previous_chapters_context(self, source_chapter, target_language, count=3):
+        """Get context from previous chapters including titles and summaries"""
+        from books.models import Chapter, ChapterContext
+
+        # Get current chapter number
+        current_chapter_num = source_chapter.chaptermaster.chapter_number
+
+        # Get previous chapters in the same book
+        previous_chapters = (
+            Chapter.objects.filter(
+                book=source_chapter.book,
+                chaptermaster__chapter_number__lt=current_chapter_num,
+            )
+            .select_related("chaptermaster")
+            .order_by("-chaptermaster__chapter_number")[:count]
+        )
+
+        context_info = []
+        for chapter in reversed(previous_chapters):  # Show in chronological order
+            chapter_num = chapter.chaptermaster.chapter_number
+            original_title = chapter.title
+
+            # Try to get translated title from the same chaptermaster in target language
+            translated_title = None
+            try:
+                # Find the target book in the target language
+                target_book = chapter.chaptermaster.bookmaster.books.filter(
+                    language=target_language
+                ).first()
+                if target_book:
+                    # Find the chapter in the target language for the same chaptermaster
+                    translated_chapter = Chapter.objects.get(
+                        chaptermaster=chapter.chaptermaster, book=target_book
+                    )
+                    translated_title = translated_chapter.title
+            except Chapter.DoesNotExist:
+                pass  # No translation available yet
+
+            # Get summary if available
+            try:
+                context = ChapterContext.objects.get(chapter=chapter)
+                summary = context.summary or "No summary available"
+            except ChapterContext.DoesNotExist:
+                summary = "No summary available"
+
+            context_info.append(
+                {
+                    "number": chapter_num,
+                    "original_title": original_title,
+                    "translated_title": translated_title,
+                    "summary": summary,
+                }
+            )
+
+        return context_info
+
+    def _build_translation_prompt(self, source_chapter, target_language):
+        """Build enhanced translation prompt with entity consistency"""
+        from books.models import ChapterContext
+
+        source_lang = source_chapter.book.language.name
+        target_lang = target_language.name
+        target_code = target_language.code
+
+        # Get chapter context for entities (current chapter)
+        try:
+            context = ChapterContext.objects.get(chapter=source_chapter)
+            chapter_entities = context.key_terms
+        except ChapterContext.DoesNotExist:
+            chapter_entities = {}
+
+        # Get relevant entity translations for this chapter only
+        relevant_entities = self._get_relevant_entities(
+            source_chapter.book.bookmaster, chapter_entities, target_code
+        )
+
+        # Get previous chapters context
+        previous_chapters = self._get_previous_chapters_context(
+            source_chapter, target_language
+        )
+
+        # Build the enhanced prompt with hierarchical structure
+        prompt_parts = [
+            f"# TRANSLATION TASK",
+            f"Translate this chapter from **{source_lang}** to **{target_lang}**.",
+            f"Preserve paragraph breaks and dialogue formatting.",
+            f"Maintain the original meaning, tone, and style{""}.",
+            "",
+        ]
+
+        # Translation Rules Section
+        prompt_parts.append("## TRANSLATION RULES")
+
+        # Consistency subsection
+        prompt_parts.extend(
+            [
+                "### CONSISTENCY",
+                "- Use translations from the FOUND ENTITIES section if available.",
+                "- Translate entities in NEW ENTITIES section consistently with the established style.",
+                "- Reference the CONTEXT section to maintain consistency with previous translations and ensure story continuity.",
+                "- For proper nouns (e.g., names, places), use Pinyin transliteration for characters (e.g., 陆飞 as Lu Fei) and standard English names for places (e.g., 广州 as Guangzhou) unless specified otherwise.",
+                "",
+            ]
+        )
+
+        # Cultural considerations
+        prompt_parts.extend(
+            [
+                "### CULTURAL CONSIDERATIONS",
+                f"- For idiomatic expressions or culturally specific terms, provide a natural {target_lang} equivalent that conveys the same meaning.",
+                "- If a term is untranslatable, use transliteration or a descriptive phrase and explain in the ENTITY_MAPPINGS section.",
+                "",
+            ]
+        )
+
+        # Formating guidlines
+        prompt_parts.extend(
+            [
+                "### FORMATTING GUIDELINES",
+                "- Preserve paragraph breaks and use quotation marks for dialogue.",
+                "- Format the translated text as plain text with clear paragraph separation.",
+                "- Do not add markup (e.g., HTML, Markdown) unless specified.",
+                "",
+            ]
+        )
+
+        # Error Handling
+        prompt_parts.extend(
+            [
+                "### ERROR HANDLING",
+                '- If a term is ambiguous, select the most contextually appropriate translation and note the choice in the ENTITY_MAPPINGS section (e.g., {"老板": "Boss (assumed to be employer)"}).',
+                "- For untranslatable terms, provide a transliteration or description and explain in the ENTITY_MAPPINGS.",
+                "- Use TRANSLATOR_NOTES to document assumptions, clarifications, cultural context, or translation challenges encountered.",
+                "- Include any important decisions made during translation that future translators should be aware of.",
+                "",
+            ]
+        )
+
+        # Response Format subsection
+        prompt_parts.extend(
+            [
+                "### RESPONSE FORMAT",
+                "Please format your response exactly as follows:",
+                "",
+                "TITLE: [translated title here]",
+                "CONTENT: [translated content here]",
+                "ENTITY_MAPPINGS: [JSON object with source→translation pairs for entities that appear in your translation]",
+                "TRANSLATOR_NOTES: [Any assumptions, clarifications, or issues encountered]",
+                "",
+                'Format: {"原文名": "Translated Name", "另一个名": "Another Name"}',
+                "",
+            ]
+        )
+
+        # Entities Section
+        prompt_parts.append("## ENTITIES")
+
+        # Found Entities subsection - show existing translations
+        if relevant_entities:
+            prompt_parts.extend(
+                [
+                    "### FOUND ENTITIES",
+                    "Previously translated entities to use:",
+                    "",
+                    relevant_entities,
+                    "",
+                ]
+            )
+
+        # New Entities subsection - only show entities that don't have translations yet
+        prompt_parts.append("### NEW ENTITIES")
+        if chapter_entities:
+            new_entities_by_category = self._get_new_entities_only(
+                source_chapter.book.bookmaster, chapter_entities, target_code
+            )
+
+            if new_entities_by_category:
+                entities_display = []
+                for category, entities in new_entities_by_category.items():
+                    if entities:
+                        entities_display.append(
+                            f"**{category.title()}:** {', '.join(entities)}"
+                        )
+
+                if entities_display:
+                    prompt_parts.extend(
+                        [
+                            "Key entities in current chapter that need translation:",
+                            "\n".join(entities_display),
+                            "",
+                        ]
+                    )
+                else:
+                    prompt_parts.extend(
+                        [
+                            "All entities in current chapter already have established translations.",
+                            "",
+                        ]
+                    )
+            else:
+                prompt_parts.extend(
+                    [
+                        "All entities in current chapter already have established translations.",
+                        "",
+                    ]
+                )
+        else:
+            prompt_parts.extend(
+                [
+                    "No entities identified in current chapter.",
+                    "",
+                ]
+            )
+
+        # Context Section
+        prompt_parts.extend(
+            [
+                "## CONTEXT",
+                "**Title and summary of previous chapters**",
+            ]
+        )
+
+        # Previous chapters subsection
+        if previous_chapters:
+            for chapter_info in previous_chapters:
+                # Format title with translation if available
+                if chapter_info["translated_title"]:
+                    title_line = f"**{chapter_info['original_title']}** → **{chapter_info['translated_title']}** (Chapter {chapter_info['number']})"
+                else:
+                    title_line = f"**{chapter_info['original_title']}** (Chapter {chapter_info['number']})"
+
+                prompt_parts.extend(
+                    [
+                        title_line,
+                        f"{chapter_info['summary']}",
+                        "",
+                    ]
+                )
+        else:
+            prompt_parts.extend(
+                [
+                    "No previous chapters available.",
+                    "",
+                ]
+            )
+
+        # Source Text Section
+        prompt_parts.extend(
+            [
+                "## SOURCE TEXT",
+                f"**Title:** {source_chapter.title}",
+                "",
+                f"**Content:**",
+                source_chapter.content,
+            ]
+        )
+
+        return "\n".join(prompt_parts)
+
+    def _get_new_entities_only(
+        self, bookmaster, chapter_entities, target_language_code
     ):
-        """Build translation prompt for both title and content"""
-        return f"""
-        Please translate the following chapter title and content from {source_lang} to {target_lang}.
-        Maintain the original meaning, tone, and style. Keep proper formatting.
+        """Get only entities that don't have translations yet"""
+        from books.models import BookEntity
 
-        Please format your response exactly as follows:
-        TITLE: [translated title here]
-        CONTENT: [translated content here]
+        if not chapter_entities:
+            return {}
 
-        Chapter Title:
-        {title}
+        # Get existing entity translations for this book and target language
+        existing_entities = set()
+        book_entities = BookEntity.objects.filter(bookmaster=bookmaster)
 
-        Chapter Content:
-        {content}
-        """
+        for entity in book_entities:
+            if entity.translations and target_language_code in entity.translations:
+                existing_entities.add(entity.source_name)
 
-    def _parse_translation_result(self, translation_result: str) -> tuple[str, str]:
-        """Parse the translation result to extract title and content"""
+        # Filter out entities that already have translations
+        new_entities = {}
+        for category in ["characters", "places", "terms"]:
+            category_entities = chapter_entities.get(category, [])
+            new_category_entities = []
+
+            for entity in category_entities:
+                if entity not in existing_entities:
+                    new_category_entities.append(entity)
+
+            if new_category_entities:
+                new_entities[category] = new_category_entities
+
+        return new_entities
+
+    def _get_relevant_entities(
+        self, bookmaster, chapter_entities, target_language_code
+    ):
+        """Get entity translations only for entities present in current chapter"""
+        from books.models import BookEntity
+
+        if not chapter_entities:
+            return ""
+
+        guidelines = []
+
+        # Collect all entities mentioned in this chapter
+        current_chapter_entities = []
+        for category in ["characters", "places", "terms"]:
+            current_chapter_entities.extend(chapter_entities.get(category, []))
+
+        if not current_chapter_entities:
+            return ""
+
+        # Find existing translations only for entities in this chapter
+        for entity_name in current_chapter_entities:
+            try:
+                entity = BookEntity.objects.get(
+                    bookmaster=bookmaster, source_name=entity_name
+                )
+
+                translation = entity.get_translation(target_language_code)
+                if translation and translation != entity.source_name:
+                    # Entity has a specific translation
+                    guidelines.append(
+                        f"- {entity.source_name} → {translation} ({entity.entity_type})"
+                    )
+                elif entity.translations:
+                    # Entity exists but no translation for this language yet
+                    guidelines.append(
+                        f"- {entity.source_name} (translate as {entity.entity_type})"
+                    )
+
+            except BookEntity.DoesNotExist:
+                # Entity not in database yet, will be handled as new entity
+                continue
+
+        return "\n".join(guidelines) if guidelines else ""
+
+    def _parse_translation_result(
+        self, translation_result: str
+    ) -> tuple[str, str, dict, str]:
+        """Parse the translation result to extract title, content, entity mappings, and translator notes"""
         try:
             lines = translation_result.strip().split("\n")
             title_line = None
             content_start = None
+            content_end = None
+            mappings_start = None
+            notes_start = None
+            entity_mappings = {}
+            translator_notes = ""
 
-            # Find TITLE and CONTENT markers
+            # Find TITLE, CONTENT, ENTITY_MAPPINGS, and TRANSLATOR_NOTES markers
             for i, line in enumerate(lines):
                 line_stripped = line.strip()
                 if line_stripped.startswith("TITLE:"):
                     title_line = line_stripped[6:].strip()
                 elif line_stripped.startswith("CONTENT:"):
                     content_start = i
+                elif line_stripped.startswith("ENTITY_MAPPINGS:"):
+                    content_end = i
+                    mappings_start = i
+                elif line_stripped.startswith("TRANSLATOR_NOTES:"):
+                    notes_start = i
                     break
 
+            # Parse title
             if title_line is None:
                 logger.warning("Could not find TITLE marker in translation result")
                 # Fallback: use first non-empty line as title
@@ -250,13 +582,26 @@ class TranslationService:
                 else:
                     title_line = "Untitled"
 
+            # Parse content
             if content_start is None:
                 logger.warning("Could not find CONTENT marker in translation result")
                 # Fallback: use everything after the first line as content
-                content_lines = lines[1:] if len(lines) > 1 else []
+                # Stop at ENTITY_MAPPINGS or TRANSLATOR_NOTES
+                end_index = (
+                    content_end
+                    if content_end
+                    else (notes_start if notes_start else len(lines))
+                )
+                content_lines = lines[1:end_index]
             else:
-                # Get everything after CONTENT: line
-                content_lines = lines[content_start:]
+                # Get content between CONTENT: and ENTITY_MAPPINGS/TRANSLATOR_NOTES (or end)
+                end_index = (
+                    content_end
+                    if content_end
+                    else (notes_start if notes_start else len(lines))
+                )
+                content_lines = lines[content_start:end_index]
+
                 if content_lines and content_lines[0].strip().startswith("CONTENT:"):
                     # Remove the CONTENT: part from first line
                     first_line = content_lines[0].strip()[8:].strip()
@@ -267,15 +612,69 @@ class TranslationService:
 
             translated_content = "\n".join(content_lines).strip()
 
+            # Parse entity mappings
+            if mappings_start is not None:
+                try:
+                    mappings_line = lines[mappings_start].strip()
+                    if mappings_line.startswith("ENTITY_MAPPINGS:"):
+                        mappings_json = mappings_line[16:].strip()
+                        if (
+                            mappings_json
+                            and mappings_json
+                            != "[entity mappings in JSON format if requested above]"
+                        ):
+                            import json
+
+                            entity_mappings = json.loads(mappings_json)
+                            logger.debug(f"Parsed entity mappings: {entity_mappings}")
+                except (json.JSONDecodeError, ValueError) as e:
+                    logger.warning(f"Failed to parse entity mappings: {e}")
+                    entity_mappings = {}
+
+            # Parse translator notes
+            if notes_start is not None:
+                try:
+                    notes_line = lines[notes_start].strip()
+                    if notes_line.startswith("TRANSLATOR_NOTES:"):
+                        translator_notes = notes_line[17:].strip()
+                        # Also check if notes continue on next lines
+                        if notes_start + 1 < len(lines):
+                            remaining_notes = []
+                            for line in lines[notes_start + 1 :]:
+                                line_stripped = line.strip()
+                                # Stop at next section marker or empty lines at end
+                                if line_stripped.startswith(
+                                    (
+                                        "TITLE:",
+                                        "CONTENT:",
+                                        "ENTITY_MAPPINGS:",
+                                        "TRANSLATOR_NOTES:",
+                                    )
+                                ):
+                                    break
+                                remaining_notes.append(line)
+                            if remaining_notes:
+                                if translator_notes:
+                                    translator_notes += (
+                                        " " + "\n".join(remaining_notes).strip()
+                                    )
+                                else:
+                                    translator_notes = "\n".join(
+                                        remaining_notes
+                                    ).strip()
+                except Exception as e:
+                    logger.warning(f"Failed to parse translator notes: {e}")
+                    translator_notes = ""
+
             if not translated_content:
                 raise APIError("Empty content in translation result")
 
-            return title_line, translated_content
+            return title_line, translated_content, entity_mappings, translator_notes
 
         except Exception as e:
             logger.error(f"Failed to parse translation result: {e}")
             # Fallback: treat entire result as content, generate simple title
-            return "Translated Chapter", translation_result.strip()
+            return "Translated Chapter", translation_result.strip(), {}, ""
 
     @transaction.atomic
     def _create_translated_chapter(
@@ -284,6 +683,8 @@ class TranslationService:
         target_language: Language,
         translated_title: str,
         translated_content: str,
+        entity_mappings: dict = None,
+        translator_notes: str = "",
     ) -> Chapter:
         """Create a new chapter with translated content using transaction safety"""
         try:
@@ -312,6 +713,7 @@ class TranslationService:
                 )
                 existing_chapter.title = translated_title
                 existing_chapter.content = translated_content
+                existing_chapter.translator_notes = translator_notes
                 existing_chapter.save()
                 target_book.update_metadata()
                 return existing_chapter
@@ -322,10 +724,19 @@ class TranslationService:
                 chaptermaster=source_chapter.chaptermaster,
                 book=target_book,
                 content=translated_content,
+                translator_notes=translator_notes,
             )
 
             # Update book metadata
             target_book.update_metadata()
+
+            # Store entity translations from AI response
+            if entity_mappings:
+                self._store_entity_mappings(
+                    source_chapter.book.bookmaster,
+                    entity_mappings,
+                    target_language.code,
+                )
 
             logger.info(f"Created translated chapter: {translated_chapter.title}")
             return translated_chapter
@@ -333,6 +744,35 @@ class TranslationService:
         except Exception as e:
             logger.error(f"Failed to create translated chapter: {str(e)}")
             raise APIError(f"Database error creating translated chapter: {str(e)}")
+
+    def _store_entity_mappings(self, bookmaster, entity_mappings, target_language_code):
+        """Store entity translations from AI response"""
+        from books.models import BookEntity
+
+        try:
+            for source_name, translated_name in entity_mappings.items():
+                if source_name and translated_name and source_name != translated_name:
+                    try:
+                        entity = BookEntity.objects.get(
+                            bookmaster=bookmaster, source_name=source_name
+                        )
+                        # Store the translation
+                        entity.set_translation(target_language_code, translated_name)
+                        logger.debug(
+                            f"Stored mapping: {source_name} → {translated_name}"
+                        )
+
+                    except BookEntity.DoesNotExist:
+                        # Entity not in database yet, skip for now
+                        logger.debug(
+                            f"Entity {source_name} not found in database, skipping mapping"
+                        )
+
+            logger.info(f"Stored {len(entity_mappings)} entity mappings")
+
+        except Exception as e:
+            # Don't fail the translation if entity mapping fails
+            logger.warning(f"Failed to store entity mappings: {e}")
 
 
 def process_translation_jobs(max_jobs):
@@ -448,9 +888,11 @@ class EntityExtractionService:
         """
         try:
             # Truncate content if too long (cost control)
-            truncated_content = content[:self.max_content_length]
+            truncated_content = content[: self.max_content_length]
             if len(content) > self.max_content_length:
-                logger.info(f"Content truncated from {len(content)} to {self.max_content_length} chars for extraction")
+                logger.info(
+                    f"Content truncated from {len(content)} to {self.max_content_length} chars for extraction"
+                )
 
             prompt = self._build_extraction_prompt(truncated_content, language_code)
 
@@ -458,7 +900,7 @@ class EntityExtractionService:
                 model="gpt-3.5-turbo",  # Cost-effective model for extraction
                 messages=[{"role": "user", "content": prompt}],
                 temperature=0.1,  # Low temperature for consistency
-                max_tokens=800  # Reasonable limit for response
+                max_tokens=800,  # Reasonable limit for response
             )
 
             response_text = response.choices[0].message.content.strip()
@@ -468,7 +910,9 @@ class EntityExtractionService:
             try:
                 result = json.loads(response_text)
                 self._validate_extraction_result(result)
-                logger.info(f"Successfully extracted entities: {len(result.get('characters', []))} chars, {len(result.get('places', []))} places, {len(result.get('terms', []))} terms")
+                logger.info(
+                    f"Successfully extracted entities: {len(result.get('characters', []))} chars, {len(result.get('places', []))} places, {len(result.get('terms', []))} terms"
+                )
                 return result
 
             except json.JSONDecodeError as e:
@@ -540,5 +984,5 @@ class EntityExtractionService:
             "characters": [],
             "places": [],
             "terms": [],
-            "summary": content[:200] + "..." if len(content) > 200 else content
+            "summary": content[:200] + "..." if len(content) > 200 else content,
         }
