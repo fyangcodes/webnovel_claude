@@ -1,6 +1,6 @@
 from django.contrib import admin
 from background_task import background
-from .models import Language, BookMaster, Book, ChapterMaster, Chapter, TranslationJob, BookEntity, ChapterContext
+from .models import Language, Genre, BookGenre, BookMaster, Book, ChapterMaster, Chapter, TranslationJob, BookEntity, ChapterContext
 
 
 @admin.register(Language)
@@ -10,12 +10,45 @@ class LanguageAdmin(admin.ModelAdmin):
     ordering = ["name"]
 
 
+@admin.register(Genre)
+class GenreAdmin(admin.ModelAdmin):
+    list_display = ["name", "slug", "created_at"]
+    search_fields = ["name", "slug"]
+    prepopulated_fields = {"slug": ("name",)}
+    ordering = ["name"]
+
+    fieldsets = (
+        (None, {
+            'fields': ('name', 'slug', 'description')
+        }),
+        ('Translations', {
+            'fields': ('translations',),
+            'description': 'JSON field containing localized names and descriptions for different languages',
+            'classes': ('collapse',)
+        }),
+    )
+
+
+class BookGenreInline(admin.TabularInline):
+    model = BookGenre
+    extra = 1
+    fields = ['genre', 'order']
+    ordering = ['order']
+
+
 @admin.register(BookMaster)
 class BookMasterAdmin(admin.ModelAdmin):
-    list_display = ["canonical_title", "owner", "original_language", "created_at"]
+    list_display = ["canonical_title", "owner", "original_language", "genre_list", "created_at"]
     list_filter = ["original_language", "created_at"]
     search_fields = ["canonical_title"]
     ordering = ["canonical_title"]
+    inlines = [BookGenreInline]
+
+    def genre_list(self, obj):
+        """Display genres in order"""
+        genres = obj.book_genres.select_related('genre').order_by('order')
+        return ", ".join([bg.genre.name for bg in genres])
+    genre_list.short_description = "Genres"
 
 
 @admin.register(Book)

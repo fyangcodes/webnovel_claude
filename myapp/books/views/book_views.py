@@ -23,7 +23,7 @@ from books.models import (
 )
 from books.forms import BookForm, BookFileUploadForm
 from books.choices import ChapterProgress
-from books.utils import extract_text_from_file
+from books.utils import TextExtractor
 
 
 # Book CRUD Views
@@ -175,7 +175,7 @@ class BookFileUploadView(LoginRequiredMixin, FormView):
 
         try:
             # Extract text and chapters using the utility function
-            result = extract_text_from_file(uploaded_file, include_chapters=True)
+            result = TextExtractor.extract_text_from_file(uploaded_file, include_chapters=True)
 
             if auto_create_chapters and result.get("chapters"):
                 created_count = self._create_chapters_from_upload(

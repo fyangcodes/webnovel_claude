@@ -873,7 +873,7 @@ class EntityExtractionService:
             raise APIError("OpenAI API key is not configured")
 
         self.client = OpenAI(api_key=settings.OPENAI_API_KEY)
-        self.max_content_length = 3000  # Limit for extraction to control costs
+        self.max_content_length = 5000  # Limit for extraction to control costs
 
     def extract_entities_and_summary(self, content, language_code="zh"):
         """
@@ -897,10 +897,10 @@ class EntityExtractionService:
             prompt = self._build_extraction_prompt(truncated_content, language_code)
 
             response = self.client.chat.completions.create(
-                model="gpt-3.5-turbo",  # Cost-effective model for extraction
+                model="gpt-4o-mini",
                 messages=[{"role": "user", "content": prompt}],
-                temperature=0.1,  # Low temperature for consistency
-                max_tokens=800,  # Reasonable limit for response
+                temperature=0.1,  # Low temperature for consistent JSON output
+                response_format={"type": "json_object"},  # Force JSON response
             )
 
             response_text = response.choices[0].message.content.strip()
@@ -908,7 +908,9 @@ class EntityExtractionService:
 
             # Parse JSON response
             try:
-                result = json.loads(response_text)
+                # Clean the response text
+                cleaned_response = self._clean_json_response(response_text)
+                result = json.loads(cleaned_response)
                 self._validate_extraction_result(result)
                 logger.info(
                     f"Successfully extracted entities: {len(result.get('characters', []))} chars, {len(result.get('places', []))} places, {len(result.get('terms', []))} terms"
@@ -917,6 +919,7 @@ class EntityExtractionService:
 
             except json.JSONDecodeError as e:
                 logger.error(f"Failed to parse extraction JSON: {e}")
+                logger.error(f"Raw response: {response_text}")
                 return self._get_fallback_result(content)
 
         except Exception as e:
@@ -933,33 +936,62 @@ class EntityExtractionService:
         except Language.DoesNotExist:
             language_name = language_code
 
-        return f"""
-        Analyze this {language_name} text and extract key entities for translation consistency.
+        prompt_parts = []
+        prompt_parts.extend(
+            [
+                f"You are a text analysis expert. Analyze the provided {language_name} text and extract key entities for translation consistency. You must respond with valid JSON only—no additional text, explanations, prefixes, or logs. Start your response with '{' and end with '}'.",
+                "",
+                "Your task:",
+                "1. Extract CHARACTER names: Only unique proper names of people or beings. Do not include professions, descriptors or generic terms.",
+                "2. Extract PLACE names: Only specific named locations, buildings, or realms. Do not include generic places.",
+                "3. Extract TERM names: Only special concepts, techniques, items, or titles that need consistent translation. Exclude common words.",
+                f"4. Create a brief summary: 2-3 sentences max, in {language_name}, covering the chapter's content and key events.",
+                "",
+                "Rules:",
+                "- Only extract proper nouns and named entities that appear in the text.",
+                "- Exclude common words, generic terms, and descriptors.",
+                "- Focus on entities central to the plot that need consistent translation.",
+                "- Limit each category to the top 10 most important entities (or fewer if not applicable).",
+                "- Prioritize entities mentioned multiple times.",
+                "",
+                "You must respond with valid JSON only. No additional text or explanations.",
+                "",
+                "Required JSON format:",
+                "{",
+                '"characters": ["name1", "name2"],',
+                '"places": ["place1", "place2"],',
+                '"terms": ["term1", "term2"],',
+                f'"summary": "Brief summary in {language_name}"',
+                "}",
+                "",
+                "Text to analyze:",
+                f"{content}",
+            ]
+        )
 
-        Extract:
-        1. CHARACTER names (people, beings with names)
-        2. PLACE names (locations, buildings, realms)
-        3. TERM names (special concepts, techniques, items, titles)
-        4. A brief summary (2-3 sentences max)
+        return "\n".join(prompt_parts)
 
-        Rules:
-        - Only extract proper nouns and named entities
-        - Exclude common words and generic terms
-        - Focus on entities that need consistent translation
-        - Limit each category to top 10 most important entities
-        - Write the summary in the same language as the source text
+    def _clean_json_response(self, response_text):
+        """Clean and prepare JSON response for parsing"""
+        # Remove any markdown code blocks
+        if response_text.startswith("```json"):
+            response_text = response_text[7:]
+        if response_text.startswith("```"):
+            response_text = response_text[3:]
+        if response_text.endswith("```"):
+            response_text = response_text[:-3]
 
-        Format your response as valid JSON:
-        {{
-            "characters": ["name1", "name2"],
-            "places": ["place1", "place2"],
-            "terms": ["term1", "term2"],
-            "summary": "Brief summary of chapter content and key events"
-        }}
+        # Strip whitespace
+        response_text = response_text.strip()
 
-        Text to analyze:
-        {content}
-        """
+        # Try to find JSON object bounds if there's extra text
+        start_idx = response_text.find("{")
+        end_idx = response_text.rfind("}")
+
+        if start_idx != -1 and end_idx != -1 and start_idx < end_idx:
+            response_text = response_text[start_idx : end_idx + 1]
+
+        return response_text
 
     def _validate_extraction_result(self, result):
         """Validate the extraction result structure"""

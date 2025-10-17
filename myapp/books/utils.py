@@ -115,15 +115,16 @@ class TextExtractor:
     """Utility class for extracting text from various file formats - MVP version"""
 
     @staticmethod
-    def extract_text_from_file(file_obj):
+    def extract_text_from_file(file_obj, include_chapters=False):
         """
-        Extract text from uploaded file object - MVP version supports only TXT files.
+        Main endpoint to extract text from uploaded file - MVP version supports only TXT files.
 
         Args:
             file_obj: Django uploaded file object
+            include_chapters: If True, also performs chapter division
 
         Returns:
-            Extracted text as string
+            str or dict: Text content, or dict with text and chapters if include_chapters=True
 
         Raises:
             ValidationError: If file format is unsupported or extraction fails
@@ -135,11 +136,23 @@ class TextExtractor:
         _, ext = os.path.splitext(filename.lower())
 
         if ext == ".txt":
-            return TextExtractor._extract_from_txt(file_obj)
+            text = TextExtractor._extract_from_txt(file_obj)
         else:
             raise ValidationError(
                 f"Unsupported file format: {ext}. Only TXT files are supported in this MVP version."
             )
+
+        if include_chapters:
+            chapters = TextExtractor._divide_text_into_chapters(text)
+            return {
+                "text": text,
+                "chapters": chapters,
+                "word_count": len(text.split()),
+                "character_count": len(text),
+                "chapter_count": len(chapters),
+            }
+
+        return text
 
     @staticmethod
     def _extract_from_txt(file_obj):
@@ -151,141 +164,121 @@ class TextExtractor:
         except Exception as e:
             raise ValidationError(f"Error reading TXT file: {str(e)}")
 
+    @staticmethod
+    def _format_content_for_markdown(lines):
+        """
+        Format content lines for markdown compliance with proper paragraph separation.
+        Handles both Chinese and Western text appropriately.
 
-def extract_text_from_file(uploaded_file, include_chapters=False):
-    """
-    Main function to extract text from uploaded file - MVP version
-    
-    Args:
-        uploaded_file: Django uploaded file object
-        include_chapters: If True, also performs chapter division
-        
-    Returns:
-        str or dict: Text content, or dict with text and chapters if include_chapters=True
-    """
-    text = TextExtractor.extract_text_from_file(uploaded_file)
-    
-    if include_chapters:
-        chapters = divide_text_into_chapters(text)
-        return {
-            'text': text,
-            'chapters': chapters,
-            'word_count': len(text.split()),
-            'character_count': len(text),
-            'chapter_count': len(chapters)
-        }
-    
-    return text
+        Args:
+            lines: List of content lines
 
+        Returns:
+            str: Markdown-formatted content with double newlines for paragraph separation
+        """
+        if not lines:
+            return ""
 
-def _format_content_for_markdown(lines):
-    """
-    Format content lines for markdown compliance with proper paragraph separation.
-    Handles both Chinese and Western text appropriately.
-    
-    Args:
-        lines: List of content lines
-        
-    Returns:
-        str: Markdown-formatted content with double newlines for paragraph separation
-    """
-    if not lines:
-        return ""
-    
-    paragraphs = []
-    
-    for line in lines:
-        line = line.strip()
-        if line:  # Non-empty line
-            paragraphs.append(line)
-    
-    # Join all lines with double newlines for proper markdown paragraph separation
-    # This treats each non-empty line as a separate paragraph
-    return "\n\n".join(paragraphs)
+        paragraphs = []
 
+        for line in lines:
+            line = line.strip()
+            if line:  # Non-empty line
+                paragraphs.append(line)
 
-def divide_text_into_chapters(text):
-    """
-    Simple chapter division for MVP - uses basic pattern matching.
-    
-    Args:
-        text: Full text content
-        
-    Returns:
-        list: List of chapter dictionaries with title and markdown-compliant content
-    """
-    chapters = []
-    
-    # Common chapter patterns
-    chapter_patterns = [
-        r"^第[\d一二三四五六七八九十百千万零壹贰叁肆伍陆柒捌玖拾佰仟萬]+章.*$",
-        r"^\d+\.\s+.*$",
-        r"^Chapter\s+\d+.*$",
-        r"^[IVX]+\.\s+.*$",
-    ]
-    
-    # Try to find chapters using patterns
-    lines = text.split("\n")
-    current_chapter = None
-    current_content = []
-    chapter_number = 1
-    
-    for line in lines:
-        line = line.strip()
-        
-        # Check if this line matches any chapter pattern
-        is_chapter_start = any(
-            re.match(pattern, line, re.IGNORECASE | re.MULTILINE)
-            for pattern in chapter_patterns
-        )
-        
-        if is_chapter_start:
-            # Save previous chapter if it exists
-            if current_chapter is not None:
-                formatted_content = _format_content_for_markdown(current_content)
-                chapters.append(
-                    {
-                        "title": current_chapter,
-                        "content": formatted_content,
-                        "chapter_number": len(chapters) + 1,
-                        "word_count": len(formatted_content.split()),
-                        "character_count": len(formatted_content),
-                    }
-                )
-            
-            # Start new chapter
-            current_chapter = line if line else f"Chapter {chapter_number}"
-            current_content = []
-            chapter_number += 1
-        else:
-            # Add line to current chapter content
-            current_content.append(line)
-    
-    # Add the last chapter
-    if current_chapter is not None:
-        formatted_content = _format_content_for_markdown(current_content)
-        chapters.append(
-            {
-                "title": current_chapter,
-                "content": formatted_content,
-                "chapter_number": len(chapters) + 1,
-                "word_count": len(formatted_content.split()),
-                "character_count": len(formatted_content),
-            }
-        )
-    
-    # If no chapters were found, create a single chapter
-    if not chapters:
-        # Format the entire text for markdown compliance
-        formatted_text = _format_content_for_markdown(text.split('\n'))
-        chapters = [
-            {
-                "title": "Full Text",
-                "content": formatted_text,
-                "chapter_number": 1,
-                "word_count": len(formatted_text.split()),
-                "character_count": len(formatted_text),
-            }
+        # Join all lines with double newlines for proper markdown paragraph separation
+        # This treats each non-empty line as a separate paragraph
+        return "\n\n".join(paragraphs)
+
+    @staticmethod
+    def _divide_text_into_chapters(text):
+        """
+        Simple chapter division for MVP - uses basic pattern matching.
+
+        Args:
+            text: Full text content
+
+        Returns:
+            list: List of chapter dictionaries with title and markdown-compliant content
+        """
+        chapters = []
+
+        # Common chapter patterns
+        chapter_patterns = [
+            r"^第[\d一二三四五六七八九十百千万零壹贰叁肆伍陆柒捌玖拾佰仟萬]+章.*$",
+            r"^\d+\.\s+.*$",
+            r"^Chapter\s+\d+.*$",
+            r"^[IVX]+\.\s+.*$",
         ]
-    
-    return chapters
+
+        # Try to find chapters using patterns
+        lines = text.split("\n")
+        current_chapter = None
+        current_content = []
+        chapter_number = 1
+
+        for line in lines:
+            line = line.strip()
+
+            # Check if this line matches any chapter pattern
+            is_chapter_start = any(
+                re.match(pattern, line, re.IGNORECASE | re.MULTILINE)
+                for pattern in chapter_patterns
+            )
+
+            if is_chapter_start:
+                # Save previous chapter if it exists
+                if current_chapter is not None:
+                    formatted_content = TextExtractor._format_content_for_markdown(
+                        current_content
+                    )
+                    chapters.append(
+                        {
+                            "title": current_chapter,
+                            "content": formatted_content,
+                            "chapter_number": len(chapters) + 1,
+                            "word_count": len(formatted_content.split()),
+                            "character_count": len(formatted_content),
+                        }
+                    )
+
+                # Start new chapter
+                current_chapter = line if line else f"Chapter {chapter_number}"
+                current_content = []
+                chapter_number += 1
+            else:
+                # Add line to current chapter content
+                current_content.append(line)
+
+        # Add the last chapter
+        if current_chapter is not None:
+            formatted_content = TextExtractor._format_content_for_markdown(
+                current_content
+            )
+            chapters.append(
+                {
+                    "title": current_chapter,
+                    "content": formatted_content,
+                    "chapter_number": len(chapters) + 1,
+                    "word_count": len(formatted_content.split()),
+                    "character_count": len(formatted_content),
+                }
+            )
+
+        # If no chapters were found, create a single chapter
+        if not chapters:
+            # Format the entire text for markdown compliance
+            formatted_text = TextExtractor._format_content_for_markdown(
+                text.split("\n")
+            )
+            chapters = [
+                {
+                    "title": "Full Text",
+                    "content": formatted_text,
+                    "chapter_number": 1,
+                    "word_count": len(formatted_text.split()),
+                    "character_count": len(formatted_text),
+                }
+            ]
+
+        return chapters

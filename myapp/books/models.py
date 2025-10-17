@@ -31,21 +31,8 @@ class SlugGeneratorMixin:
             .exists()
         ):
             return base_slug
-
-        # Use atomic transaction to prevent race conditions
-        with transaction.atomic():
-            # Try numbered suffixes first (more user-friendly)
-            for counter in range(1, 100):
-                candidate_slug = f"{base_slug}-{counter}"
-                if (
-                    not model_class.objects.filter(slug=candidate_slug, **filter_kwargs)
-                    .exclude(pk=self.pk)
-                    .exists()
-                ):
-                    return candidate_slug
-            else:
-                # Fallback to UUID if too many conflicts
-                return f"{base_slug}-{uuid.uuid4().hex[:8]}"
+        # If not, include uuid in slug
+        return f"{base_slug}-{uuid.uuid4().hex[:8]}"
 
 
 class Language(TimeStampedModel):
@@ -57,12 +44,68 @@ class Language(TimeStampedModel):
         choices=CountUnit.choices,
         default=CountUnit.WORDS,
     )
-    wpm = models.PositiveSmallIntegerField(
-        default=400, help_text="Reading speed words per minute"
-    )
+    wpm = models.PositiveSmallIntegerField(default=400, help_text="Reading speed")
 
     def __str__(self):
         return self.name
+
+
+class Genre(TimeStampedModel):
+    """Genre/category for books"""
+
+    name = models.CharField(max_length=50, unique=True)
+    slug = models.SlugField(max_length=50, unique=True)
+    description = models.TextField(blank=True)
+    translations = models.JSONField(default=dict, blank=True)
+    # translations = {
+    #     "zh": {"name": "修仙", "description": "修仙小说..."},
+    #     "en": {"name": "Xianxia", "description": "Cultivation novels..."}
+    # }
+
+    def __str__(self):
+        return f"{self.name}"
+
+    def save(self, *args, **kwargs):
+        self.slug = slugify(self.name)
+        super().save(*args, **kwargs)
+
+    def get_localized_name(self, language_code):
+        if language_code in self.translations:
+            return self.translations[language_code].get("name", self.name)
+        return self.name
+
+    def get_localized_description(self, language_code):
+        if language_code in self.translations:
+            return self.translations[language_code].get("description", self.description)
+        return self.description
+
+
+class BookGenre(TimeStampedModel):
+    """Through model for ordered book-genre relationship"""
+
+    bookmaster = models.ForeignKey(
+        "BookMaster",
+        on_delete=models.CASCADE,
+        related_name="book_genres",
+    )
+    genre = models.ForeignKey(
+        "Genre",
+        on_delete=models.CASCADE,
+        related_name="book_genres",
+    )
+    order = models.PositiveSmallIntegerField(
+        default=0, help_text="Display order for this genre (lower = first)"
+    )
+
+    class Meta:
+        ordering = ["order", "id"]
+        unique_together = ["bookmaster", "genre"]
+        indexes = [
+            models.Index(fields=["bookmaster", "order"]),
+        ]
+
+    def __str__(self):
+        return f"{self.bookmaster.canonical_title} - {self.genre.name} (order: {self.order})"
 
 
 class BookMaster(TimeStampedModel):
@@ -73,7 +116,7 @@ class BookMaster(TimeStampedModel):
         upload_to="book_covers/masters/",
         blank=True,
         null=True,
-        help_text="Default cover image for all language versions of this book",
+        help_text="Default cover image for all language versions",
     )
     owner = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -89,12 +132,20 @@ class BookMaster(TimeStampedModel):
         blank=True,
         related_name="original_books",
     )
+    genres = models.ManyToManyField(
+        "Genre",
+        through="BookGenre",
+        related_name="bookmasters",
+        blank=True,
+        help_text="Book genres/categories",
+    )
 
     class Meta:
-        ordering = ["canonical_title"]
+        ordering = ["-created_at"]
         indexes = [
             models.Index(fields=["canonical_title"]),
             models.Index(fields=["owner"]),
+            models.Index(fields=["created_at"]),
         ]
 
     def __str__(self):
@@ -134,13 +185,20 @@ class Book(TimeStampedModel, SlugGeneratorMixin):
         help_text="Cover image for the book",
     )
     bookmaster = models.ForeignKey(
-        BookMaster, on_delete=models.CASCADE, related_name="books"
+        BookMaster,
+        on_delete=models.CASCADE,
+        related_name="books",
     )
     language = models.ForeignKey(
-        Language, on_delete=models.SET_NULL, null=True, blank=True
+        Language,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="books",
     )
     is_public = models.BooleanField(
-        default=False, help_text="Whether this book is visible to readers"
+        default=False,
+        help_text="Whether visible to readers",
     )
     progress = models.CharField(
         max_length=20,
@@ -151,8 +209,10 @@ class Book(TimeStampedModel, SlugGeneratorMixin):
 
     # Simple metadata
     total_chapters = models.PositiveIntegerField(default=0)
-    total_words = models.PositiveIntegerField(default=0)  # for space seperated language
-    total_characters = models.PositiveIntegerField(default=0)  # for non-space-seperated
+    total_words = models.PositiveIntegerField(default=0)  # for space seperated text
+    total_characters = models.PositiveIntegerField(
+        default=0
+    )  # for non-space-seperated text
 
     class Meta:
         ordering = ["-created_at"]
@@ -191,25 +251,18 @@ class Book(TimeStampedModel, SlugGeneratorMixin):
         if not self.language or not self.language.wpm:
             return 0
 
-        effective_count = self.effective_count
-        if effective_count == 0:
+        if self.effective_count == 0:
             return 0
-
         # Convert to minutes, rounding up to nearest minute
         import math
 
-        return math.ceil(effective_count / self.language.wpm)
+        return math.ceil(self.effective_count / self.language.wpm)
 
     @property
     def effective_cover_image(self):
         if self.cover_image:
             return self.cover_image.url
-        elif self.bookmaster.cover_image:
-            return self.bookmaster.cover_image.url
-        else:
-            from django.templatetags.static import static
-
-            return static("books/images/default_book_cover.png")
+        return self.bookmaster.effective_cover_image
 
 
 class ChapterMaster(TimeStampedModel):
@@ -217,7 +270,9 @@ class ChapterMaster(TimeStampedModel):
 
     canonical_title = models.CharField(max_length=255)
     bookmaster = models.ForeignKey(
-        BookMaster, on_delete=models.CASCADE, related_name="chaptermasters"
+        BookMaster,
+        on_delete=models.CASCADE,
+        related_name="chaptermasters",
     )
     chapter_number = models.PositiveIntegerField()
 
@@ -238,26 +293,38 @@ class Chapter(TimeStampedModel, SlugGeneratorMixin):
 
     title = models.CharField(max_length=255)
     slug = models.CharField(
-        max_length=255, blank=True, validators=[unicode_slug_validator]
+        max_length=255,
+        blank=True,
+        validators=[unicode_slug_validator],
     )
     chaptermaster = models.ForeignKey(
-        ChapterMaster, on_delete=models.CASCADE, related_name="chapters"
+        ChapterMaster,
+        on_delete=models.CASCADE,
+        related_name="chapters",
     )
-    book = models.ForeignKey(Book, on_delete=models.CASCADE, related_name="chapters")
+    book = models.ForeignKey(
+        Book,
+        on_delete=models.CASCADE,
+        related_name="chapters",
+    )
 
     # Simple content storage
-    content = models.TextField(help_text="Chapter content as plain text")
-    excerpt = models.TextField(max_length=1000, blank=True)
+    content = models.TextField(help_text="Chapter content")
+    excerpt = models.TextField(
+        max_length=1000,
+        blank=True,
+    )
     translator_notes = models.TextField(
         blank=True,
-        help_text="Notes from the translator about assumptions, clarifications, or translation challenges"
+        help_text="Notes about assumptions, clarifications, or challenges",
     )
     word_count = models.PositiveIntegerField(default=0)
     character_count = models.PositiveIntegerField(default=0)
 
     # Simple publishing
     is_public = models.BooleanField(
-        default=False, help_text="Whether this chapter is visible to readers"
+        default=False,
+        help_text="Whether visible to readers",
     )
     progress = models.CharField(
         max_length=20,
@@ -267,7 +334,7 @@ class Chapter(TimeStampedModel, SlugGeneratorMixin):
     scheduled_at = models.DateTimeField(
         null=True,
         blank=True,
-        help_text="When this chapter should be automatically published",
+        help_text="When to publish this chapter automatically",
     )
     published_at = models.DateTimeField(null=True, blank=True)
 
@@ -286,10 +353,10 @@ class Chapter(TimeStampedModel, SlugGeneratorMixin):
     def save(self, *args, **kwargs):
         base_slug = slugify(self.title, allow_unicode=True)
         self.slug = self.generate_unique_slug(base_slug, {"book": self.book})
-        # Update word count
+
+        # Update Metadata and excerpt
         if self.content:
-            self.word_count = len(self.content.split())
-            self.character_count = len(self.content)
+            self.update_metadata()
             self.generate_excerpt()
 
         # Track if this is a new chapter or content changed
@@ -306,30 +373,36 @@ class Chapter(TimeStampedModel, SlugGeneratorMixin):
         super().save(*args, **kwargs)
 
         # Auto-trigger entity extraction for original language chapters
-        if (is_new or content_changed) and self.content:
-            # Only extract for original language chapters to avoid duplicates
-            if self.book.language == self.book.bookmaster.original_language:
-                self._trigger_entity_extraction()
+        if (
+            (is_new or content_changed)
+            and self.content
+            and self.book.language == self.book.bookmaster.original_language
+        ):
+            self._trigger_entity_extraction()
 
     def _trigger_entity_extraction(self):
         """Trigger entity extraction for this chapter"""
         try:
-            # ChapterContext is defined later in this same file, so we can reference it directly
             context, created = ChapterContext.objects.get_or_create(chapter=self)
             # Only extract if not already done or content is empty
             if created or not context.key_terms:
-                context.analyze_with_ai()
+                context.analyze_chapter()
         except Exception as e:
             # Log error but don't break the save process
             import logging
+
             logger = logging.getLogger("books")
-            logger.error(f"Failed to trigger entity extraction for chapter {self.id}: {e}")
+            logger.error(
+                f"Failed to trigger entity extraction for chapter {self.id}: {e}"
+            )
+
+    def update_metadata(self):
+        self.word_count = len(self.content.split())
+        self.character_count = len(self.content)
 
     def generate_excerpt(self, max_length=200):
         """Generate excerpt from content"""
-        if not self.content:
-            self.excerpt = ""
-        elif len(self.content) <= max_length:
+        if len(self.content) <= max_length:
             self.excerpt = self.content
         else:
             self.excerpt = self.content[:max_length].rsplit(None, 1)[0] + "..."
@@ -372,15 +445,23 @@ class Chapter(TimeStampedModel, SlugGeneratorMixin):
 class TranslationJob(TimeStampedModel):
     """Simple job tracking for async translations"""
 
-    chapter = models.ForeignKey(Chapter, on_delete=models.CASCADE)
-    target_language = models.ForeignKey(Language, on_delete=models.CASCADE)
+    chapter = models.ForeignKey(
+        Chapter,
+        on_delete=models.CASCADE,
+    )
+    target_language = models.ForeignKey(
+        Language,
+        on_delete=models.CASCADE,
+    )
     status = models.CharField(
         max_length=20,
         choices=ProcessingStatus.choices,
         default=ProcessingStatus.PENDING,
     )
     created_by = models.ForeignKey(
-        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
     )
     error_message = models.TextField(blank=True)
 
@@ -391,16 +472,27 @@ class TranslationJob(TimeStampedModel):
         ]
 
     def __str__(self):
-        return f"Translation of {self.chapter.title} to {self.target_language.name}"
+        return f"Translation of {self.chapter.title} (#{self.chapter.pk}) to {self.target_language.name}"
 
 
 class BookEntity(TimeStampedModel):
 
-    bookmaster = models.ForeignKey("BookMaster", on_delete=models.CASCADE)
-    entity_type = models.CharField(max_length=20, choices=EntityType.choices)
+    bookmaster = models.ForeignKey(
+        BookMaster,
+        on_delete=models.CASCADE,
+        related_name="entities",
+    )
+    entity_type = models.CharField(
+        max_length=20,
+        choices=EntityType.choices,
+    )
     source_name = models.CharField(max_length=255)
     translations = models.JSONField(default=dict)  # {"en": "Li Wei", "es": "Li Wei"}
-    first_chapter = models.ForeignKey("Chapter", on_delete=models.CASCADE)
+    first_chapter = models.ForeignKey(
+        Chapter,
+        on_delete=models.CASCADE,
+        related_name="entities",
+    )
 
     class Meta:
         unique_together = ["bookmaster", "source_name"]
@@ -409,7 +501,7 @@ class BookEntity(TimeStampedModel):
         ]
 
     def get_translation(self, language_code):
-        return self.translations.get(language_code, self.source_name)
+        return self.translations.get(language_code)
 
     def set_translation(self, language_code, translated_name):
         self.translations[language_code] = translated_name
@@ -419,7 +511,11 @@ class BookEntity(TimeStampedModel):
 class ChapterContext(TimeStampedModel):
     """Chapter context and entity analysis for translation consistency"""
 
-    chapter = models.OneToOneField("Chapter", on_delete=models.CASCADE)
+    chapter = models.OneToOneField(
+        Chapter,
+        on_delete=models.CASCADE,
+        related_name="context",
+    )
     key_terms = models.JSONField(
         default=dict
     )  # {"characters": [], "places": [], "terms": []}
@@ -431,9 +527,9 @@ class ChapterContext(TimeStampedModel):
         ]
 
     def __str__(self):
-        return f"Context for {self.chapter.title}"
+        return f"Context for {self.chapter.title} ({self.chapter.book.title})"
 
-    def analyze_with_ai(self):
+    def analyze_chapter(self):
         """Use AI to extract entities and summary from chapter content"""
         from translation.services import EntityExtractionService
 
@@ -496,23 +592,7 @@ class ChapterContext(TimeStampedModel):
             "characters": [],
             "places": [],
             "terms": [],
-            "summary": content[:200] + "..." if len(content) > 200 else content,
+            "summary": (
+                "FALLBACK" + content[:200] + "..." if len(content) > 200 else content
+            ),
         }
-
-    def get_consistency_context(self, target_language_code):
-        """Get translation consistency data for this chapter"""
-        context_data = {
-            "known_translations": {},
-            "key_terms": self.key_terms,
-            "summary": self.summary,
-        }
-
-        # Get all entities for this book
-        entities = BookEntity.objects.filter(bookmaster=self.chapter.book.bookmaster)
-
-        for entity in entities:
-            translation = entity.get_translation(target_language_code)
-            if translation != entity.source_name:
-                context_data["known_translations"][entity.source_name] = translation
-
-        return context_data

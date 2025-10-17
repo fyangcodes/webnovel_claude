@@ -38,7 +38,7 @@ DEBUG = os.getenv("DJANGO_DEBUG", "FALSE") == "True"
 
 ALLOWED_HOSTS = os.getenv("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
 
-CSRF_TRUSTED_ORIGINS = [f"https://{os.getenv("RAILWAY_PUBLIC_DOMAIN")}"]
+CSRF_TRUSTED_ORIGINS = [f"https://{os.getenv('RAILWAY_PUBLIC_DOMAIN')}"]
 
 # Application definition
 
