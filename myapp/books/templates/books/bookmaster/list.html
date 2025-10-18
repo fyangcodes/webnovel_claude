@@ -65,6 +65,22 @@
     padding-top: 0.75rem;
 }
 
+.genre-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+    margin-top: 0.5rem;
+}
+
+.genre-badge {
+    font-size: 0.7rem;
+    padding: 0.2rem 0.5rem;
+    background-color: #e7f3ff;
+    color: #0066cc;
+    border-radius: 0.25rem;
+    white-space: nowrap;
+}
+
 .card-actions {
     margin-top: 0.5rem;
     display: flex;
@@ -131,16 +147,25 @@
                             <h5 class="card-title text-dark book-title-link">
                                 {{ book_info.bookmaster.canonical_title }}
                             </h5>
+
+                            {% if book_info.genres %}
+                            <div class="genre-tags mb-2">
+                                {% for genre in book_info.genres %}
+                                <span class="genre-badge">{{ genre.name }}</span>
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+
                             <div class="book-stats mt-auto">
                                 <div class="mb-2">
                                     <small class="text-muted">
-                                        <i class="fas fa-file-alt"></i> 
+                                        <i class="fas fa-file-alt"></i>
                                         {{ book_info.chapter_count }} chapter{{ book_info.chapter_count|pluralize }}
                                     </small>
                                 </div>
                                 <div class="mb-3">
                                     <small class="text-muted">
-                                        <i class="fas fa-language"></i> 
+                                        <i class="fas fa-language"></i>
                                         {{ book_info.language_count }} language{{ book_info.language_count|pluralize }}
                                         {% if book_info.languages %}
                                             <br>

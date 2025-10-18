@@ -36,24 +36,24 @@
                 <div class="row">
                     <div class="col-md-4">
                         <small class="text-muted">
-                            <strong>Author:</strong> 
+                            <strong>Author:</strong>
                             {% if book.author %}
                                 {{ book.author.localized_name }}
                             {% else %}
                                 Unknown
                             {% endif %}<br>
-                            <strong>Language:</strong> 
+                            <strong>Language:</strong>
                             {% if book.language %}
                                 {{ book.language.name }}
                             {% else %}
                                 Not specified
-                            {% endif %}                         
+                            {% endif %}
                         </small>
                     </div>
                     <div class="col-md-4">
                         <small class="text-muted">
-                            <strong>Total Chapters:</strong> {{ book.total_chapters }}<br>  
-                            <strong>Total Words:</strong> {{ book.effective_count|default:"0" }}                          
+                            <strong>Total Chapters:</strong> {{ book.total_chapters }}<br>
+                            <strong>Total Words:</strong> {{ book.effective_count|default:"0" }}
                         </small>
                     </div>
                     <div class="col-md-4">
@@ -63,6 +63,20 @@
                         </small>
                     </div>
                 </div>
+                {% if genres %}
+                <div class="row mt-3">
+                    <div class="col-12">
+                        <small class="text-muted">
+                            <strong>Genres:</strong>
+                        </small>
+                        <div class="mt-1">
+                            {% for genre_info in genres %}
+                            <span class="badge bg-primary me-1">{{ genre_info.localized_name }}</span>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
                 {% if book.description %}
                     <br>
                     <p class="card-text">{{ book.description }}</p>

@@ -3,7 +3,7 @@ from django.views.generic import ListView, DetailView
 from django.http import Http404
 from django.core.paginator import Paginator
 
-from books.models import Book, Chapter, Language
+from books.models import Book, Chapter, Language, Genre
 
 
 class BookListView(ListView):
@@ -30,6 +30,7 @@ class BookListView(ListView):
         language_code = self.kwargs.get("language_code")
         context["current_language"] = get_object_or_404(Language, code=language_code)
         context["languages"] = Language.objects.all().order_by("name")
+        context["genres"] = Genre.objects.all().order_by("name")
 
         # Add published chapters info for each book
         books_with_info = []

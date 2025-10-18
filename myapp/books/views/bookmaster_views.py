@@ -35,7 +35,9 @@ class BookMasterListView(LoginRequiredMixin, ListView):
 
     def get_queryset(self):
         return BookMaster.objects.filter(owner=self.request.user).prefetch_related(
-            "chaptermasters", "books__language"
+            "chaptermasters",
+            "books__language",
+            "book_genres__genre"
         )
 
     def get_context_data(self, **kwargs):
@@ -49,6 +51,10 @@ class BookMasterListView(LoginRequiredMixin, ListView):
                 bookmaster.books.values_list("language__name", flat=True).distinct()
             )
             language_count = len(languages)
+            # Get genres in order
+            genres = [
+                bg.genre for bg in bookmaster.book_genres.all()
+            ]
 
             bookmasters_with_info.append(
                 {
@@ -56,6 +62,7 @@ class BookMasterListView(LoginRequiredMixin, ListView):
                     "chapter_count": chapter_count,
                     "language_count": language_count,
                     "languages": languages,
+                    "genres": genres,
                 }
             )
 

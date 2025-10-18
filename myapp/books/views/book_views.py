@@ -79,7 +79,11 @@ class BookDetailView(LoginRequiredMixin, DetailView):
     context_object_name = "book"
 
     def get_queryset(self):
-        return Book.objects.filter(bookmaster__owner=self.request.user)
+        return (
+            Book.objects.filter(bookmaster__owner=self.request.user)
+            .select_related("bookmaster", "language")
+            .prefetch_related("bookmaster__book_genres__genre")
+        )
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -99,6 +103,19 @@ class BookDetailView(LoginRequiredMixin, DetailView):
             "books_admin:chapter_create", kwargs={"book_pk": self.object.pk}
         )
         context["bookmaster"] = self.object.bookmaster
+
+        # Add genres with localized names
+        language_code = self.object.language.code if self.object.language else "en"
+        genres_with_localized = []
+        for bg in self.object.bookmaster.book_genres.all():
+            genres_with_localized.append(
+                {
+                    "genre": bg.genre,
+                    "localized_name": bg.genre.get_localized_name(language_code),
+                    "order": bg.order,
+                }
+            )
+        context["genres"] = genres_with_localized
 
         # Add all available languages for translation modal
         context["all_languages"] = Language.objects.all().order_by("name")
@@ -175,7 +192,9 @@ class BookFileUploadView(LoginRequiredMixin, FormView):
 
         try:
             # Extract text and chapters using the utility function
-            result = TextExtractor.extract_text_from_file(uploaded_file, include_chapters=True)
+            result = TextExtractor.extract_text_from_file(
+                uploaded_file, include_chapters=True
+            )
 
             if auto_create_chapters and result.get("chapters"):
                 created_count = self._create_chapters_from_upload(
@@ -285,5 +304,3 @@ class BookFileUploadView(LoginRequiredMixin, FormView):
         # Update book metadata after all chapters are created
         book.update_metadata()
         return created_chapters
-
-

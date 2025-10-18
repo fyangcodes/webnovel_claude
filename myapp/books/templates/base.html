@@ -29,8 +29,13 @@
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav me-auto">
                     <li class="nav-item">
-                        <a class="nav-link" href="/en/">
+                        <a class="nav-link" href="{% url 'books_reader:language_redirect' %}">
                             <i class="fas fa-book-reader"></i> Frontend
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'admin:index' %}">
+                            <i class="fas fa-user-tie"></i> Admin
                         </a>
                     </li>
                 </ul>

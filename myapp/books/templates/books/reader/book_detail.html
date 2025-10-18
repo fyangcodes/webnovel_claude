@@ -3,8 +3,15 @@
 
 {% block title %}{{ book.title }}{% endblock %}
 
-{% block breadcrumb_items %}
-<li class="breadcrumb-item active">{{ book.title }}</li>
+{% block breadcrumb_check %}
+<nav aria-label="breadcrumb" class="d-none d-md-flex align-items-center">
+    <span class="breadcrumb-separator">›</span>
+    <ol class="breadcrumb mb-0">
+        {% block breadcrumb_items %}
+        <li class="breadcrumb-item book-title active">{{ book.title }}</li>
+        {% endblock %}
+    </ol>
+</nav>
 {% endblock %}
 
 {% block content %}
