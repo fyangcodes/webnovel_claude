@@ -1,0 +1,417 @@
+/* ===========================
+   Reader App Styles
+   =========================== */
+
+/* Base Styles */
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    line-height: 1.6;
+    color: #333;
+    padding-top: 58px; /* Adjust for fixed navbar height */
+}
+
+/* ===========================
+   Navbar Styles
+   =========================== */
+.navbar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 1030;
+    transition: transform 0.3s ease-in-out;
+}
+
+.navbar.navbar-hidden {
+    transform: translateY(-100%);
+}
+
+.navbar-brand {
+    font-weight: bold;
+    color: #6c5ce7 !important;
+}
+
+.navbar-brand img {
+    transition: filter 0.2s ease;
+}
+
+/* ===========================
+   Breadcrumb in Navbar
+   =========================== */
+.navbar .breadcrumb {
+    background-color: transparent;
+    padding: 0;
+    margin: 0;
+    font-size: 1.1rem;
+    display: flex;
+    align-items: center;
+}
+
+.navbar .breadcrumb-item {
+    display: flex;
+    align-items: center;
+}
+
+.navbar .breadcrumb-item + .breadcrumb-item::before {
+    content: "›";
+    color: #999;
+    padding: 0 0.75rem;
+    font-size: 1.3rem;
+    font-weight: 300;
+}
+
+/* Book title - orange like "we" in logo - always orange */
+.navbar .breadcrumb-item.book-title a,
+.navbar .breadcrumb-item.book-title.active {
+    color: #ff6b35;
+    text-decoration: none;
+    font-weight: 700;
+}
+
+.navbar .breadcrumb-item.book-title a:hover {
+    color: #ff8555;
+    text-decoration: none;
+}
+
+/* Chapter title - black like "readly" in logo */
+.navbar .breadcrumb-item.chapter-title,
+.navbar .breadcrumb-item.chapter-title.active {
+    color: #333;
+    font-weight: 700;
+}
+
+/* Logo separator before breadcrumb */
+.breadcrumb-separator {
+    color: #999;
+    padding: 0 0.75rem;
+    font-size: 1.3rem;
+    font-weight: 300;
+}
+
+/* ===========================
+   Genres Dropdown
+   =========================== */
+.genres-btn {
+    background-color: transparent;
+    border: none;
+    color: #ff6b35;
+    font-size: 1.3rem;
+    padding: 0.375rem 0.5rem;
+    transition: all 0.2s ease;
+}
+
+.genres-btn:hover,
+.genres-btn:focus,
+.genres-btn:active {
+    color: #ff8555;
+    background-color: rgba(255, 107, 53, 0.1);
+    border-radius: 4px;
+    border: none;
+    box-shadow: none;
+    outline: none;
+}
+
+/* Icon change on hover */
+.genres-btn .fa-bars-staggered {
+    display: none;
+}
+
+.genres-btn:hover .fa-bars-staggered {
+    display: inline-block;
+}
+
+.genres-btn:hover .fa-bars {
+    display: none;
+}
+
+/* Hover to activate dropdown - keeps open when moving to menu */
+.genres-dropdown:hover .dropdown-menu {
+    display: block;
+}
+
+.genres-dropdown .dropdown-menu {
+    margin-top: 0;
+    border-top-left-radius: 0;
+    border-top-right-radius: 0;
+}
+
+/* Ensure smooth transition between button and menu */
+.genres-dropdown {
+    position: relative;
+}
+
+.genres-dropdown .dropdown-menu {
+    top: 100%;
+    left: 0;
+}
+
+/* ===========================
+   Reading Content
+   =========================== */
+.reading-content {
+    max-width: 800px;
+    margin: 0 auto;
+    font-size: 1.1rem;
+    line-height: 1.8;
+}
+
+/* ===========================
+   Book Cards
+   =========================== */
+.book-card {
+    transition: all 0.3s ease;
+    border-radius: 16px;
+    overflow: hidden;
+    min-height: 320px;
+}
+
+.book-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 16px 40px rgba(0,0,0,0.15) !important;
+}
+
+.book-card .card-body {
+    background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+}
+
+.book-card img {
+    transition: transform 0.3s ease;
+    border-top-left-radius: 16px;
+    border-bottom-left-radius: 16px;
+}
+
+.book-card:hover img {
+    transform: scale(1.08);
+}
+
+.book-card .card-title {
+    font-size: 1.4rem;
+    line-height: 1.3;
+    font-weight: 700;
+}
+
+.book-card .card-text {
+    font-size: 0.95rem;
+    line-height: 1.6;
+}
+
+/* ===========================
+   Theme and Language Switcher
+   =========================== */
+.btn-theme,
+.btn-lang {
+    background-color: transparent;
+    border: none;
+    color: #6c757d;
+    font-size: 1.1rem;
+    padding: 0.375rem 0.75rem;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+}
+
+.btn-theme:hover,
+.btn-theme:focus,
+.btn-theme:active,
+.btn-lang:hover,
+.btn-lang:focus,
+.btn-lang:active {
+    color: #495057;
+    background-color: rgba(108, 117, 125, 0.1);
+    border-radius: 4px;
+    border: none;
+    box-shadow: none;
+    outline: none;
+}
+
+.language-switcher .dropdown-menu {
+    min-width: 150px;
+}
+
+/* ===========================
+   Chapter Navigation
+   =========================== */
+.chapter-nav {
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 1rem;
+}
+
+.progress-indicator {
+    font-size: 0.9rem;
+    color: #6c757d;
+}
+
+/* ===========================
+   Dark Mode Styles
+   =========================== */
+[data-theme="dark"] {
+    background-color: #2b2b2b;
+    color: #d4d4d4;
+}
+
+[data-theme="dark"] body {
+    background-color: #2b2b2b;
+    color: #d4d4d4;
+}
+
+/* Navbar Dark Mode */
+[data-theme="dark"] .navbar {
+    background-color: #3a3a3a !important;
+    border-bottom: 1px solid #555;
+}
+
+[data-theme="dark"] .navbar-brand {
+    color: #9d8ff7 !important;
+}
+
+[data-theme="dark"] .navbar-brand img {
+    filter: brightness(0) saturate(100%) invert(58%) sepia(85%) saturate(2042%) hue-rotate(336deg) brightness(102%) contrast(101%);
+}
+
+[data-theme="dark"] .breadcrumb-item + .breadcrumb-item::before,
+[data-theme="dark"] .breadcrumb-separator {
+    color: #888;
+}
+
+[data-theme="dark"] .navbar .breadcrumb-item.book-title a,
+[data-theme="dark"] .navbar .breadcrumb-item.book-title.active {
+    color: #ff9670;
+}
+
+[data-theme="dark"] .navbar .breadcrumb-item.chapter-title,
+[data-theme="dark"] .navbar .breadcrumb-item.chapter-title.active {
+    color: #d4d4d4;
+}
+
+/* Switcher Buttons Dark Mode */
+[data-theme="dark"] .btn-lang,
+[data-theme="dark"] .btn-theme {
+    color: #aaa;
+}
+
+[data-theme="dark"] .btn-lang:hover,
+[data-theme="dark"] .btn-theme:hover {
+    color: #d4d4d4;
+    background-color: rgba(255, 255, 255, 0.08);
+}
+
+/* Dropdowns Dark Mode */
+[data-theme="dark"] .dropdown-menu {
+    background-color: #353535;
+    border-color: #4a4a4a;
+}
+
+[data-theme="dark"] .dropdown-item {
+    color: #d4d4d4;
+}
+
+[data-theme="dark"] .dropdown-item:hover {
+    background-color: #454545;
+    color: #fff;
+}
+
+[data-theme="dark"] .dropdown-item.active {
+    background-color: #7c6fd7;
+}
+
+/* Book Cards Dark Mode */
+[data-theme="dark"] .book-card {
+    background-color: #353535;
+    border-color: #4a4a4a;
+}
+
+[data-theme="dark"] .book-card .card-body {
+    background: linear-gradient(135deg, #353535 0%, #303030 100%);
+}
+
+[data-theme="dark"] .book-card .card-title,
+[data-theme="dark"] .book-card .card-text {
+    color: #d4d4d4;
+}
+
+[data-theme="dark"] .book-card .card-title a,
+[data-theme="dark"] .book-card .text-dark {
+    color: #d4d4d4 !important;
+}
+
+[data-theme="dark"] .book-card .card-title a:hover {
+    color: #fff !important;
+}
+
+/* Chapter Navigation Dark Mode */
+[data-theme="dark"] .chapter-nav {
+    background: #353535;
+}
+
+[data-theme="dark"] .progress-indicator {
+    color: #aaa;
+}
+
+/* Footer Dark Mode */
+[data-theme="dark"] footer {
+    background-color: #353535 !important;
+    border-top: 1px solid #4a4a4a;
+}
+
+[data-theme="dark"] .text-muted {
+    color: #aaa !important;
+}
+
+/* Buttons Dark Mode */
+[data-theme="dark"] .btn-outline-primary {
+    color: #9d8ff7;
+    border-color: #9d8ff7;
+}
+
+[data-theme="dark"] .btn-outline-primary:hover {
+    background-color: #9d8ff7;
+    color: #fff;
+}
+
+[data-theme="dark"] .btn-outline-danger {
+    color: #ff8888;
+    border-color: #ff8888;
+}
+
+[data-theme="dark"] .btn-outline-danger:hover {
+    background-color: #ff8888;
+    color: #fff;
+}
+
+/* Genres Button Dark Mode */
+[data-theme="dark"] .genres-btn {
+    color: #ff9670;
+}
+
+[data-theme="dark"] .genres-btn:hover {
+    color: #ffad8c;
+    background-color: rgba(255, 150, 112, 0.1);
+}
+
+/* ===========================
+   Responsive Styles
+   =========================== */
+@media (max-width: 992px) {
+    .book-card {
+        min-height: 280px;
+    }
+    .book-card .card-title {
+        font-size: 1.2rem;
+    }
+}
+
+@media (max-width: 576px) {
+    .book-card {
+        min-height: 260px;
+    }
+    .book-card .card-title {
+        font-size: 1.1rem;
+    }
+    .book-card .card-text {
+        font-size: 0.9rem;
+    }
+}

@@ -45,6 +45,15 @@ class Language(TimeStampedModel):
         default=CountUnit.WORDS,
     )
     wpm = models.PositiveSmallIntegerField(default=400, help_text="Reading speed")
+    count_format_rules = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Number formatting rules. Example: {6: 'M', 3: 'K'} for English, {8: '亿', 4: '万'} for Chinese"
+    )
+    # count_format_rules format:
+    # Key: power of 10 (6 = million, 3 = thousand, 4 = 10k, 8 = 100M)
+    # Value: suffix string ('M', 'K', '万', '亿')
+    # Rules are applied in descending order of power
 
     def __str__(self):
         return self.name

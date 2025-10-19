@@ -1,5 +1,6 @@
 {% extends "reader/base.html" %}
 {% load humanize %}
+{% load books_extras %}
 
 {% block title %}{{ book.title }}{% endblock %}
 
@@ -33,7 +34,7 @@
                 </div>
                 <div>
                     <i class="fas fa-font"></i>
-                    <strong>{{ total_words|floatformat:0 }}</strong> words
+                    <strong>{{ total_words|natural_count:current_language.code }}</strong> words
                 </div>
                 <div>
                     <i class="fas fa-circle-check"></i>

@@ -5,9 +5,20 @@ from .models import Language, Genre, BookGenre, BookMaster, Book, ChapterMaster,
 
 @admin.register(Language)
 class LanguageAdmin(admin.ModelAdmin):
-    list_display = ["name", "code", "local_name"]
+    list_display = ["name", "code", "local_name", "count_units", "wpm"]
     search_fields = ["name", "code", "local_name"]
     ordering = ["name"]
+
+    fieldsets = (
+        (None, {
+            'fields': ('code', 'name', 'local_name', 'count_units', 'wpm')
+        }),
+        ('Count Formatting', {
+            'fields': ('count_format_rules',),
+            'description': 'JSON field for number formatting rules. Example: {"6": "M", "3": "K"} for English or {"8": "亿", "4": "万"} for Chinese. Key is power of 10, value is the suffix.',
+            'classes': ('collapse',)
+        }),
+    )
 
 
 @admin.register(Genre)

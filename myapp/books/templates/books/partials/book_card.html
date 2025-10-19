@@ -1,4 +1,5 @@
 {% load static %}
+{% load books_extras %}
 
 <div class="col-md-6 col-lg-4 mb-4">
     <div class="card h-100">
@@ -26,7 +27,7 @@
                 <small class="text-muted">
                     Created: {{ book.created_at|date:"M d, Y" }}<br>
                     Chapters: {{ book.total_chapters }}<br>
-                    Words: {{ book.total_words|default:"0" }}
+                    Words: {{ book.total_words|default:"0"|natural_count:book.language.code }}
                 </small>
             </p>
         </div>

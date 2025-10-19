@@ -70,7 +70,7 @@
                                 <a href="{% url 'reader:genre_book_list' current_language.code genre.slug %}"
                                    class="badge bg-primary bg-opacity-75 text-decoration-none"
                                    style="font-size: 0.8rem; font-weight: 500;">
-                                    {{ genre.name }}
+                                    {{ genre.localized_name }}
                                 </a>
                                 {% endfor %}
                                 {% if book.bookmaster.genres.count > 3 %}
