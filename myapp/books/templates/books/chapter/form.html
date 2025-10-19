@@ -46,7 +46,7 @@
                             <i class="fas fa-save"></i> 
                             {% if is_translation %}Create Translation{% elif chapter %}Update{% else %}Create{% endif %} Chapter
                         </button>
-                        <a href="{% if is_translation %}{% url 'books_admin:chapter_detail' original_chapter.id %}{% else %}{% url 'books_admin:book_detail' book.id %}{% endif %}" class="btn btn-outline-secondary">
+                        <a href="{% if is_translation %}{% url 'books:chapter_detail' original_chapter.id %}{% else %}{% url 'books:book_detail' book.id %}{% endif %}" class="btn btn-outline-secondary">
                             <i class="fas fa-times"></i> Cancel
                         </a>
                     </div>

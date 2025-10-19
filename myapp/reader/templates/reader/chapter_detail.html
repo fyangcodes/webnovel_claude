@@ -1,4 +1,4 @@
-{% extends "books/reader/base.html" %}
+{% extends "reader/base.html" %}
 {% load books_extras %}
 {% load humanize %}
 
@@ -10,7 +10,7 @@
     <ol class="breadcrumb mb-0">
         {% block breadcrumb_items %}
         <li class="breadcrumb-item book-title">
-            <a href="{% url 'books_reader:book_detail' current_language.code book.slug %}">{{ book.title }}</a>
+            <a href="{% url 'reader:book_detail' current_language.code book.slug %}">{{ book.title }}</a>
         </li>
         <li class="breadcrumb-item chapter-title active">{{ chapter.title }}</li>
         {% endblock %}
@@ -35,6 +35,19 @@
         border-bottom: 2px solid #e9ecef;
         padding-bottom: 1rem;
         margin-bottom: 2rem;
+    }
+    /* Dark mode styles */
+    [data-theme="dark"] .chapter-content {
+        color: #d4d4d4;
+    }
+    [data-theme="dark"] .chapter-header {
+        border-bottom-color: #4a4a4a;
+    }
+    [data-theme="dark"] .chapter-header h1 {
+        color: #d4d4d4;
+    }
+    [data-theme="dark"] .bg-light {
+        background-color: #353535 !important;
     }
     .reading-progress-bar {
         position: fixed;
@@ -95,7 +108,7 @@
         <div class="chapter-nav mt-5 pt-4">
             {% if next_chapter %}
             <div class="d-grid">
-                <a href="{% url 'books_reader:chapter_detail' current_language.code book.slug next_chapter.slug %}"
+                <a href="{% url 'reader:chapter_detail' current_language.code book.slug next_chapter.slug %}"
                    class="btn btn-primary btn-lg">
                     Next Chapter →
                 </a>
@@ -111,7 +124,7 @@
         <div class="text-center mt-5 p-4 bg-light rounded">
             <h5 class="text-muted">🎉 You've reached the end!</h5>
             <p class="text-muted mb-3">Thanks for reading {{ book.title }}!</p>
-            <a href="{% url 'books_reader:book_list' current_language.code %}"
+            <a href="{% url 'reader:book_list' current_language.code %}"
                class="btn btn-primary">
                 Explore More Books
             </a>

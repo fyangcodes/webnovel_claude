@@ -32,11 +32,11 @@
         </div>
         <div class="card-footer bg-transparent">
             <div class="btn-group w-100" role="group">
-                <a href="{% url 'books_admin:book_detail' book.id %}" 
+                <a href="{% url 'books:book_detail' book.id %}" 
                    class="btn btn-outline-primary">
                     View Details
                 </a>
-                <a href="{% url 'books_admin:book_delete' book.id %}" 
+                <a href="{% url 'books:book_delete' book.id %}" 
                    class="btn btn-outline-danger">
                     Delete
                 </a>

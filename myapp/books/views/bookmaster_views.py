@@ -24,7 +24,7 @@ class BookMasterCreateView(LoginRequiredMixin, CreateView):
 
     def get_success_url(self):
         return reverse_lazy(
-            "books_admin:bookmaster_detail", kwargs={"pk": self.object.pk}
+            "books:bookmaster_detail", kwargs={"pk": self.object.pk}
         )
 
 
@@ -141,7 +141,7 @@ class BookMasterUpdateView(LoginRequiredMixin, UpdateView):
 
     def get_success_url(self):
         return reverse_lazy(
-            "books_admin:bookmaster_detail", kwargs={"pk": self.object.pk}
+            "books:bookmaster_detail", kwargs={"pk": self.object.pk}
         )
 
     def get_context_data(self, **kwargs):
@@ -154,7 +154,7 @@ class BookMasterDeleteView(LoginRequiredMixin, DeleteView):
     model = BookMaster
     template_name = "books/bookmaster/confirm_delete.html"
     context_object_name = "bookmaster"
-    success_url = reverse_lazy("books_admin:bookmaster_list")
+    success_url = reverse_lazy("books:bookmaster_list")
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)

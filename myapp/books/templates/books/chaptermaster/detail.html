@@ -8,13 +8,13 @@
             <h5 class="text-muted">Chapter {{ chaptermaster.chapter_number }} of {{ chaptermaster.bookmaster.canonical_title }}</h5>
         </div>
         <div class="btn-group" role="group">
-            <a href="{% url 'books_admin:bookmaster_detail' chaptermaster.bookmaster.id %}" class="btn btn-outline-secondary">
+            <a href="{% url 'books:bookmaster_detail' chaptermaster.bookmaster.id %}" class="btn btn-outline-secondary">
                 <i class="fas fa-arrow-left"></i> Back to Book
             </a>
-            <a href="{% url 'books_admin:chaptermaster_update' chaptermaster.pk %}" class="btn btn-outline-primary">
+            <a href="{% url 'books:chaptermaster_update' chaptermaster.pk %}" class="btn btn-outline-primary">
                 <i class="fas fa-edit"></i> Edit
             </a>         
-            <a href="{% url 'books_admin:chaptermaster_delete' chaptermaster.pk %}" class="btn btn-outline-danger">
+            <a href="{% url 'books:chaptermaster_delete' chaptermaster.pk %}" class="btn btn-outline-danger">
                 <i class="fas fa-trash"></i> Delete
             </a>
         </div>
@@ -31,13 +31,13 @@
                 <ul class="list-group mb-3">
                     {% for chapter in chapters %}
                         <li class="list-group-item d-flex justify-content-between align-items-center">
-                            <a href="{% url 'books_admin:chapter_detail' chapter.id %}">
+                            <a href="{% url 'books:chapter_detail' chapter.id %}">
                                 <strong>#{{ chapter.chaptermaster.chapter_number }}:</strong> {{ chapter.title }} 
                                 ({{ chapter.book.language.name }})
                             </a>
                             <span>
-                                <a href="{% url 'books_admin:chapter_update' chapter.id %}" class="btn btn-sm btn-primary">Edit</a>
-                                <a href="{% url 'books_admin:chapter_delete' chapter.id %}" class="btn btn-sm btn-danger">Delete</a>
+                                <a href="{% url 'books:chapter_update' chapter.id %}" class="btn btn-sm btn-primary">Edit</a>
+                                <a href="{% url 'books:chapter_delete' chapter.id %}" class="btn btn-sm btn-danger">Delete</a>
                             </span>
                         </li>
                     {% empty %}
@@ -57,7 +57,7 @@
                             <span>{{ lang.name }}</span>
                             <span>
                                 {% if chapter_original %}
-                                    <form method="post" action="{% url 'books_admin:chapter_translate' chapter_id=chapter_original.id language_code=lang.code %}" class="translation-form" data-language="{{ lang.code }}" style="display:inline;">
+                                    <form method="post" action="{% url 'books:chapter_translate' chapter_id=chapter_original.id language_code=lang.code %}" class="translation-form" data-language="{{ lang.code }}" style="display:inline;">
                                         {% csrf_token %}
                                         <input type="hidden" name="language_code" value="{{ lang.code }}">
                                         <button type="submit" class="btn btn-sm btn-primary translate-btn">

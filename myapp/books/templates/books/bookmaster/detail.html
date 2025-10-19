@@ -9,13 +9,13 @@
             <h1>{{ bookmaster.canonical_title }}</h1>
         </div>
         <div class="btn-group" role="group">
-            <a href="{% url 'books_admin:bookmaster_list' %}" class="btn btn-outline-secondary">
+            <a href="{% url 'books:bookmaster_list' %}" class="btn btn-outline-secondary">
                 <i class="fas fa-arrow-left"></i> Back to List
             </a>
-            <a href="{% url 'books_admin:bookmaster_update' bookmaster.pk %}" class="btn btn-outline-primary">
+            <a href="{% url 'books:bookmaster_update' bookmaster.pk %}" class="btn btn-outline-primary">
                 <i class="fas fa-edit"></i> Edit
             </a>         
-            <a href="{% url 'books_admin:bookmaster_delete' bookmaster.pk %}" class="btn btn-outline-danger">
+            <a href="{% url 'books:bookmaster_delete' bookmaster.pk %}" class="btn btn-outline-danger">
                 <i class="fas fa-trash"></i> Delete
             </a>
         </div>
@@ -27,7 +27,7 @@
         <div class="mb-4">
             <div class="d-flex justify-content-between align-items-center mb-3">
                 <h4 class="mb-0">Book Overview ({{ bookmaster.books.count }} languages)</h4>
-                <a href="{% url 'books_admin:book_create' bookmaster.id %}" class="btn btn-success">
+                <a href="{% url 'books:book_create' bookmaster.id %}" class="btn btn-success">
                     <i class="fas fa-plus"></i> Add Book
                 </a>
             </div>
@@ -35,14 +35,14 @@
                 {% for book in books %}
                     <li class="list-group-item d-flex justify-content-between align-items-center {% if book.language == bookmaster.original_language %}bg-light border-warning{% endif %}">
                         <span>
-                            <a href="{% url 'books_admin:book_detail' book.id %}">{{ book.language.name }} - {{ book.title }}</a>
+                            <a href="{% url 'books:book_detail' book.id %}">{{ book.language.name }} - {{ book.title }}</a>
                             {% if book.language == bookmaster.original_language %}
                                 <small class="text-muted ms-2">(Original)</small>
                             {% endif %}
                         </span>
                         <span>
-                            <a href="{% url 'books_admin:book_update' book.id %}" class="btn btn-sm btn-primary">Edit</a>
-                            <a href="{% url 'books_admin:book_delete' book.id %}" class="btn btn-sm btn-danger">Delete</a>
+                            <a href="{% url 'books:book_update' book.id %}" class="btn btn-sm btn-primary">Edit</a>
+                            <a href="{% url 'books:book_delete' book.id %}" class="btn btn-sm btn-danger">Delete</a>
                         </span>
                     </li>
                 {% empty %}
@@ -54,7 +54,7 @@
         <div class="mb-4">
             <div class="d-flex justify-content-between align-items-center mb-3">
                 <h4 class="mb-0">Chapter Overview ({{ chaptermasters.paginator.count }} chapters)</h4>
-                <a href="{% url 'books_admin:chaptermaster_create' bookmaster.id %}" class="btn btn-success">
+                <a href="{% url 'books:chaptermaster_create' bookmaster.id %}" class="btn btn-success">
                     <i class="fas fa-plus"></i> Add Chapter
                 </a>
             </div>
@@ -110,7 +110,7 @@
                                 </td>
                                 <td class="align-middle">
                                     <span class="text-primary fw-bold">#{{ row.chaptermaster.chapter_number }}</span>
-                                    <a href="{% url 'books_admin:chaptermaster_detail' row.chaptermaster.id %}" class="ms-2 text-decoration-none">
+                                    <a href="{% url 'books:chaptermaster_detail' row.chaptermaster.id %}" class="ms-2 text-decoration-none">
                                         {{ row.chaptermaster.canonical_title }}
                                     </a>
                                 </td>
@@ -177,7 +177,7 @@
             {% else %}
                 <div class="alert alert-info">
                     <i class="fas fa-info-circle"></i> No chapter masters created yet. 
-                    <a href="{% url 'books_admin:chaptermaster_create' bookmaster.id %}" class="alert-link">Create your first chapter master</a> to get started.
+                    <a href="{% url 'books:chaptermaster_create' bookmaster.id %}" class="alert-link">Create your first chapter master</a> to get started.
                 </div>
             {% endif %}
         </div>
@@ -218,7 +218,7 @@
 
 <script>
 // Batch actions for chapter masters
-const BATCH_ACTION_URL = `{% url 'books_admin:bookmaster_batch_action' bookmaster.id %}`;
+const BATCH_ACTION_URL = `{% url 'books:bookmaster_batch_action' bookmaster.id %}`;
 const CSRF_TOKEN = '{{ csrf_token }}';
 
 function toggleAllChapters() {

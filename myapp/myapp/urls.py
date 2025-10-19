@@ -25,9 +25,9 @@ from django.http import HttpResponse
 
 urlpatterns = [
     path("admin/", admin.site.urls),
-    path("staff/", include("books.urls.admin_urls")),
+    path("staff/", include("books.urls")),
     path("accounts/", include("accounts.urls")),
-    path("", include("books.urls.reader_urls")),
+    path("", include("reader.urls")),
 ]
 
 # Serve media files during development

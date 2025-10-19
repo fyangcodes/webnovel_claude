@@ -72,7 +72,7 @@ class TaskStatusView(LoginRequiredMixin, View):
 
                     if translated_chapter:
                         response_data["redirect_url"] = reverse(
-                            "books_admin:chapter_detail",
+                            "books:chapter_detail",
                             kwargs={"pk": translated_chapter.id},
                         )
                         response_data["message"] = (
@@ -160,7 +160,7 @@ class ChapterTranslationView(LoginRequiredMixin, View):
                     "success": True,
                     "job_id": translation_job.id,
                     "message": f"Translation to {target_language.name} has been queued. You'll be notified when it's complete.",
-                    "status_url": reverse("books_admin:task_status")
+                    "status_url": reverse("books:task_status")
                     + f"?task_id={translation_job.id}&task_type=translation",
                 }
             )

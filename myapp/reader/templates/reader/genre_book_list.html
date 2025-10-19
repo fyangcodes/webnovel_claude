@@ -1,4 +1,4 @@
-{% extends "books/reader/base.html" %}
+{% extends "reader/base.html" %}
 {% load books_extras %}
 {% load static %}
 
@@ -38,9 +38,15 @@
         overflow: visible;
         z-index: 10;
         background: white;
+        color: #333;
     }
     .book-card:hover .card-title::after {
         content: none;
+    }
+    /* Dark mode for card title hover */
+    [data-theme="dark"] .book-card:hover .card-title {
+        background: #353535;
+        color: #d4d4d4;
     }
     /* Description with ellipsis at 7 lines */
     .book-description-container {
@@ -67,7 +73,7 @@
                         <p class="mb-0">Browsing {{ current_genre.name }} novels in {{ current_language.name }}</p>
                     </div>
                     <div>
-                        <a href="{% url 'books_reader:book_list' current_language.code %}" class="btn btn-light">
+                        <a href="{% url 'reader:book_list' current_language.code %}" class="btn btn-light">
                             <i class="fas fa-times me-1"></i> Clear Filter
                         </a>
                     </div>
@@ -78,7 +84,7 @@
         {% if books %}
         <div class="row">
             {% for book in books %}
-            {% include "books/partials/reader_book_card.html" with book=book current_language=current_language %}
+            {% include "reader/partials/reader_book_card.html" with book=book current_language=current_language %}
             {% endfor %}
         </div>
 
@@ -127,7 +133,7 @@
             <p class="text-muted">
                 There are no published {{ current_genre.name }} books in {{ current_language.name }} yet.
             </p>
-            <a href="{% url 'books_reader:book_list' current_language.code %}" class="btn btn-outline-primary">
+            <a href="{% url 'reader:book_list' current_language.code %}" class="btn btn-outline-primary">
                 View All Books
             </a>
         </div>

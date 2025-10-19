@@ -34,7 +34,7 @@ class BookCreateView(LoginRequiredMixin, CreateView):
 
     def get_success_url(self):
         return reverse_lazy(
-            "books_admin:bookmaster_detail",
+            "books:bookmaster_detail",
             kwargs={"pk": self.kwargs.get("bookmaster_pk")},
         )
 
@@ -69,7 +69,7 @@ class BookCreateView(LoginRequiredMixin, CreateView):
                     self.request,
                     f"A book in {requested_language.name} already exists for this work.",
                 )
-                return redirect("books_admin:bookmaster_detail", pk=bookmaster_pk)
+                return redirect("books:bookmaster_detail", pk=bookmaster_pk)
         return super().form_valid(form)
 
 
@@ -100,7 +100,7 @@ class BookDetailView(LoginRequiredMixin, DetailView):
 
         context["chapters"] = chapters_page
         context["chapter_create_url"] = reverse_lazy(
-            "books_admin:chapter_create", kwargs={"book_pk": self.object.pk}
+            "books:chapter_create", kwargs={"book_pk": self.object.pk}
         )
         context["bookmaster"] = self.object.bookmaster
 
@@ -130,7 +130,7 @@ class BookUpdateView(LoginRequiredMixin, UpdateView):
     context_object_name = "book"
 
     def get_success_url(self):
-        return reverse_lazy("books_admin:book_detail", kwargs={"pk": self.object.pk})
+        return reverse_lazy("books:book_detail", kwargs={"pk": self.object.pk})
 
     def form_valid(self, form):
         form.instance.owner = self.request.user
@@ -155,7 +155,7 @@ class BookDeleteView(LoginRequiredMixin, DeleteView):
 
     def get_success_url(self):
         return reverse_lazy(
-            "books_admin:bookmaster_detail", kwargs={"pk": self.object.bookmaster.pk}
+            "books:bookmaster_detail", kwargs={"pk": self.object.bookmaster.pk}
         )
 
     def get_context_data(self, **kwargs):
@@ -183,7 +183,7 @@ class BookFileUploadView(LoginRequiredMixin, FormView):
         return context
 
     def get_success_url(self):
-        return reverse_lazy("books_admin:book_detail", kwargs={"pk": self.kwargs["pk"]})
+        return reverse_lazy("books:book_detail", kwargs={"pk": self.kwargs["pk"]})
 
     def form_valid(self, form):
         book = self.get_object()

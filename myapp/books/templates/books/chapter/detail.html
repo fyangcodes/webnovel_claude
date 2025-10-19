@@ -12,13 +12,13 @@
             <h5 class="text-muted">Chapter {{ chapter.chaptermaster.chapter_number }} of {{ chapter.book.title }}</h5>
         </div>
         <div class="btn-group" role="group">
-            <a href="{% url 'books_admin:book_detail' chapter.book.id %}" class="btn btn-outline-secondary">
+            <a href="{% url 'books:book_detail' chapter.book.id %}" class="btn btn-outline-secondary">
                 <i class="fas fa-arrow-left"></i> Back to Book
             </a>
-            <a href="{% url 'books_admin:chapter_update' chapter.pk %}" class="btn btn-outline-primary">
+            <a href="{% url 'books:chapter_update' chapter.pk %}" class="btn btn-outline-primary">
                 <i class="fas fa-edit"></i> Edit
             </a>         
-            <a href="{% url 'books_admin:chapter_delete' chapter.pk %}" class="btn btn-outline-danger">
+            <a href="{% url 'books:chapter_delete' chapter.pk %}" class="btn btn-outline-danger">
                 <i class="fas fa-trash"></i> Delete
             </a>
         </div>

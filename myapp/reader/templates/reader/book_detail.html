@@ -1,4 +1,4 @@
-{% extends "books/reader/base.html" %}
+{% extends "reader/base.html" %}
 {% load humanize %}
 
 {% block title %}{{ book.title }}{% endblock %}
@@ -26,41 +26,29 @@
             {% endif %}
             
             <!-- Book Stats -->
-            <div class="row mb-4">
-                <div class="col-sm-3">
-                    <div class="text-center p-3 bg-light rounded">
-                        <div class="fw-bold text-primary">{{ total_chapters }}</div>
-                        <small class="text-muted">Chapter{{ total_chapters|pluralize }}</small>
-                    </div>
+            <div class="d-flex flex-wrap gap-3 mb-4 text-muted" style="font-size: 0.95rem;">
+                <div>
+                    <i class="fas fa-list"></i>
+                    <strong>{{ total_chapters }}</strong> chapter{{ total_chapters|pluralize }}
                 </div>
-                <div class="col-sm-3">
-                    <div class="text-center p-3 bg-light rounded">
-                        <div class="fw-bold text-primary">{{ total_words|floatformat:0 }}</div>
-                        <small class="text-muted">Words</small>
-                    </div>
+                <div>
+                    <i class="fas fa-font"></i>
+                    <strong>{{ total_words|floatformat:0 }}</strong> words
                 </div>
-                <div class="col-sm-3">
-                    <div class="text-center p-3 bg-light rounded">
-                        <div class="fw-bold text-primary">{{ book.get_progress_display|default:"Unknown" }}</div>
-                        <small class="text-muted">Status</small>
-                    </div>
+                <div>
+                    <i class="fas fa-circle-check"></i>
+                    <strong>{{ book.get_progress_display|default:"Unknown" }}</strong>
                 </div>
-                <div class="col-sm-3">
-                    <div class="text-center p-3 bg-light rounded">
-                        {% if last_update %}
-                        <div class="fw-bold text-primary">{{ last_update|naturaltime }}</div>
-                        <small class="text-muted">Last Update</small>
-                        {% else %}
-                        <div class="fw-bold text-muted">No updates</div>
-                        <small class="text-muted">Last Update</small>
-                        {% endif %}
-                    </div>
+                {% if last_update %}
+                <div>
+                    <i class="fas fa-clock"></i>
+                    Updated <strong>{{ last_update|naturaltime }}</strong>
                 </div>
+                {% endif %}
             </div>
             
             {% if book.description %}
             <div class="mb-4">
-                <h5>Description</h5>
                 <p class="text-muted">{{ book.description|linebreaks }}</p>
             </div>
             {% endif %}
@@ -86,7 +74,7 @@
         <div class="row">
             {% for chapter in chapters %}
             <div class="col-lg-3 col-md-4 col-sm-6 mb-3">
-                <a href="{% url 'books_reader:chapter_detail' current_language.code book.slug chapter.slug %}" 
+                <a href="{% url 'reader:chapter_detail' current_language.code book.slug chapter.slug %}" 
                    class="btn btn-outline-primary w-100 text-start p-3" 
                    style="min-height: 60px; display: flex; align-items: center;">
                     <span class="fw-medium">{{ chapter.title }}</span>

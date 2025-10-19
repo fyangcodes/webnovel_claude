@@ -1,8 +1,8 @@
 from django.urls import path, register_converter
 from django.shortcuts import redirect
 from django.http import HttpRequest
-from ..views import reader_views
-from ..models import Language
+from . import views
+from books.models import Language
 
 
 class UnicodeSlugConverter:
@@ -61,28 +61,28 @@ def language_redirect(request: HttpRequest):
         return redirect("/en/")
 
 
-app_name = "books_reader"
+app_name = "reader"
 
 urlpatterns = [
     path("", language_redirect, name="language_redirect"),
     path(
         "<str:language_code>/",
-        reader_views.BookListView.as_view(),
+        views.BookListView.as_view(),
         name="book_list",
     ),
     path(
         "<str:language_code>/genres/<slug:genre_slug>/",
-        reader_views.GenreBookListView.as_view(),
+        views.GenreBookListView.as_view(),
         name="genre_book_list",
     ),
     path(
         "<str:language_code>/books/<uslug:book_slug>/",
-        reader_views.BookDetailView.as_view(),
+        views.BookDetailView.as_view(),
         name="book_detail",
     ),
     path(
         "<str:language_code>/books/<uslug:book_slug>/<uslug:chapter_slug>/",
-        reader_views.ChapterDetailView.as_view(),
+        views.ChapterDetailView.as_view(),
         name="chapter_detail",
     ),
 ]

@@ -16,27 +16,27 @@
             <nav aria-label="breadcrumb" class="mb-4">
                 <ol class="breadcrumb">
                     <li class="breadcrumb-item">
-                        <a href="{% url 'books_admin:bookmaster_list' %}">
+                        <a href="{% url 'books:bookmaster_list' %}">
                             <i class="fas fa-home"></i> Home
                         </a>
                     </li>
                     {% if bookmaster %}
                         <li class="breadcrumb-item">
-                            <a href="{% url 'books_admin:bookmaster_detail' bookmaster.id %}">
+                            <a href="{% url 'books:bookmaster_detail' bookmaster.id %}">
                                 <i class="fas fa-layer-group"></i> {{ bookmaster.canonical_title }}
                             </a>
                         </li>
                     {% endif %}
                     {% if book %}
                         <li class="breadcrumb-item">
-                            <a href="{% url 'books_admin:book_detail' book.id %}">
+                            <a href="{% url 'books:book_detail' book.id %}">
                                 <i class="fas fa-book"></i> {{ book.title }}
                             </a>
                         </li>
                     {% endif %}
                     {% if chaptermaster %}
                         <li class="breadcrumb-item">
-                            <a href="{% url 'books_admin:chaptermaster_detail' chaptermaster.id %}">
+                            <a href="{% url 'books:chaptermaster_detail' chaptermaster.id %}">
                                 <i class="fas fa-clipboard-list"></i> {{ chaptermaster.canonical_title }}
                             </a>
                         </li>

@@ -2,7 +2,7 @@ from django.urls import path
 from books import views
 
 
-app_name = "books_admin"
+app_name = "books"
 
 urlpatterns = [
     # BookMaster (Work/Series) list view / Home page

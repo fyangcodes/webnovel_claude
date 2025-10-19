@@ -61,6 +61,7 @@ INSTALLED_APPS = [
     # Local apps - simplified
     "common.apps.CommonConfig",
     "books.apps.BooksConfig",
+    "reader.apps.ReaderConfig",
     "translation.apps.TranslationConfig",
 ]
 

@@ -10,13 +10,13 @@
             <h1>{{ book.title }}</h1>
         </div>
         <div class="btn-group" role="group">
-            <a href="{% url 'books_admin:bookmaster_detail' book.bookmaster.pk %}" class="btn btn-outline-secondary">
+            <a href="{% url 'books:bookmaster_detail' book.bookmaster.pk %}" class="btn btn-outline-secondary">
                 <i class="fas fa-arrow-left"></i> Back to Books
             </a>
-            <a href="{% url 'books_admin:book_update' book.pk %}" class="btn btn-outline-primary">
+            <a href="{% url 'books:book_update' book.pk %}" class="btn btn-outline-primary">
                 <i class="fas fa-edit"></i> Edit
             </a>
-            <a href="{% url 'books_admin:book_delete' book.pk %}" class="btn btn-outline-danger">
+            <a href="{% url 'books:book_delete' book.pk %}" class="btn btn-outline-danger">
                 <i class="fas fa-trash"></i> Delete
             </a>
         </div>
@@ -91,10 +91,10 @@
             </div>
             <div class="card-body">
                 <div class="d-grid gap-2 d-md-flex">
-                    <a href="{% url 'books_admin:bookfile_upload' book.id %}" class="btn btn-primary">
+                    <a href="{% url 'books:bookfile_upload' book.id %}" class="btn btn-primary">
                         <i class="fas fa-upload"></i> Upload File
                     </a>
-                    <a href="{% url 'books_admin:chapter_create' book.id %}" class="btn btn-success">
+                    <a href="{% url 'books:chapter_create' book.id %}" class="btn btn-success">
                         <i class="fas fa-plus"></i> Add Chapter
                     </a>
                 </div>
@@ -192,7 +192,7 @@
                                value="{{ chapter.id }}" onchange="updateBatchActions()">
                     </td>
                     <td class="align-middle">
-                        <a href="{% url 'books_admin:chapter_detail' chapter.pk %}" class="text-decoration-none">
+                        <a href="{% url 'books:chapter_detail' chapter.pk %}" class="text-decoration-none">
                             <strong>#{{ chapter.chaptermaster.chapter_number }}:</strong> {{ chapter.title }}
                         </a>
                     </td>
@@ -219,8 +219,8 @@
                     </td>
                     <td class="text-center align-middle">
                         <div class="btn-group btn-group-sm">
-                            <a href="{% url 'books_admin:chapter_update' chapter.pk %}" class="btn btn-primary">Edit</a>
-                            <a href="{% url 'books_admin:chapter_delete' chapter.pk %}" class="btn btn-danger">Delete</a>
+                            <a href="{% url 'books:chapter_update' chapter.pk %}" class="btn btn-primary">Edit</a>
+                            <a href="{% url 'books:chapter_delete' chapter.pk %}" class="btn btn-danger">Delete</a>
                         </div>
                     </td>
                 </tr>
@@ -317,7 +317,7 @@
 
 <script>
 // Batch actions for chapters
-const BATCH_ACTION_URL = `{% url 'books_admin:book_batch_action' book.id %}`;
+const BATCH_ACTION_URL = `{% url 'books:book_batch_action' book.id %}`;
 const CSRF_TOKEN = '{{ csrf_token }}';
 
 function toggleAllChapters() {

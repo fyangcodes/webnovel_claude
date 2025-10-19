@@ -23,7 +23,7 @@ class ChapterMasterCreateView(LoginRequiredMixin, CreateView):
 
     def get_success_url(self):
         return reverse_lazy(
-            "books_admin:bookmaster_detail", kwargs={"pk": self.object.bookmaster.id}
+            "books:bookmaster_detail", kwargs={"pk": self.object.bookmaster.id}
         )
 
 
@@ -53,7 +53,7 @@ class ChapterMasterUpdateView(LoginRequiredMixin, UpdateView):
 
     def get_success_url(self):
         return reverse_lazy(
-            "books_admin:bookmaster_detail", kwargs={"pk": self.object.bookmaster.id}
+            "books:bookmaster_detail", kwargs={"pk": self.object.bookmaster.id}
         )
 
     def get_context_data(self, **kwargs):
@@ -68,7 +68,7 @@ class ChapterMasterDeleteView(LoginRequiredMixin, DeleteView):
 
     def get_success_url(self):
         return reverse_lazy(
-            "books_admin:bookmaster_detail", kwargs={"pk": self.object.bookmaster.id}
+            "books:bookmaster_detail", kwargs={"pk": self.object.bookmaster.id}
         )
 
     def get_context_data(self, **kwargs):

@@ -64,7 +64,7 @@ class ChapterCreateView(LoginRequiredMixin, CreateView):
         return response
 
     def get_success_url(self):
-        return reverse_lazy("books_admin:book_detail", kwargs={"pk": self.kwargs["book_pk"]})
+        return reverse_lazy("books:book_detail", kwargs={"pk": self.kwargs["book_pk"]})
 
 
 class ChapterDetailView(LoginRequiredMixin, DetailView):
@@ -106,7 +106,7 @@ class ChapterUpdateView(LoginRequiredMixin, UpdateView):
         return context
 
     def get_success_url(self):
-        return reverse_lazy("books_admin:chapter_detail", kwargs={"pk": self.object.pk})
+        return reverse_lazy("books:chapter_detail", kwargs={"pk": self.object.pk})
 
     def form_valid(self, form):
         response = super().form_valid(form)
@@ -124,7 +124,7 @@ class ChapterDeleteView(LoginRequiredMixin, DeleteView):
         return Chapter.objects.filter(book__bookmaster__owner=self.request.user)
 
     def get_success_url(self):
-        return reverse_lazy("books_admin:book_detail", kwargs={"pk": self.object.book.pk})
+        return reverse_lazy("books:book_detail", kwargs={"pk": self.object.book.pk})
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
