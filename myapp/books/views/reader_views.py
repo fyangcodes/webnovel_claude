@@ -3,7 +3,7 @@ from django.views.generic import ListView, DetailView
 from django.http import Http404
 from django.core.paginator import Paginator
 
-from books.models import Book, Chapter, Language, Genre
+from books.models import Book, Chapter, Language, Genre, BookGenre
 
 
 class BookListView(ListView):
@@ -31,6 +31,74 @@ class BookListView(ListView):
         context["current_language"] = get_object_or_404(Language, code=language_code)
         context["languages"] = Language.objects.all().order_by("name")
         context["genres"] = Genre.objects.all().order_by("name")
+
+        # Add published chapters info for each book
+        books_with_info = []
+        for book in context["books"]:
+            published_chapters = book.chapters.filter(is_public=True)
+            published_count = published_chapters.count()
+
+            # Calculate reading time
+            total_minutes = sum(
+                chapter.reading_time_minutes for chapter in published_chapters
+            )
+            if total_minutes < 60:
+                reading_time = f"{total_minutes} min" if total_minutes > 0 else None
+            else:
+                hours = total_minutes // 60
+                minutes = total_minutes % 60
+                if minutes == 0:
+                    reading_time = f"{hours} hr"
+                else:
+                    reading_time = f"{hours} hr {minutes} min"
+
+            # Add the info to the book object
+            book.published_chapters_count = published_count
+            book.reading_time_formatted = reading_time
+            books_with_info.append(book)
+
+        context["books"] = books_with_info
+        return context
+
+
+class GenreBookListView(ListView):
+    """Genre-filtered book listing page"""
+
+    model = Book
+    template_name = "books/reader/genre_book_list.html"
+    context_object_name = "books"
+    paginate_by = 12
+
+    def get_queryset(self):
+        language_code = self.kwargs.get("language_code")
+        genre_slug = self.kwargs.get("genre_slug")
+
+        language = get_object_or_404(Language, code=language_code)
+        genre = get_object_or_404(Genre, slug=genre_slug)
+
+        # Get bookmaster IDs that have this genre
+        bookmaster_ids = BookGenre.objects.filter(genre=genre).values_list(
+            "bookmaster_id", flat=True
+        )
+
+        return (
+            Book.objects.filter(
+                language=language, is_public=True, bookmaster_id__in=bookmaster_ids
+            )
+            .select_related("bookmaster", "language")
+            .prefetch_related("chapters")
+            .order_by("-published_at", "-created_at")
+        )
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        language_code = self.kwargs.get("language_code")
+        genre_slug = self.kwargs.get("genre_slug")
+
+        context["current_language"] = get_object_or_404(Language, code=language_code)
+        context["languages"] = Language.objects.all().order_by("name")
+        context["genres"] = Genre.objects.all().order_by("name")
+        context["current_genre"] = get_object_or_404(Genre, slug=genre_slug)
 
         # Add published chapters info for each book
         books_with_info = []

@@ -3,7 +3,6 @@ from django.shortcuts import redirect
 from django.http import HttpRequest
 from ..views import reader_views
 from ..models import Language
-import re
 
 
 class UnicodeSlugConverter:
@@ -72,12 +71,17 @@ urlpatterns = [
         name="book_list",
     ),
     path(
-        "<str:language_code>/<uslug:book_slug>/",
+        "<str:language_code>/genres/<slug:genre_slug>/",
+        reader_views.GenreBookListView.as_view(),
+        name="genre_book_list",
+    ),
+    path(
+        "<str:language_code>/books/<uslug:book_slug>/",
         reader_views.BookDetailView.as_view(),
         name="book_detail",
     ),
     path(
-        "<str:language_code>/<uslug:book_slug>/<uslug:chapter_slug>/",
+        "<str:language_code>/books/<uslug:book_slug>/<uslug:chapter_slug>/",
         reader_views.ChapterDetailView.as_view(),
         name="chapter_detail",
     ),

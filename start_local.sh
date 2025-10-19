@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Enter venv
+source .venv/bin/activate
+
 # Navigate to Django app directory
 cd myapp
 

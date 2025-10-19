@@ -1,0 +1,96 @@
+{% comment %}
+    Reader Book Card Partial
+
+    Required context variables:
+    - book: The Book object
+    - current_language: The Language object
+{% endcomment %}
+
+<div class="col-12 col-lg-6 mb-4">
+    <div class="card book-card shadow-sm border-0 h-100">
+        <div class="row g-0 h-100">
+            <!-- Cover Image Column -->
+            <div class="col-5">
+                <div class="position-relative h-100" style="min-height: 320px;">
+                    <img src="{{ book.effective_cover_image }}"
+                         class="w-100 h-100"
+                         alt="{{ book.title }} cover"
+                         style="object-fit: cover; object-position: center;">
+
+                    <!-- Status badge overlay -->
+                    {% if book.progress %}
+                    <span class="badge bg-dark bg-opacity-75 position-absolute top-0 end-0 m-2">
+                        {{ book.get_progress_display }}
+                    </span>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Book Information Column -->
+            <div class="col-7">
+                <div class="card-body p-4 d-flex flex-column h-100">
+                    <div class="flex-grow-1">
+                        <h4 class="card-title mb-2 fw-bold" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                            <a href="{% url 'books_reader:book_detail' current_language.code book.slug %}"
+                               class="text-decoration-none text-dark stretched-link">
+                                {{ book.title }}
+                            </a>
+                        </h4>
+
+                        {% if book.author %}
+                        <p class="text-muted mb-2" style="font-size: 0.9rem;">
+                            by {{ book.author }}
+                        </p>
+                        {% endif %}
+
+                        <div class="mb-3">
+                            <div class="text-muted" style="font-size: 0.9rem;">
+                                <i class="fas fa-book-open text-muted"></i>
+                                {% with chapters_count=book.published_chapters_count %}
+                                    <strong>{{ chapters_count }}</strong> chapter{{ chapters_count|pluralize }}
+                                {% endwith %}
+                            </div>
+                        </div>
+
+                        {% if book.description %}
+                        <div class="book-description-container mb-4">
+                            <p class="card-text text-muted mb-0" style="font-size: 0.95rem; line-height: 1.6;">
+                                {{ book.description }}
+                            </p>
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Stats and metadata at bottom -->
+                    <div class="mt-auto">
+                        {% if book.bookmaster.genres.exists %}
+                        <div class="mb-3 mt-3">
+                            <div class="d-flex flex-wrap gap-1">
+                                {% for genre in book.bookmaster.genres.all|slice:":3" %}
+                                <a href="{% url 'books_reader:genre_book_list' current_language.code genre.slug %}"
+                                   class="badge bg-primary bg-opacity-75 text-decoration-none"
+                                   style="font-size: 0.8rem; font-weight: 500;">
+                                    {{ genre.name }}
+                                </a>
+                                {% endfor %}
+                                {% if book.bookmaster.genres.count > 3 %}
+                                <span class="badge bg-secondary bg-opacity-75" style="font-size: 0.8rem;">
+                                    +{{ book.bookmaster.genres.count|add:"-3" }}
+                                </span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        {% if book.published_at %}
+                        <div class="text-muted small">
+                            <i class="fas fa-clock"></i>
+                            Updated {{ book.published_at|timesince }} ago
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
