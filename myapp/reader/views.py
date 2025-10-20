@@ -1,7 +1,8 @@
 from django.shortcuts import get_object_or_404
-from django.views.generic import ListView, DetailView
+from django.views.generic import ListView, DetailView, TemplateView
 from django.http import Http404
 from django.core.paginator import Paginator
+from django.db.models import Count, Max
 
 from books.models import Book, Chapter, Language, Genre, BookGenre
 
@@ -57,6 +58,135 @@ class BaseBookListView(ListView):
         context["books"] = self.enrich_books_with_metadata(
             context["books"], language_code
         )
+
+        return context
+
+
+class WelcomeView(TemplateView):
+    """Welcome/Homepage with carousels and featured content"""
+
+    template_name = "reader/welcome.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        language_code = self.kwargs.get("language_code")
+        language = get_object_or_404(Language, code=language_code)
+
+        context["current_language"] = language
+        context["languages"] = Language.objects.all().order_by("name")
+
+        # Get all genres with localized names
+        genres = Genre.objects.all().order_by("name")
+        for genre in genres:
+            genre.localized_name = genre.get_localized_name(language_code)
+        context["genres"] = genres
+
+        # Featured/Popular books (books with most chapters)
+        featured_books = (
+            Book.objects.filter(language=language, is_public=True)
+            .select_related("bookmaster", "language")
+            .prefetch_related("chapters", "bookmaster__genres")
+            .annotate(chapter_count=Count("chapters"))
+            .order_by("-chapter_count", "-published_at")[:6]
+        )
+        context["featured_books"] = self._enrich_books(featured_books, language_code)
+
+        # Recently updated books (by most recent chapter published_at)
+        recently_updated = (
+            Book.objects.filter(language=language, is_public=True)
+            .select_related("bookmaster", "language")
+            .prefetch_related("chapters", "bookmaster__genres")
+            .annotate(latest_chapter=Max("chapters__published_at"))
+            .order_by("-latest_chapter")[:6]
+        )
+        context["recently_updated"] = self._enrich_books(recently_updated, language_code)
+
+        # New arrivals (recently published books)
+        new_arrivals = (
+            Book.objects.filter(language=language, is_public=True)
+            .select_related("bookmaster", "language")
+            .prefetch_related("chapters", "bookmaster__genres")
+            .order_by("-published_at")[:6]
+        )
+        context["new_arrivals"] = self._enrich_books(new_arrivals, language_code)
+
+        # Stats for hero section
+        context["total_books"] = Book.objects.filter(
+            language=language, is_public=True
+        ).count()
+        context["total_chapters"] = Chapter.objects.filter(
+            book__language=language, is_public=True
+        ).count()
+
+        return context
+
+    def _enrich_books(self, books, language_code):
+        """Add published chapters count and localized genres to books"""
+        enriched_books = []
+        for book in books:
+            published_chapters = book.chapters.filter(is_public=True)
+            book.published_chapters_count = published_chapters.count()
+
+            # Add localized names to each genre
+            for genre in book.bookmaster.genres.all():
+                genre.localized_name = genre.get_localized_name(language_code)
+
+            enriched_books.append(book)
+
+        return enriched_books
+
+
+class GenreListView(TemplateView):
+    """Genre overview page showing all genres"""
+
+    template_name = "reader/genre_list.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        language_code = self.kwargs.get("language_code")
+        language = get_object_or_404(Language, code=language_code)
+
+        context["current_language"] = language
+        context["languages"] = Language.objects.all().order_by("name")
+
+        # Get all genres with book counts for this language
+        genres = Genre.objects.all().order_by("name")
+
+        enriched_genres = []
+        for genre in genres:
+            # Get localized name
+            genre.localized_name = genre.get_localized_name(language_code)
+
+            # Get bookmaster IDs for this genre
+            bookmaster_ids = BookGenre.objects.filter(genre=genre).values_list(
+                "bookmaster_id", flat=True
+            )
+
+            # Count books in this language with this genre
+            genre.book_count = Book.objects.filter(
+                language=language, is_public=True, bookmaster_id__in=bookmaster_ids
+            ).count()
+
+            # Get preview books (top 3 for this genre)
+            genre.preview_books = (
+                Book.objects.filter(
+                    language=language, is_public=True, bookmaster_id__in=bookmaster_ids
+                )
+                .select_related("bookmaster", "language")
+                .prefetch_related("chapters")
+                .order_by("-published_at")[:3]
+            )
+
+            # Enrich preview books with chapter counts
+            for book in genre.preview_books:
+                book.published_chapters_count = book.chapters.filter(
+                    is_public=True
+                ).count()
+
+            enriched_genres.append(genre)
+
+        context["genres"] = enriched_genres
+        context["all_genres"] = Genre.objects.all().order_by("name")
 
         return context
 

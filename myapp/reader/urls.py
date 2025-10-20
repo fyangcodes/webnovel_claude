@@ -65,23 +65,39 @@ app_name = "reader"
 
 urlpatterns = [
     path("", language_redirect, name="language_redirect"),
+    # Welcome/Homepage
     path(
         "<str:language_code>/",
-        views.BookListView.as_view(),
-        name="book_list",
+        views.WelcomeView.as_view(),
+        name="welcome",
     ),
+    # Genre overview page
     path(
-        "<str:language_code>/genres/<slug:genre_slug>/",
+        "<str:language_code>/genres/",
+        views.GenreListView.as_view(),
+        name="genre_list",
+    ),
+    # Specific genre's books
+    path(
+        "<str:language_code>/genre/<slug:genre_slug>/",
         views.GenreBookListView.as_view(),
         name="genre_book_list",
     ),
+    # All books page
     path(
-        "<str:language_code>/books/<uslug:book_slug>/",
+        "<str:language_code>/books/",
+        views.BookListView.as_view(),
+        name="book_list",
+    ),
+    # Book detail page
+    path(
+        "<str:language_code>/book/<uslug:book_slug>/",
         views.BookDetailView.as_view(),
         name="book_detail",
     ),
+    # Chapter reading page
     path(
-        "<str:language_code>/books/<uslug:book_slug>/<uslug:chapter_slug>/",
+        "<str:language_code>/book/<uslug:book_slug>/<uslug:chapter_slug>/",
         views.ChapterDetailView.as_view(),
         name="chapter_detail",
     ),

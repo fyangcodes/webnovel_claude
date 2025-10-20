@@ -29,7 +29,7 @@
         <div class="container">
             <!-- Left Side Navigation -->
             <div class="d-flex align-items-center flex-grow-1">
-                <a class="navbar-brand mb-0" href="{% if current_language %}{% url 'reader:book_list' current_language.code %}{% else %}/{% endif %}">
+                <a class="navbar-brand mb-0" href="{% if current_language %}{% url 'reader:welcome' current_language.code %}{% else %}/{% endif %}">
                     <img src="{% static 'reader/images/logo_final.png' %}" alt="wereadly" height="30">
                 </a>
 
@@ -91,7 +91,7 @@
                     <ul class="dropdown-menu dropdown-menu-end">
                         {% for lang in languages %}
                         <li>
-                            <a class="dropdown-item {% if lang == current_language %}active{% endif %}" href="{% url 'reader:book_list' lang.code %}">
+                            <a class="dropdown-item {% if lang == current_language %}active{% endif %}" href="{% url 'reader:welcome' lang.code %}">
                                 {{ lang.local_name }}
                             </a>
                         </li>

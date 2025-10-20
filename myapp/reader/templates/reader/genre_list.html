@@ -1,0 +1,274 @@
+{% extends "reader/base.html" %}
+{% load books_extras %}
+{% load static %}
+
+{% block title %}Browse Genres - {{ current_language.name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Page Header */
+    .page-header {
+        background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 50%, #1d4ed8 100%);
+        border-radius: 16px;
+        padding: 3rem 2rem;
+        margin-bottom: 3rem;
+        color: white;
+    }
+
+    /* Genre Grid */
+    .genre-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+        gap: 2rem;
+    }
+
+    /* Genre Card */
+    .genre-section-card {
+        background: white;
+        border: 1px solid #dee2e6;
+        border-radius: 16px;
+        overflow: hidden;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    }
+
+    .genre-section-card:hover {
+        transform: translateY(-8px);
+        box-shadow: 0 12px 30px rgba(0,0,0,0.15);
+        border-color: #ff6b35;
+    }
+
+    .genre-header {
+        background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+        padding: 1.5rem;
+        border-bottom: 2px solid #ff6b35;
+    }
+
+    .genre-title {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #333;
+        margin: 0;
+    }
+
+    .genre-count {
+        color: #6c757d;
+        font-size: 0.95rem;
+        margin-top: 0.25rem;
+    }
+
+    .genre-preview {
+        padding: 1.5rem;
+    }
+
+    /* Preview Book Item */
+    .preview-book-item {
+        display: flex;
+        gap: 1rem;
+        padding: 0.75rem;
+        border-radius: 8px;
+        transition: background-color 0.2s ease;
+        text-decoration: none;
+        color: inherit;
+    }
+
+    .preview-book-item:hover {
+        background-color: #f8f9fa;
+    }
+
+    .preview-book-cover {
+        width: 60px;
+        height: 80px;
+        object-fit: cover;
+        border-radius: 6px;
+        flex-shrink: 0;
+    }
+
+    .preview-book-info {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .preview-book-title {
+        font-weight: 600;
+        font-size: 0.95rem;
+        margin-bottom: 0.25rem;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        color: #333;
+    }
+
+    .preview-book-meta {
+        font-size: 0.85rem;
+        color: #6c757d;
+    }
+
+    /* View All Button */
+    .view-all-genre-btn {
+        display: block;
+        text-align: center;
+        padding: 0.75rem;
+        color: #ff6b35;
+        text-decoration: none;
+        font-weight: 600;
+        border-top: 1px solid #dee2e6;
+        transition: all 0.2s ease;
+    }
+
+    .view-all-genre-btn:hover {
+        background-color: #ff6b35;
+        color: white;
+    }
+
+    /* Empty State */
+    .empty-genre {
+        text-align: center;
+        padding: 2rem;
+        color: #6c757d;
+    }
+
+    /* Dark Mode */
+    [data-theme="dark"] .page-header {
+        background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 50%, #1d4ed8 100%);
+    }
+
+    [data-theme="dark"] .genre-section-card {
+        background-color: #353535;
+        border-color: #4a4a4a;
+    }
+
+    [data-theme="dark"] .genre-section-card:hover {
+        border-color: #ff9670;
+    }
+
+    [data-theme="dark"] .genre-header {
+        background: linear-gradient(135deg, #3a3a3a 0%, #353535 100%);
+        border-bottom-color: #ff9670;
+    }
+
+    [data-theme="dark"] .genre-title {
+        color: #d4d4d4;
+    }
+
+    [data-theme="dark"] .genre-count {
+        color: #aaa;
+    }
+
+    [data-theme="dark"] .preview-book-item:hover {
+        background-color: #404040;
+    }
+
+    [data-theme="dark"] .preview-book-title {
+        color: #d4d4d4;
+    }
+
+    [data-theme="dark"] .preview-book-meta {
+        color: #aaa;
+    }
+
+    [data-theme="dark"] .view-all-genre-btn {
+        color: #ff9670;
+        border-top-color: #4a4a4a;
+    }
+
+    [data-theme="dark"] .view-all-genre-btn:hover {
+        background-color: #ff9670;
+        color: #333;
+    }
+
+    [data-theme="dark"] .empty-genre {
+        color: #aaa;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+        .genre-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .page-header {
+            padding: 2rem 1.5rem;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="page-header shadow-sm">
+    <div class="row align-items-center">
+        <div class="col-md-8">
+            <h1 class="display-5 fw-bold mb-2">Browse by Genre</h1>
+            <p class="mb-0 fs-5">
+                Explore our collection organized by genre. Find your next favorite story!
+            </p>
+        </div>
+        <div class="col-md-4 text-center text-md-end mt-3 mt-md-0">
+            <i class="fas fa-compass fa-5x opacity-75"></i>
+        </div>
+    </div>
+</div>
+
+<!-- Genre Grid -->
+<div class="genre-grid">
+    {% for genre in genres %}
+    <div class="genre-section-card">
+        <!-- Genre Header -->
+        <div class="genre-header">
+            <h2 class="genre-title">
+                <i class="fas fa-bookmark me-2 text-primary"></i>{{ genre.localized_name }}
+            </h2>
+            <p class="genre-count mb-0">
+                <i class="fas fa-book me-1"></i>{{ genre.book_count }} book{{ genre.book_count|pluralize }}
+            </p>
+        </div>
+
+        <!-- Preview Books or Empty State -->
+        {% if genre.preview_books %}
+        <div class="genre-preview">
+            {% for book in genre.preview_books %}
+            <a href="{% url 'reader:book_detail' current_language.code book.slug %}" class="preview-book-item">
+                <img src="{{ book.effective_cover_image }}" alt="{{ book.title }}" class="preview-book-cover">
+                <div class="preview-book-info">
+                    <div class="preview-book-title">{{ book.title }}</div>
+                    <div class="preview-book-meta">
+                        <i class="fas fa-book-open me-1"></i>{{ book.published_chapters_count }} chapters
+                    </div>
+                </div>
+            </a>
+            {% endfor %}
+        </div>
+
+        <!-- View All Button -->
+        {% if genre.book_count > 3 %}
+        <a href="{% url 'reader:genre_book_list' current_language.code genre.slug %}" class="view-all-genre-btn">
+            View All {{ genre.book_count }} Books <i class="fas fa-arrow-right ms-1"></i>
+        </a>
+        {% elif genre.book_count > 0 %}
+        <a href="{% url 'reader:genre_book_list' current_language.code genre.slug %}" class="view-all-genre-btn">
+            View Genre <i class="fas fa-arrow-right ms-1"></i>
+        </a>
+        {% endif %}
+
+        {% else %}
+        <div class="empty-genre">
+            <i class="fas fa-book-open fa-2x mb-2 opacity-50"></i>
+            <p class="mb-0">No books available in this genre yet</p>
+        </div>
+        {% endif %}
+    </div>
+    {% empty %}
+    <!-- No Genres at All -->
+    <div class="col-12">
+        <div class="text-center py-5">
+            <div class="display-1 text-muted mb-3">📚</div>
+            <h3 class="text-muted">No genres available</h3>
+            <p class="text-muted">Genres will appear here once they are created.</p>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

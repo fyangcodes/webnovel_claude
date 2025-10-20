@@ -13,6 +13,8 @@ Featured/Popular books carousel at the top
 Genre sections (Action, Romance, Fantasy, etc.) with horizontal scrollable book cards
 "Recently Updated" section
 "New Arrivals" section
+!!IN PROGRESS optimizaiton of rotating carousel needed
+
 2. Hero Section Improvements
 Your current blue gradient hero is nice, but could be:
 More visually striking with a background image or pattern

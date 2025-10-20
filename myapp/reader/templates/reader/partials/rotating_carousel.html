@@ -1,0 +1,69 @@
+{% load books_extras %}
+{# Rotating carousel partial - displays books in a 3D rotating carousel with ribbon layout #}
+{# Parameters: books (queryset), current_language (Language object), section_id (unique identifier) #}
+
+<div class="featured-carousel-wrapper">
+    <div class="featured-carousel-container">
+        <button class="carousel-nav-btn prev" id="{{ section_id }}Prev">
+            <i class="fas fa-chevron-left"></i>
+        </button>
+
+        {# Cover Ribbon - Center #}
+        <div class="carousel-cover-ribbon" data-carousel-id="{{ section_id }}">
+            {% for book in books %}
+            <div class="carousel-cover-item" data-index="{{ forloop.counter0 }}">
+                <a href="{% url 'reader:book_detail' current_language.code book.slug %}" class="cover-link">
+                    <img src="{{ book.effective_cover_image }}" class="ribbon-cover" alt="{{ book.title }}">
+                </a>
+            </div>
+            {% endfor %}
+        </div>
+
+        {# Metadata Card - Left Side #}
+        <div class="carousel-metadata-left" id="{{ section_id }}MetadataLeft">
+            {% for book in books %}
+            <div class="metadata-card" data-index="{{ forloop.counter0 }}">
+                <h3 class="metadata-title">
+                    <a href="{% url 'reader:book_detail' current_language.code book.slug %}" class="text-decoration-none">
+                        {{ book.title }}
+                    </a>
+                </h3>
+                {% if book.author %}
+                <div class="metadata-author">
+                    by {{ book.author }}
+                </div>
+                {% endif %}
+                {% if book.bookmaster.genres.all %}
+                <div class="metadata-genres">
+                    {% for genre in book.bookmaster.genres.all|slice:":3" %}
+                    <span class="genre-tag">{{ genre.localized_name }}</span>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+
+        {# Description Card - Right Side #}
+        <div class="carousel-description-right" id="{{ section_id }}DescriptionRight">
+            {% for book in books %}
+            <div class="description-card" data-index="{{ forloop.counter0 }}">
+                {% if book.description %}
+                <div class="description-content">
+                    {{ book.description|striptags }}
+                </div>
+                {% else %}
+                <div class="description-content text-muted">
+                    <em>No description available</em>
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+
+        <button class="carousel-nav-btn next" id="{{ section_id }}Next">
+            <i class="fas fa-chevron-right"></i>
+        </button>
+    </div>
+    <div class="carousel-indicators" id="{{ section_id }}Indicators"></div>
+</div>
