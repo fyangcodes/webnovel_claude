@@ -5,7 +5,7 @@
 {% block title %}Welcome to wereadly{% endblock %}
 
 {% block extra_css %}
-<link href="{% static 'reader/css/rotating_carousel.css' %}" rel="stylesheet">
+<link href="{% static 'reader/css/rotating_carousel.css' %}?v=2.7" rel="stylesheet">
 <style>
     /* Hero Section */
     .hero-section {
@@ -233,159 +233,18 @@
 {% endblock %}
 
 {% block content %}
-<!-- Hero Section -->
-<div class="hero-section shadow-sm mb-5">
-    <div class="p-5 text-white">
-        <div class="row align-items-center">
-            <div class="col-lg-8">
-                <h1 class="display-4 fw-bold mb-3">Welcome to wereadly</h1>
-                <p class="lead mb-4" style="line-height: 1.6;">
-                    Discover an amazing collection of novels from around the world.
-                    Our platform brings you high-quality translations of popular stories,
-                    making literature accessible to readers everywhere.
-                </p>
-                <div class="d-flex flex-wrap gap-4 mb-4">
-                    <div class="d-flex align-items-center">
-                        <i class="fas fa-language me-2 fs-4"></i>
-                        <span>Professional Translations</span>
-                    </div>
-                    <div class="d-flex align-items-center">
-                        <i class="fas fa-book-reader me-2 fs-4"></i>
-                        <span>Regular Updates</span>
-                    </div>
-                    <div class="d-flex align-items-center">
-                        <i class="fas fa-heart me-2 fs-4"></i>
-                        <span>Free to Read</span>
-                    </div>
-                </div>
-                <a href="{% url 'reader:genre_list' current_language.code %}" class="btn btn-light btn-lg">
-                    <i class="fas fa-compass me-2"></i>Browse Genres
-                </a>
-            </div>
-            <div class="col-lg-4 text-center mt-4 mt-lg-0">
-                <img src="{% static 'reader/favicon_final.png' %}" alt="wereadly" height="140" class="mb-3">
-                <p class="mb-4 fw-semibold fs-5">We share, we read!</p>
-                <div class="row g-3">
-                    <div class="col-6">
-                        <div class="stat-item">
-                            <span class="stat-number">{{ total_books }}</span>
-                            <span class="stat-label">Books</span>
-                        </div>
-                    </div>
-                    <div class="col-6">
-                        <div class="stat-item">
-                            <span class="stat-number">{{ total_chapters }}</span>
-                            <span class="stat-label">Chapters</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
 <!-- Featured Books Rotating Carousel -->
 {% if featured_books %}
-<div class="mb-5">
-    <div class="section-header">
-        <h2 class="section-title">
-            <i class="fas fa-star text-warning me-2"></i>Featured Books
-        </h2>
-        <a href="{% url 'reader:book_list' current_language.code %}" class="view-all-link">
-            View All <i class="fas fa-arrow-right ms-1"></i>
-        </a>
-    </div>
+<div>
     {% include "reader/partials/rotating_carousel.html" with books=featured_books section_id="featured" %}
 </div>
 {% endif %}
 
 <!-- Recently Updated Carousel -->
-{% if recently_updated %}
-<div class="mb-5">
-    <div class="section-header">
-        <h2 class="section-title">
-            <i class="fas fa-sync text-primary me-2"></i>Recently Updated
-        </h2>
-        <a href="{% url 'reader:book_list' current_language.code %}" class="view-all-link">
-            View All <i class="fas fa-arrow-right ms-1"></i>
-        </a>
-    </div>
-    <div class="carousel-container">
-        {% for book in recently_updated %}
-        <div class="carousel-book-card card shadow-sm">
-            <img src="{{ book.effective_cover_image }}" class="book-cover" alt="{{ book.title }}">
-            <div class="card-body">
-                <h5 class="card-title mb-2">
-                    <a href="{% url 'reader:book_detail' current_language.code book.slug %}" class="text-decoration-none text-dark">
-                        {{ book.title }}
-                    </a>
-                </h5>
-                {% if book.description %}
-                <p class="card-text text-muted mb-3">{{ book.description|striptags|truncatewords:20 }}</p>
-                {% endif %}
-                <div class="mt-auto">
-                    <div class="d-flex justify-content-between text-muted small">
-                        <span><i class="fas fa-book me-1"></i>{{ book.published_chapters_count }} chapters</span>
-                        <span><i class="fas fa-clock me-1"></i>{{ book.reading_time_minutes }} min</span>
-                    </div>
-                    {% if book.bookmaster.genres.all %}
-                    <div class="mt-2">
-                        {% for genre in book.bookmaster.genres.all|slice:":2" %}
-                        <span class="badge bg-secondary">{{ genre.localized_name }}</span>
-                        {% endfor %}
-                    </div>
-                    {% endif %}
-                </div>
-            </div>
-        </div>
-        {% endfor %}
-    </div>
-</div>
-{% endif %}
+{% include "reader/partials/book_carousel.html" with books=recently_updated title="Recently Updated" %}
 
 <!-- New Arrivals Carousel -->
-{% if new_arrivals %}
-<div class="mb-5">
-    <div class="section-header">
-        <h2 class="section-title">
-            <i class="fas fa-sparkles text-success me-2"></i>New Arrivals
-        </h2>
-        <a href="{% url 'reader:book_list' current_language.code %}" class="view-all-link">
-            View All <i class="fas fa-arrow-right ms-1"></i>
-        </a>
-    </div>
-    <div class="carousel-container">
-        {% for book in new_arrivals %}
-        <div class="carousel-book-card card shadow-sm">
-            <img src="{{ book.effective_cover_image }}" class="book-cover" alt="{{ book.title }}">
-            <div class="card-body">
-                <h5 class="card-title mb-2">
-                    <a href="{% url 'reader:book_detail' current_language.code book.slug %}" class="text-decoration-none text-dark">
-                        {{ book.title }}
-                    </a>
-                </h5>
-                {% if book.description %}
-                <p class="card-text text-muted mb-3">{{ book.description|striptags|truncatewords:20 }}</p>
-                {% endif %}
-                <div class="mt-auto">
-                    <div class="d-flex justify-content-between text-muted small">
-                        <span><i class="fas fa-book me-1"></i>{{ book.published_chapters_count }} chapters</span>
-                        <span><i class="fas fa-clock me-1"></i>{{ book.reading_time_minutes }} min</span>
-                    </div>
-                    {% if book.bookmaster.genres.all %}
-                    <div class="mt-2">
-                        {% for genre in book.bookmaster.genres.all|slice:":2" %}
-                        <span class="badge bg-secondary">{{ genre.localized_name }}</span>
-                        {% endfor %}
-                    </div>
-                    {% endif %}
-                </div>
-            </div>
-        </div>
-        {% endfor %}
-    </div>
-</div>
-{% endif %}
+{% include "reader/partials/book_carousel.html" with books=new_arrivals title="New Arrivals" %}
 
 <!-- Browse by Genre -->
 <div class="mb-5">
@@ -400,7 +259,6 @@
     <div class="genre-quick-access">
         {% for genre in genres|slice:":8" %}
         <a href="{% url 'reader:genre_book_list' current_language.code genre.slug %}" class="genre-card">
-            <i class="fas fa-bookmark"></i>
             <div class="fw-semibold">{{ genre.localized_name }}</div>
         </a>
         {% endfor %}

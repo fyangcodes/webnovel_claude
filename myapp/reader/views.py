@@ -109,15 +109,6 @@ class WelcomeView(TemplateView):
             .order_by("-published_at")[:6]
         )
         context["new_arrivals"] = self._enrich_books(new_arrivals, language_code)
-
-        # Stats for hero section
-        context["total_books"] = Book.objects.filter(
-            language=language, is_public=True
-        ).count()
-        context["total_chapters"] = Chapter.objects.filter(
-            book__language=language, is_public=True
-        ).count()
-
         return context
 
     def _enrich_books(self, books, language_code):

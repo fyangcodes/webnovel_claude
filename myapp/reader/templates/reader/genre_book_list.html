@@ -70,7 +70,6 @@
                         <h3 class="card-title mb-2 fw-bold">
                             <i class="fas fa-tag me-2"></i>{{ current_genre.name }}
                         </h3>
-                        <p class="mb-0">Browsing {{ current_genre.name }} novels in {{ current_language.name }}</p>
                     </div>
                     <div>
                         <a href="{% url 'reader:book_list' current_language.code %}" class="btn btn-light">
