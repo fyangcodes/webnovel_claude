@@ -1,0 +1,70 @@
+{% load books_extras %}
+{# Book card partial - displays a book cover with metadata and optional hover card #}
+{# Parameters: #}
+{#   - book: Book object #}
+{#   - current_language: Language object #}
+{#   - cover_width: Width in pixels (default: 300) #}
+{#   - cover_height: Height in pixels (default: 400) #}
+{#   - enable_hover: Boolean to enable/disable hover card (default: true) #}
+{#   - show_metadata: Boolean to show metadata below cover (default: true) #}
+{#   - wrapper_class: Additional CSS class for the wrapper (optional) #}
+
+{% with cover_width=cover_width|default:"300" cover_height=cover_height|default:"400" %}
+<a href="{% url 'reader:book_detail' current_language.code book.slug %}" class="cover-link {{ wrapper_class|default:'' }}{% if enable_hover == False %} no-hover{% endif %}{% if show_metadata == False %} no-metadata{% endif %}" style="--cover-width: {{ cover_width }}px; --cover-height: {{ cover_height }}px;">
+    <div class="cover-wrapper">
+        <img src="{{ book.effective_cover_image }}" class="ribbon-cover" alt="{{ book.title }}">
+        <div class="hover-overlay"></div>
+    </div>
+
+    {% if show_metadata != False %}
+    <div class="cover-metadata">
+        <h3 class="cover-title">{{ book.title }}</h3>
+        <div class="cover-info">
+            <div class="cover-genres">
+                {% for genre in book.bookmaster.genres.all|slice:":2" %}
+                <span class="genre-badge">{{ genre.localized_name }}</span>
+                {% if not forloop.last %} · {% endif %}
+                {% endfor %}
+            </div>
+            <div class="cover-status">
+                {% if book.progress == 'completed' %}
+                <span class="status-badge completed">Completed</span>
+                {% else %}
+                <span class="status-badge ongoing">Ongoing</span>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if enable_hover != False %}
+    {# Hover card #}
+    <div class="hover-card" style="background-image: url('{{ book.effective_cover_image }}');">
+        <div class="hover-card-content">
+            <h4 class="hover-title">{{ book.title }}</h4>
+            {% if book.author %}
+            <p class="hover-author">{{ book.author }}</p>
+            {% endif %}
+            <div class="hover-genres">
+                {% for genre in book.bookmaster.genres.all|slice:":3" %}
+                <span class="hover-genre-tag">{{ genre.localized_name }}</span>
+                {% endfor %}
+            </div>
+            <div class="hover-stats">
+                <div class="hover-stat-item">
+                    <i class="fas fa-list"></i>
+                    <span>{{ book.published_chapters_count }}</span>
+                </div>
+                <div class="hover-stat-item">
+                    {% if book.progress == 'completed' %}
+                    <i class="fas fa-check-circle"></i>
+                    {% else %}
+                    <i class="fas fa-hourglass-half"></i>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</a>
+{% endwith %}

@@ -11,27 +11,7 @@
         <div class="carousel-cover-ribbon" data-carousel-id="{{ section_id }}">
             {% for book in books %}
             <div class="carousel-cover-item" data-index="{{ forloop.counter0 }}">
-                <a href="{% url 'reader:book_detail' current_language.code book.slug %}" class="cover-link">
-                    <img src="{{ book.effective_cover_image }}" class="ribbon-cover" alt="{{ book.title }}">
-                    <div class="cover-metadata">
-                        <h3 class="cover-title">{{ book.title }}</h3>
-                        <div class="cover-info">
-                            <div class="cover-genres">
-                                {% for genre in book.bookmaster.genres.all|slice:":2" %}
-                                <span class="genre-badge">{{ genre.localized_name }}</span>
-                                {% if not forloop.last %} · {% endif %}
-                                {% endfor %}
-                            </div>
-                            <div class="cover-status">
-                                {% if book.progress == 'completed' %}
-                                <span class="status-badge completed">Completed</span>
-                                {% else %}
-                                <span class="status-badge ongoing">Ongoing</span>
-                                {% endif %}
-                            </div>
-                        </div>
-                    </div>
-                </a>
+                {% include 'reader/partials/book_card.html' with book=book current_language=current_language cover_width=330 cover_height=440 enable_hover=False show_metadata=True %}
             </div>
             {% endfor %}
         </div>

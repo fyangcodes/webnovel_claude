@@ -196,6 +196,69 @@ body {
 }
 
 /* ===========================
+   Book Grid (4x2 Layout)
+   =========================== */
+.book-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2rem 1.5rem;
+    justify-content: flex-start;
+    max-width: 1000px;
+    margin: 0 auto;
+}
+
+.book-grid .cover-link {
+    flex: 0 0 auto;
+}
+
+/* Ensure hover effects work properly in grid */
+.book-grid .cover-link:hover .ribbon-cover {
+    transform: scale(1.05);
+}
+
+/* Section Header for Carousels */
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    max-width: 1000px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.section-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #1a1a1a;
+    margin: 0;
+}
+
+[data-theme="dark"] .section-title {
+    color: #ffffff;
+}
+
+.view-all-link {
+    color: #ff6b35;
+    text-decoration: none;
+    font-size: 0.95rem;
+    font-weight: 600;
+    transition: color 0.2s ease;
+}
+
+.view-all-link:hover {
+    color: #ff8555;
+}
+
+[data-theme="dark"] .view-all-link {
+    color: #ff9670;
+}
+
+[data-theme="dark"] .view-all-link:hover {
+    color: #ffad8c;
+}
+
+/* ===========================
    Theme and Language Switcher
    =========================== */
 .btn-theme,
@@ -395,12 +458,52 @@ body {
 /* ===========================
    Responsive Styles
    =========================== */
+@media (max-width: 1200px) {
+    /* Book Grid - slightly smaller covers */
+    .book-grid .cover-link {
+        --cover-width: 180px;
+        --cover-height: 250px;
+    }
+}
+
 @media (max-width: 992px) {
     .book-card {
         min-height: 280px;
     }
     .book-card .card-title {
         font-size: 1.2rem;
+    }
+
+    /* Book Grid - 3 columns on tablets */
+    .book-grid {
+        gap: 1.5rem 1.2rem;
+        justify-content: center;
+    }
+
+    .book-grid .cover-link {
+        --cover-width: 170px;
+        --cover-height: 240px;
+    }
+}
+
+@media (max-width: 768px) {
+    /* Book Grid - 2 columns on small tablets */
+    .book-grid {
+        gap: 1.5rem 1rem;
+        justify-content: center;
+    }
+
+    .book-grid .cover-link {
+        --cover-width: 180px;
+        --cover-height: 250px;
+    }
+
+    .section-header {
+        margin-bottom: 1.2rem;
+    }
+
+    .section-title {
+        font-size: 1.3rem;
     }
 }
 
@@ -413,5 +516,24 @@ body {
     }
     .book-card .card-text {
         font-size: 0.9rem;
+    }
+
+    /* Book Grid - 2 columns on mobile, centered */
+    .book-grid {
+        gap: 1.2rem 0.8rem;
+        justify-content: center;
+    }
+
+    .book-grid .cover-link {
+        --cover-width: 150px;
+        --cover-height: 210px;
+    }
+
+    .section-title {
+        font-size: 1.2rem;
+    }
+
+    .view-all-link {
+        font-size: 0.85rem;
     }
 }
