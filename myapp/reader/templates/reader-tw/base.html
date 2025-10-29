@@ -1,0 +1,125 @@
+{% load static %}
+{% load books_extras %}
+
+<!DOCTYPE html>
+<html lang="{{ current_language.code|default:'en' }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}{% endblock %} - wereadly</title>
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="{% static 'reader/favicon.ico' %}">
+
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+
+    <!-- Reader App Styles -->
+    <link href="{% static 'reader-tw/css/output.css' %}" rel="stylesheet">
+
+    {% block extra_css %}{% endblock %}
+</head>
+
+<body>
+    <!-- Navigation -->
+    <nav class="border-b-2 shadow-sm flex">
+        <!-- Left Side Navigation -->
+        <div class="flex-auto">
+            <a  href="{% if current_language %}{% url 'reader:welcome' current_language.code %}{% else %}/{% endif %}">
+                <img src="{% static 'reader/images/logo_final.png' %}" alt="wereadly logo" height="10">
+            </a>
+        </div>
+
+        <div class="flex-auto">
+            <!-- Inline Breadcrumb -->
+            {% if current_language %}
+            {% block breadcrumb_section %}
+            {% block breadcrumb_check %}
+            {# This block will be overridden in child templates to show breadcrumb #}
+            {% endblock %}
+            {% endblock %}
+            {% endif %}
+        </div>
+
+        <div class="flex-auto">
+            <!-- Genres Dropdown (Hover Activated) -->
+            {% if genres %}
+            <div>
+                <button class="" type="button" id="genresDropdown" data-bs-toggle="dropdown" data-bs-auto-close="true" aria-expanded="false">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <ul aria-labelledby="genresDropdown">
+                    {% for genre in genres %}
+                    <li>
+                        <a class="dropdown-item" href="{% url 'reader:genre_book_list' current_language.code genre.slug %}">
+                            {{ genre.localized_name }}
+                        </a>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+        </div>
+            
+
+            <!-- Right Side Navigation -->
+            <div class="flex-auto">
+                <!-- Staff Links -->
+                {% if languages %}
+                    {% if user.is_authenticated and user.role != 'reader' %}
+                    <a href="{% url 'books:bookmaster_list' %}">
+                        <i class="fas fa-briefcase"></i> Staff
+                    </a>
+                    <a href="{% url 'admin:index' %}">
+                        <i class="fas fa-user-tie"></i> Admin
+                    </a>
+                    {% endif %}
+                {% endif %}
+                    </div>
+                <!-- Theme Switcher -->
+            <div class="flex-auto">
+                <button type="button" id="theme-toggle" aria-label="Toggle theme">
+                    <i class="fas fa-moon" id="theme-icon-moon"></i>
+                    <i class="fas fa-sun"id="theme-icon-sun"></i>
+                </button>
+            </div>
+                <!-- Language Switcher -->
+                {% if languages %}
+            <div class="flex-auto">
+                    <button  type="button" data-bs-toggle="dropdown">
+                        <i class="fas fa-globe"></i>
+                    </button>
+                    <ul >
+                        {% for lang in languages %}
+                        <li>
+                            <a class="dropdown-item {% if lang == current_language %}active{% endif %}" href="{% url 'reader:welcome' lang.code %}">
+                                {{ lang.local_name }}
+                            </a>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main >
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Footer -->
+    <footer >
+        <div >
+            <p >© 2025 wereadly</p>
+        </div>
+    </footer>
+
+
+    
+    
+
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

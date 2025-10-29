@@ -65,6 +65,12 @@ app_name = "reader"
 
 urlpatterns = [
     path("", language_redirect, name="language_redirect"),
+    # Example view for Tailwind base template
+    path(
+        "<str:language_code>/example/",
+        views.TailwindExampleView.as_view(),
+        name="tailwind_example",
+    ),
     # Welcome/Homepage
     path(
         "<str:language_code>/",

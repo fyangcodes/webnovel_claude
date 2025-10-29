@@ -7,6 +7,61 @@ from django.db.models import Count, Max
 from books.models import Book, Chapter, Language, Genre, BookGenre
 
 
+class BaseTailwindView(TemplateView):
+    """
+    Base view for reader-tw templates providing common context.
+
+    This view provides the basic context needed by reader-tw/base.html:
+    - current_language: Language object from URL
+    - languages: All available languages
+    - genres: All genres with localized names
+    """
+
+    def get_language(self):
+        """Get language from URL kwargs"""
+        language_code = self.kwargs.get("language_code")
+        return get_object_or_404(Language, code=language_code)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        language_code = self.kwargs.get("language_code")
+
+        # Current language
+        context["current_language"] = self.get_language()
+
+        # All available languages for language switcher
+        context["languages"] = Language.objects.all().order_by("name")
+
+        # All genres with localized names for genres dropdown
+        genres = Genre.objects.all().order_by("name")
+        for genre in genres:
+            genre.localized_name = genre.get_localized_name(language_code)
+        context["genres"] = genres
+
+        return context
+
+
+class TailwindExampleView(BaseTailwindView):
+    """
+    Example view demonstrating how to use BaseTailwindView.
+
+    To use this view in your own views:
+    1. Inherit from BaseTailwindView
+    2. Set template_name to your reader-tw template
+    3. Override get_context_data() to add custom context
+    """
+    template_name = "reader-tw/example.html"
+
+    def get_context_data(self, **kwargs):
+        # Call parent to get basic context (current_language, languages, genres)
+        context = super().get_context_data(**kwargs)
+
+        # Add any custom context here
+        # context["custom_data"] = "your data"
+
+        return context
+
+
 class BaseBookListView(ListView):
     """Base view with common reader functionality"""
 

@@ -1,8 +1,8 @@
 {
   "scripts": {
-    "dev:css": "tailwindcss -i ./myapp/reader/static/reader-tw/css/input.css -o ./myapp/reader/static/reader-tw/css/output.css --watch",
+    "watch:css": "tailwindcss -i ./myapp/reader/static/reader-tw/css/input.css -o ./myapp/reader/static/reader-tw/css/output.css --watch",
     "build:css": "tailwindcss -i ./myapp/reader/static/reader-tw/css/input.css -o ./myapp/reader/static/reader-tw/css/output.css",
-    "build:css:prod": "tailwindcss -i ./myapp/reader/static/reader-tw/css/input.css -o ./myapp/reader/static/reader-tw/css/output.css --minify"
+    "build:css:min": "tailwindcss -i ./myapp/reader/static/reader-tw/css/input.css -o ./myapp/reader/static/reader-tw/css/output.css --minify"
   },
   "devDependencies": {
     "tailwindcss": "^3.4.18"
