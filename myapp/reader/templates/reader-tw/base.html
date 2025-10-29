@@ -2,11 +2,20 @@
 {% load books_extras %}
 
 <!DOCTYPE html>
-<html lang="{{ current_language.code|default:'en' }}">
+<html lang="{{ current_language.code|default:'en' }}" class="bg-red-300 dark:bg-green-400">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}{% endblock %} - wereadly</title>
+
+    <!-- Dark mode script - prevent FOUC -->
+    <script>
+        if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark')
+        } else {
+            document.documentElement.classList.remove('dark')
+        }
+    </script>
 
     <!-- Favicon -->
     <link rel="icon" type="image/x-icon" href="{% static 'reader/favicon.ico' %}">
@@ -22,86 +31,77 @@
 
 <body>
     <!-- Navigation -->
-    <nav class="border-b-2 shadow-sm flex">
+    <nav class="nav-bar">
         <!-- Left Side Navigation -->
-        <div class="flex-auto">
+        <div class="flex-none">
             <a  href="{% if current_language %}{% url 'reader:welcome' current_language.code %}{% else %}/{% endif %}">
-                <img src="{% static 'reader/images/logo_final.png' %}" alt="wereadly logo" height="10">
+                <img src="{% static 'reader/images/logo_final.png' %}" alt="wereadly logo" class="h-8">
             </a>
         </div>
 
-        <div class="flex-auto">
-            <!-- Inline Breadcrumb -->
-            {% if current_language %}
+        <!-- Inline Breadcrumb -->
+        {% if current_language %}
+        <div class="flex-none">            
             {% block breadcrumb_section %}
-            {% block breadcrumb_check %}
-            {# This block will be overridden in child templates to show breadcrumb #}
-            {% endblock %}
-            {% endblock %}
-            {% endif %}
+                {% block breadcrumb_check %}
+                {# This block will be overridden in child templates to show breadcrumb #}
+                {% endblock %}
+            {% endblock %}            
+        </div>
+        {% endif %}
+
+        <!-- Genres Dropdown-->
+        {% if genres %}
+        <div class="flex-auto relative" id="genres-dropdown-container">
+            <button class="nav-item" id="genres-toggle">
+                <i class="fas fa-bars"></i>
+            </button>
+            <ul id="genres-dropdown" class="dropdown-menu hidden absolute left-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-md shadow-lg z-50">
+                <li>
+                    <a class="dropdown-item block px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700" href="{% url 'reader:genre_list' current_language.code %}">
+                        All genres
+                    </a>
+                    <br>                    
+                </li>
+                {% for genre in genres %}
+                <li>
+                    <a class="dropdown-item block px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700" href="{% url 'reader:genre_book_list' current_language.code genre.slug %}">
+                        {{ genre.localized_name }}
+                    </a>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+
+        <!-- Theme Switcher -->
+        <div class="flex-none">
+            <button type="button" id="theme-toggle" class="nav-item">
+                <i class="fas fa-moon" id="theme-icon-moon"></i>
+                <i class="fas fa-sun"id="theme-icon-sun"></i>
+            </button>
         </div>
 
-        <div class="flex-auto">
-            <!-- Genres Dropdown (Hover Activated) -->
-            {% if genres %}
-            <div>
-                <button class="" type="button" id="genresDropdown" data-bs-toggle="dropdown" data-bs-auto-close="true" aria-expanded="false">
-                    <i class="fas fa-bars"></i>
-                </button>
-                <ul aria-labelledby="genresDropdown">
-                    {% for genre in genres %}
-                    <li>
-                        <a class="dropdown-item" href="{% url 'reader:genre_book_list' current_language.code genre.slug %}">
-                            {{ genre.localized_name }}
-                        </a>
-                    </li>
-                    {% endfor %}
-                </ul>
-            </div>
-            {% endif %}
-        </div>
-            
-
-            <!-- Right Side Navigation -->
-            <div class="flex-auto">
-                <!-- Staff Links -->
-                {% if languages %}
-                    {% if user.is_authenticated and user.role != 'reader' %}
-                    <a href="{% url 'books:bookmaster_list' %}">
-                        <i class="fas fa-briefcase"></i> Staff
+        <!-- Language Switcher -->
+        {% if languages %}
+        <div class="flex-none relative" id="language-dropdown-container">
+            <button type="button" id="language-toggle" class="nav-item">
+                <i class="fas fa-globe"></i>
+            </button>
+            <ul id="language-dropdown" class="dropdown-menu hidden absolute right-0 mt-2 w-36 bg-white dark:bg-gray-800 rounded-md shadow-lg z-50 py-1">
+                {% for lang in languages %}
+                <li>
+                    <a class="dropdown-item block px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 {% if lang == current_language %}bg-blue-100 dark:bg-blue-900{% endif %}" href="{% url 'reader:welcome' lang.code %}">
+                        <div class="flex justify-between gap-4">
+                            <span class="font-bold text-sm">{{ lang.code|upper }}</span>
+                            <span class="text-sm">{{ lang.local_name }}</span>
+                        </div>
                     </a>
-                    <a href="{% url 'admin:index' %}">
-                        <i class="fas fa-user-tie"></i> Admin
-                    </a>
-                    {% endif %}
-                {% endif %}
-                    </div>
-                <!-- Theme Switcher -->
-            <div class="flex-auto">
-                <button type="button" id="theme-toggle" aria-label="Toggle theme">
-                    <i class="fas fa-moon" id="theme-icon-moon"></i>
-                    <i class="fas fa-sun"id="theme-icon-sun"></i>
-                </button>
-            </div>
-                <!-- Language Switcher -->
-                {% if languages %}
-            <div class="flex-auto">
-                    <button  type="button" data-bs-toggle="dropdown">
-                        <i class="fas fa-globe"></i>
-                    </button>
-                    <ul >
-                        {% for lang in languages %}
-                        <li>
-                            <a class="dropdown-item {% if lang == current_language %}active{% endif %}" href="{% url 'reader:welcome' lang.code %}">
-                                {{ lang.local_name }}
-                            </a>
-                        </li>
-                        {% endfor %}
-                    </ul>
-                </div>
-                {% endif %}
-            </div>
+                </li>
+                {% endfor %}
+            </ul>
         </div>
+        {% endif %}
     </nav>
 
     <!-- Main Content -->
@@ -116,9 +116,8 @@
         </div>
     </footer>
 
-
-    
-    
+    <!-- Scripts -->
+    <script src="{% static 'reader-tw/js/script.js' %}"></script>
 
     {% block extra_js %}{% endblock %}
 </body>
