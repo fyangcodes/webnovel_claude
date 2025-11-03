@@ -24,10 +24,12 @@
             // Switch to light mode
             document.documentElement.classList.remove('dark');
             localStorage.theme = 'light';
+            console.log('Theme changed to:', localStorage.theme);
         } else {
             // Switch to dark mode
             document.documentElement.classList.add('dark');
             localStorage.theme = 'dark';
+            console.log('Theme changed to:', localStorage.theme);
         }
         updateIcon();
     });
@@ -64,37 +66,83 @@
 
 // Dropdown Menu Script
 (function () {
-    // Generic dropdown handler
-    function createDropdown(toggleId, dropdownId) {
+    const dropdowns = [
+        { toggleId: 'language-toggle', dropdownId: 'language-dropdown' },
+        { toggleId: 'genres-toggle', dropdownId: 'genres-dropdown' }
+    ];
+
+    // Store all dropdown elements
+    const allDropdowns = [];
+
+    // Close all dropdowns
+    function closeAllDropdowns() {
+        allDropdowns.forEach(dropdown => {
+            dropdown.classList.add('hidden');
+        });
+    }
+
+    // Initialize each dropdown
+    dropdowns.forEach(({ toggleId, dropdownId }) => {
         const toggle = document.getElementById(toggleId);
         const dropdown = document.getElementById(dropdownId);
 
         if (!toggle || !dropdown) return;
 
+        // Store dropdown reference
+        allDropdowns.push(dropdown);
+
         // Toggle dropdown on button click
         toggle.addEventListener('click', function (e) {
             e.stopPropagation();
+
+            // Close all other dropdowns first
+            allDropdowns.forEach(d => {
+                if (d !== dropdown) {
+                    d.classList.add('hidden');
+                }
+            });
+
+            // Toggle current dropdown
             dropdown.classList.toggle('hidden');
         });
+    });
 
-        // Close dropdown when clicking outside
-        document.addEventListener('click', function (e) {
-            if (!dropdown.classList.contains('hidden') &&
-                !dropdown.contains(e.target) &&
-                e.target !== toggle) {
-                dropdown.classList.add('hidden');
-            }
-        });
+    // Close all dropdowns when clicking anywhere on the page
+    document.addEventListener('click', function (e) {
+        // Check if click is outside all dropdowns
+        const clickedInsideDropdown = allDropdowns.some(dropdown =>
+            dropdown.contains(e.target)
+        );
 
-        // Close dropdown when pressing Escape
-        document.addEventListener('keydown', function (e) {
-            if (e.key === 'Escape' && !dropdown.classList.contains('hidden')) {
-                dropdown.classList.add('hidden');
-            }
-        });
-    }
+        if (!clickedInsideDropdown) {
+            closeAllDropdowns();
+        }
+    });
 
-    // Initialize dropdowns
-    createDropdown('language-toggle', 'language-dropdown');
-    createDropdown('genres-toggle', 'genres-dropdown');
+    // Close all dropdowns when pressing Escape
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') {
+            closeAllDropdowns();
+        }
+    });
+
+    // Close dropdowns before page navigation (back/forward/refresh)
+    window.addEventListener('beforeunload', function () {
+        closeAllDropdowns();
+    });
+
+    // Close dropdowns when using browser back/forward buttons
+    window.addEventListener('pageshow', function (e) {
+        // If page is loaded from cache (back/forward navigation)
+        if (e.persisted) {
+            closeAllDropdowns();
+        }
+    });
+
+    // Close dropdowns when page becomes visible again (tab switching)
+    document.addEventListener('visibilitychange', function () {
+        if (document.hidden) {
+            closeAllDropdowns();
+        }
+    });
 })();

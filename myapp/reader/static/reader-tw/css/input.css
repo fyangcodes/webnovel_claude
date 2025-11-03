@@ -2,31 +2,16 @@
 @tailwind components;
 @tailwind utilities;
 
-@layer components {
-    .btn {
-        @apply font-bold py-2 px-4 rounded transition-colors duration-200;
-    }
-
-    .btn-primary {
-        @apply bg-primary-500 text-white hover:bg-primary-600;
-    }
-
-    .btn-secondary {
-        @apply bg-secondary-500 text-white hover:bg-secondary-600;
-    }
-
-    .btn-outline {
-        @apply bg-transparent border-2 border-primary-500 text-primary-500 hover:bg-primary-500 hover:text-white;
-    }
-
-    
-
+@layer components {    
+    /* ===========================
+       Navbar
+       =========================== */
     .nav-bar {
-        @apply flex p-2 gap-2 border-b-4 bg-transparent;
+        @apply flex p-2 gap-2 bg-transparent;
     }
 
     .nav-item {
-        @apply h-8 w-8 border text-gray-600 border-gray-400 rounded transition-colors duration-200;
+        @apply h-8 w-8 text-orange-400 border border-gray-500 rounded transition-colors duration-200 hover:bg-orange-200;
     }
 
     .dropdown-menu {
