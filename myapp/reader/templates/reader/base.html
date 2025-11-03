@@ -18,93 +18,129 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
 
     <!-- Reader App Styles -->
-    <link href="{% static 'reader/css/reader.css' %}" rel="stylesheet">
+    <link href="{% static 'reader/css/styles.css' %}" rel="stylesheet">
 
     {% block extra_css %}{% endblock %}
 </head>
 
 <body>
     <!-- Navigation -->
-    <nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm">
+    <nav class="navbar navbar-light bg-light shadow-sm">
         <div class="container">
-            <!-- Left Side Navigation -->
-            <div class="d-flex align-items-center flex-grow-1">
-                <a class="navbar-brand mb-0" href="{% if current_language %}{% url 'reader:welcome' current_language.code %}{% else %}/{% endif %}">
+            <!-- Left side: Hamburger + Logo -->
+            <div class="d-flex align-items-center gap-2">
+                {% if genres %}
+                <!-- Offcanvas genre-->
+                <button class="btn btn-light" type="button" data-bs-toggle="offcanvas" data-bs-target="#genreOffcanvas">
+                    <i class="fa fa-bars"></i>
+                </button>
+                {% endif %}
+
+                <!-- Logo -->
+                <a class="navbar-brand m-0" href="{% if current_language %}{% url 'reader:welcome' current_language.code %}{% else %}/{% endif %}">
                     <img src="{% static 'reader/images/logo_final.png' %}" alt="wereadly" height="30">
                 </a>
-
-                <!-- Inline Breadcrumb -->
-                {% if current_language %}
-                {% block breadcrumb_section %}
-                {% block breadcrumb_check %}
-                {# This block will be overridden in child templates to show breadcrumb #}
-                {% endblock %}
-                {% endblock %}
-                {% endif %}
-
-                <!-- Genres Dropdown (Hover Activated) -->
-                {% if genres %}
-                <div class="dropdown genres-dropdown ms-3">
-                    <button class="btn genres-btn" type="button" id="genresDropdown" data-bs-toggle="dropdown" data-bs-auto-close="true" aria-expanded="false">
-                        <i class="fas fa-bars"></i>
-                        <i class="fas fa-bars-staggered"></i>
-                    </button>
-                    <ul class="dropdown-menu" aria-labelledby="genresDropdown">
-                        {% for genre in genres %}
-                        <li>
-                            <a class="dropdown-item" href="{% url 'reader:genre_book_list' current_language.code genre.slug %}">
-                                {{ genre.localized_name }}
-                            </a>
-                        </li>
-                        {% endfor %}
-                    </ul>
-                </div>
-                {% endif %}
             </div>
 
-            <!-- Right Side Navigation -->
-            <div class="d-flex align-items-center gap-2">
-                <!-- Staff Links -->
-                {% if languages %}
-                    {% if user.is_authenticated and user.role != 'reader' %}
-                    <a href="{% url 'books:bookmaster_list' %}" class="btn btn-sm btn-outline-primary">
-                        <i class="fas fa-briefcase"></i> Staff
-                    </a>
-                    <a href="{% url 'admin:index' %}" class="btn btn-sm btn-outline-danger">
-                        <i class="fas fa-user-tie"></i> Admin
-                    </a>
-                    {% endif %}
-                {% endif %}
+            <!-- Inline Breadcrumb -->
+            {% if current_language %}
+            {% block breadcrumb_section %}
+            {% block breadcrumb_check %}
+            {# This block will be overridden in child templates to show breadcrumb #}
+            {% endblock %}
+            {% endblock %}
+            {% endif %}
 
-                <!-- Theme Switcher -->
-                <button class="btn btn-theme" type="button" id="theme-toggle" aria-label="Toggle theme">
-                    <i class="fas fa-moon" id="theme-icon-moon"></i>
-                    <i class="fas fa-sun" id="theme-icon-sun" style="display: none;"></i>
-                </button>
+            <!-- Dropdown configuration -->
+            <div class="dropdown">
+                <a class="btn btn-light dropdown-toggle" id="navbarDropdown" role="button" data-bs-toggle="dropdown">
+                    <i class="fa fa-gear"></i>
+                </a>
+                <ul class="dropdown-menu dropdown-menu-end">
+                    <!-- Theme Switcher -->
+                    <li>
+                        <button class="dropdown-item" type="button" id="theme-toggle">
+                            <div id="theme-icon-moon"> 
+                                <i class="fas fa-moon" ></i> Dark
+                            </div>
+                            <div id="theme-icon-sun" style="display: none;"> 
+                                <i class="fas fa-sun"></i> Light
+                            </div>
+                        </button>
+                    </li>
 
-                <!-- Language Switcher -->
-                {% if languages %}
-                <div class="language-switcher dropdown">
-                    <button class="btn btn-lang" type="button" data-bs-toggle="dropdown">
-                        <i class="fas fa-globe"></i>
-                    </button>
-                    <ul class="dropdown-menu dropdown-menu-end">
-                        {% for lang in languages %}
-                        <li>
-                            <a class="dropdown-item {% if lang == current_language %}active{% endif %}" href="{% url 'reader:welcome' lang.code %}">
-                                {{ lang.local_name }}
-                            </a>
-                        </li>
-                        {% endfor %}
-                    </ul>
-                </div>
-                {% endif %}
+                    <!-- Language Switcher -->
+                    <li>                        
+                        {% if languages %}
+                            <button class="dropdown-item" type="button" data-bs-toggle="modal" data-bs-target="#languageModal">
+                                <i class="fas fa-globe"></i> 
+                                <span> {{ current_language.code|upper }} </span> 
+                            </button>                            
+                        {% endif %}
+                    </li>
+                </ul>
             </div>
         </div>
     </nav>
 
+
     <!-- Main Content -->
-    <main class="container my-4">
+    <main class="container">
+        <!-- Offcanvas for genres -->
+        {% if genres %}        
+        <div class="offcanvas offcanvas-start" tabindex="-1" id="genreOffcanvas">
+            <div class="offcanvas-header">
+                <h5 class="offcanvas-title" >
+                    Genres
+                </h5>
+                <button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+            </div>
+            <div class="offcanvas-body">
+                <ul  class="list-unstyled">
+                    <li>
+                        <a class="btn btn-outline-primary m-1" href="{% url 'reader:genre_list' current_language.code %}">
+                            All genres
+                        </a>    
+                    </li>
+                    {% for genre in genres %}
+                    <li>
+                        <a class="btn btn-outline-secondary m-1" href="{% url 'reader:genre_book_list' current_language.code genre.slug %}">
+                            {{ genre.localized_name }}
+                        </a>
+                    </li>
+                    {% endfor %}
+                
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Offcanvas for genres -->
+        {% if languages %}  
+            <div class="modal fade" id="languageModal" tabindex="-1" >
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="languageModalLabel">
+                                <i class="fas fa-globe"></i> 
+                                Select language
+                            </h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body ">
+                            <div class="d-flex ">
+                                {% for lang in languages %}
+                                    <a class="badge {% if lang == current_language %}bg-primary{% else %}bg-secondary{% endif %} p-2 m-2 text-decoration-none" href="{% url 'reader:welcome' lang.code %}">
+                                        {{ lang.local_name }}
+                                    </a>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+        
+        <!-- Content from children -->
         {% block content %}{% endblock %}
     </main>
 
@@ -115,8 +151,7 @@
         </div>
     </footer>
 
-    <!-- Bootstrap JS -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
 
     <!-- Theme Switcher Script -->
     <script>
@@ -182,6 +217,9 @@
             }, { passive: true });
         })();
     </script>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
     {% block extra_js %}{% endblock %}
 </body>

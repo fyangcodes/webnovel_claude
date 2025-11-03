@@ -173,17 +173,17 @@
     }
 
     /* Genre Quick Access */
-    .genre-quick-access {
+    .genre-bar {
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-        gap: 1rem;
+        gap: 0.5rem;
     }
 
     .genre-card {
         background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
         border: 1px solid #dee2e6;
-        border-radius: 12px;
-        padding: 1.5rem 1rem;
+        border-radius: 6px;
+        padding: 0.75rem 0.5rem;
         text-align: center;
         transition: all 0.3s ease;
         text-decoration: none;
@@ -197,12 +197,6 @@
         color: #ff6b35;
     }
 
-    .genre-card i {
-        font-size: 2rem;
-        margin-bottom: 0.5rem;
-        display: block;
-    }
-
     [data-theme="dark"] .genre-card {
         background: linear-gradient(135deg, #353535 0%, #303030 100%);
         border-color: #4a4a4a;
@@ -213,57 +207,42 @@
         border-color: #ff9670;
         color: #ff9670;
     }
-
-    /* Stats in Hero */
-    .stat-item {
-        text-align: center;
-    }
-
-    .stat-number {
-        font-size: 2.5rem;
-        font-weight: 700;
-        display: block;
-    }
-
-    .stat-label {
-        font-size: 0.95rem;
-        opacity: 0.9;
-    }
 </style>
 {% endblock %}
 
 {% block content %}
-<!-- Featured Books Rotating Carousel -->
-{% if featured_books %}
-<div>
-    {% include "reader/partials/rotating_carousel.html" with books=featured_books section_id="featured" %}
-</div>
-{% endif %}
+    <!-- Featured Books Hero Carousel -->
+    {% if featured_books %}
+    <section class="my-2">
+        {% include "reader/partials/hero_carousel.html" with books=featured_books section_id="featured" %}
+    </section>
+    {% endif %}
 
-<!-- Recently Updated Carousel -->
-{% include "reader/partials/book_carousel.html" with books=recently_updated title="Recently Updated" %}
+    <!-- Browse by Genre -->
+    <section class="mb-4">
+        <div class="genre-bar">
+            <a href="{% url 'reader:genre_list' current_language.code %}" class="genre-card">
+                All Genres
+            </a>
+            {% for genre in genres|slice:":11" %}
+            <a href="{% url 'reader:genre_book_list' current_language.code genre.slug %}" class="genre-card">
+                {{ genre.localized_name }}
+            </a>
+            {% endfor %}
+        </div>
+    </section>
 
-<!-- New Arrivals Carousel -->
-{% include "reader/partials/book_carousel.html" with books=new_arrivals title="New Arrivals" %}
+    <!-- Recently Updated Carousel -->
+    <section>
+    {% include "reader/partials/book_carousel.html" with books=recently_updated title="Recently Updated" %}
+    </section>
 
-<!-- Browse by Genre -->
-<div class="mb-5">
-    <div class="section-header">
-        <h2 class="section-title">
-            <i class="fas fa-compass text-danger me-2"></i>Browse by Genre
-        </h2>
-        <a href="{% url 'reader:genre_list' current_language.code %}" class="view-all-link">
-            View All Genres <i class="fas fa-arrow-right ms-1"></i>
-        </a>
-    </div>
-    <div class="genre-quick-access">
-        {% for genre in genres|slice:":8" %}
-        <a href="{% url 'reader:genre_book_list' current_language.code genre.slug %}" class="genre-card">
-            <div class="fw-semibold">{{ genre.localized_name }}</div>
-        </a>
-        {% endfor %}
-    </div>
-</div>
+    <!-- New Arrivals Carousel -->
+    <section>
+    {% include "reader/partials/book_carousel.html" with books=new_arrivals title="New Arrivals" %}
+    </section>
+
+    
 {% endblock %}
 
 {% block extra_js %}
