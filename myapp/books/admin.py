@@ -55,6 +55,16 @@ class BookMasterAdmin(admin.ModelAdmin):
     ordering = ["canonical_title"]
     inlines = [BookGenreInline]
 
+    fieldsets = (
+        (None, {
+            'fields': ('canonical_title', 'owner', 'original_language')
+        }),
+        ('Images', {
+            'fields': ('cover_image', 'hero_image'),
+            'description': 'Cover image for standard display, Hero image for featured/carousel display'
+        }),
+    )
+
     def genre_list(self, obj):
         """Display genres in order"""
         genres = obj.book_genres.select_related('genre').order_by('order')

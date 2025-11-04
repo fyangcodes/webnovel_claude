@@ -3,9 +3,10 @@ from django.urls import reverse
 from django.views.generic import ListView, DetailView, TemplateView
 from django.http import Http404
 from django.core.paginator import Paginator
-from django.db.models import Count, Max
+from django.db.models import Max
+from django.conf import settings
 
-from books.models import Book, Chapter, Language, Genre, BookGenre
+from books.models import Book, Chapter, Language, Genre, BookGenre, BookMaster
 
 
 class BaseBookListView(ListView):
@@ -77,20 +78,37 @@ class WelcomeView(TemplateView):
         context["languages"] = Language.objects.all().order_by("name")
 
         # Get all genres with localized names
-        genres = Genre.objects.all().order_by("name")
-        for genre in genres:
+        all_genres = Genre.objects.all().order_by("name")
+        for genre in all_genres:
             genre.localized_name = genre.get_localized_name(language_code)
-        context["genres"] = genres
+        context["genres"] = all_genres
 
-        # Featured/Popular books (books with most chapters)
-        featured_books = (
-            Book.objects.filter(language=language, is_public=True)
-            .select_related("bookmaster", "language")
-            .prefetch_related("chapters", "bookmaster__genres")
-            .annotate(chapter_count=Count("chapters"))
-            .order_by("-chapter_count", "-published_at")[:6]
-        )
-        context["featured_books"] = self._enrich_books(featured_books, language_code)
+        # Get featured genres from settings (only show if defined)
+        featured_genre_ids = getattr(settings, "FEATURED_GENRES", [])
+        if featured_genre_ids:
+            featured_genres = Genre.objects.filter(id__in=featured_genre_ids)
+            for genre in featured_genres:
+                genre.localized_name = genre.get_localized_name(language_code)
+            context["featured_genres"] = featured_genres
+        else:
+            context["featured_genres"] = []
+
+        # Get featured books from settings (only show if defined)
+        featured_bookmaster_ids = getattr(settings, "FEATURED_BOOKS", [])
+        if featured_bookmaster_ids:
+            # Get books for the specified bookmasters in the current language
+            featured_books = (
+                Book.objects.filter(
+                    bookmaster_id__in=featured_bookmaster_ids,
+                    language=language,
+                    is_public=True
+                )
+                .select_related("bookmaster", "language")
+                .prefetch_related("chapters", "bookmaster__genres")
+            )
+            context["featured_books"] = self._enrich_books(featured_books, language_code)
+        else:
+            context["featured_books"] = []
 
         # Recently updated books (by most recent chapter published_at)
         recently_updated = (

@@ -282,3 +282,8 @@ if not DEBUG:
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
     USE_X_FORWARDED_HOST = True
     USE_X_FORWARDED_PORT = True
+
+
+# Featured Books and Genres
+FEATURED_BOOKS = [1]
+FEATURED_GENRES = [1]

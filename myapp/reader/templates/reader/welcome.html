@@ -7,27 +7,29 @@
 {% block content %}
     <!-- Featured Books Hero Carousel -->
     {% if featured_books %}
-    <section class="my-2">
+    <section class="mt-2">
         {% include "reader/partials/hero_carousel.html" with books=featured_books section_id="featured" %}
     </section>
     {% endif %}
 
-    <!-- Genre Section -->
-    <section class="mb-4">
+    <!-- Featured Genre Bar -->
+    {% if featured_genres %}
+    <section class="mt-2 mb-4">
         <div class="genre-bar">
             <a href="{% url 'reader:book_list' current_language.code %}" class="genre-card">
                 All Genres
             </a>
-            {% for genre in genres|slice:":7" %}
+            {% for genre in featured_genres %}
             <a href="{% url 'reader:genre_book_list' current_language.code genre.slug %}" class="genre-card">
                 {{ genre.localized_name }}
             </a>
             {% endfor %}
         </div>
     </section>
+    {% endif %}
 
     <!-- Continue Reading -->
-    <div id="continueReadingSection" style="display: none;" class="mb-5">
+    <div id="continueReadingSection" style="display: none;" class="mt-2 mb-4">
         <div class="section-header">
             <h2 class="section-title">
                 Continue Reading  
