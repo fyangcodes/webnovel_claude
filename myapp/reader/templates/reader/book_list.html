@@ -6,7 +6,53 @@
 
 {% block content %}
 <!-- Query Section -->
+<section class="m-2 col-lg-9">
+    <div class="card">
+        <div class="card-body">
+            <!-- Genre Filter -->
+            <div class="mb-4">
+                <div class="d-flex flex-wrap gap-2">
+                    <a href="{% url 'reader:book_list' current_language.code %}{% if selected_status %}?status={{ selected_status }}{% endif %}"
+                       class="btn btn-sm btn-filter {% if not selected_genre %}btn-primary{% else %}btn-outline-primary{% endif %}">
+                        All Genres
+                    </a>
+                    {% for genre in genres %}
+                        <a href="{% url 'reader:book_list' current_language.code %}?genre={{ genre.slug }}{% if selected_status %}&status={{ selected_status }}{% endif %}"
+                           class="btn btn-sm btn-filter {% if selected_genre == genre.slug %}btn-primary{% else %}btn-outline-primary{% endif %}">
+                            {{ genre.localized_name }}
+                        </a>
+                    {% endfor %}
+                </div>
+            </div>
 
+            <!-- Status Filter -->
+            <div>
+                <div class="d-flex flex-wrap gap-2">
+                    <a href="{% url 'reader:book_list' current_language.code %}{% if selected_genre %}?genre={{ selected_genre }}{% endif %}"
+                       class="btn btn-sm btn-filter {% if not selected_status %}btn-primary{% else %}btn-outline-primary{% endif %}">
+                        All Status
+                    </a>
+                    <a href="{% url 'reader:book_list' current_language.code %}?status=ongoing{% if selected_genre %}&genre={{ selected_genre }}{% endif %}"
+                       class="btn btn-sm btn-filter {% if selected_status == 'ongoing' %}btn-primary{% else %}btn-outline-primary{% endif %}">
+                        Ongoing
+                    </a>
+                    <a href="{% url 'reader:book_list' current_language.code %}?status=completed{% if selected_genre %}&genre={{ selected_genre }}{% endif %}"
+                       class="btn btn-sm btn-filter {% if selected_status == 'completed' %}btn-primary{% else %}btn-outline-primary{% endif %}">
+                        Completed
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- Count -->
+    <div class="my-2">
+        {% if books %}
+            <p><strong>{{ paginator.count }} matches found</strong><p>
+        {% else %}
+            <p><strong>No matches found</strong><p>
+        {% endif %}
+    </div>
+</section>
 
 <!-- Book List Section -->
 <section>

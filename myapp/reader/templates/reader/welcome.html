@@ -15,7 +15,7 @@
     <!-- Genre Section -->
     <section class="mb-4">
         <div class="genre-bar">
-            <a href="{% url 'reader:genre_list' current_language.code %}" class="genre-card">
+            <a href="{% url 'reader:book_list' current_language.code %}" class="genre-card">
                 All Genres
             </a>
             {% for genre in genres|slice:":7" %}
@@ -71,7 +71,7 @@
                     <div class="book-card-image-wrapper">
                         <img src="${coverImage}" alt="${reading.bookTitle}" class="book-card-image">
                         <div class="book-card-genres">
-                            <span class="book-card-badge">Chapter ${reading.chapterNumber}</span>
+                            <span class="badge bg-dark text-light position-absolute bottom-0 start-0 m-2">Chapter ${reading.chapterNumber}</span>
                         </div>
                     </div>
                     <h3 class="book-card-title">${reading.bookTitle}</h3>

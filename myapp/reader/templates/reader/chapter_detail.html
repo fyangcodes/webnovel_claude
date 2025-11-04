@@ -18,62 +18,6 @@
 </nav>
 {% endblock %}
 
-{% block extra_css %}
-<style>
-    .chapter-content {
-        font-size: 1.1rem;
-        line-height: 1.8;
-        color: #2d3436;
-        max-width: 800px;
-        margin: 0 auto;
-    }
-    .chapter-content p {
-        margin-bottom: 1.2rem;
-        text-align: justify;
-    }
-    .chapter-header {
-        border-bottom: 2px solid #e9ecef;
-        padding-bottom: 1rem;
-        margin-bottom: 2rem;
-    }
-    /* Dark mode styles */
-    [data-theme="dark"] .chapter-content {
-        color: #d4d4d4;
-    }
-    [data-theme="dark"] .chapter-header {
-        border-bottom-color: #4a4a4a;
-    }
-    [data-theme="dark"] .chapter-header h1 {
-        color: #d4d4d4;
-    }
-    [data-theme="dark"] .bg-light {
-        background-color: #353535 !important;
-    }
-    .reading-progress-bar {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 0%;
-        height: 3px;
-        background: linear-gradient(90deg, #ff6b35 0%, #ff8555 100%);
-        z-index: 1031; /* Above navbar */
-        transition: width 0.1s ease-out, transform 0.3s ease-in-out;
-        transform: translateY(57px); /* Position below navbar */
-    }
-    .reading-progress-bar.navbar-hidden {
-        transform: translateY(0); /* Move up with navbar */
-    }
-    .nav-button {
-        min-width: 120px;
-    }
-    @media (max-width: 768px) {
-        .chapter-content {
-            font-size: 1rem;
-            line-height: 1.6;
-        }
-    }
-</style>
-{% endblock %}
 
 {% block content %}
 <!-- Reading Progress Bar -->

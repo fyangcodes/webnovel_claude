@@ -9,18 +9,31 @@ Parameters:
     <a href="{% url 'reader:book_detail' current_language.code book.slug %}" class="book-card-link">
         <div class="book-card-image-wrapper">
             <img src="{{ book.effective_cover_image }}" alt="{{ book.title }}" class="book-card-image">
-            {% if book.bookmaster.genres.all %}
-            <div class="book-card-genres">
-                {% for genre in book.bookmaster.genres.all|slice:":2" %}
-                <span class="book-card-badge">{{ genre.localized_name }}</span>
-                {% endfor %}
-            </div>
+
+            <!-- Status Badge -->
+            {% if book.progress == 'ongoing' %}
+                <span class="badge bg-primary position-absolute top-0 end-0 m-2">Ongoing</span>
+            {% elif book.progress == 'completed' %}
+                <span class="badge bg-success position-absolute top-0 end-0 m-2">Completed</span>
             {% endif %}
+
             <button class="book-card-info-btn" data-bs-toggle="modal" data-bs-target="#bookModal{{ book.id }}" onclick="event.preventDefault(); event.stopPropagation();">
                 <i class="fas fa-info"></i>
             </button>
         </div>
         <h3 class="book-card-title">{{ book.title }}</h3>
+        <div class="d-flex justify-content-between muted small">
+            {% with book.bookmaster.genres.all|first as first_genre %}
+                {% if first_genre %}
+                    <p class="mb-0">{{ first_genre.localized_name }}</p>
+                {% else %}
+                    <p class="mb-0"></p>
+                {% endif %}
+            {% endwith %}
+            <p class="mb-0"><i class="fa fa-list"></i> {{ book.published_chapters_count }}</p>
+        </div>
+        
+
     </a>
 </div>
 
