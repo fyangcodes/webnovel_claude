@@ -6,7 +6,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}{% endblock %} - wereadly</title>
+    <title>{% block title %}{% endblock %} | wereadly</title>
 
     <!-- Favicon -->
     <link rel="icon" type="image/x-icon" href="{% static 'reader/favicon.ico' %}">
@@ -38,18 +38,20 @@
 
                 <!-- Logo -->
                 <a class="navbar-brand m-0" href="{% if current_language %}{% url 'reader:welcome' current_language.code %}{% else %}/{% endif %}">
-                    <img src="{% static 'reader/images/logo_final.png' %}" alt="wereadly" height="30">
+                    <span style="color:#ff6b35">we</span><span style="color:#000">readly</span>
                 </a>
+
+                <!-- Inline Breadcrumb -->
+                {% if current_language %}
+                {% block breadcrumb_section %}
+                {% block breadcrumb_check %}
+                {# This block will be overridden in child templates to show breadcrumb #}
+                {% endblock %}
+                {% endblock %}
+                {% endif %}
             </div>
 
-            <!-- Inline Breadcrumb -->
-            {% if current_language %}
-            {% block breadcrumb_section %}
-            {% block breadcrumb_check %}
-            {# This block will be overridden in child templates to show breadcrumb #}
-            {% endblock %}
-            {% endblock %}
-            {% endif %}
+            
 
             <!-- Dropdown configuration -->
             <div class="dropdown">

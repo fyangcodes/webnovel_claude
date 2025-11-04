@@ -1,0 +1,27 @@
+{% comment %}
+Book Grid Partial
+Parameters:
+- books: QuerySet of books to display
+- title: Section title text
+- icon: FontAwesome icon class (e.g., "fa-sync", "fa-sparkles")
+- icon_color: Bootstrap color class for icon (e.g., "text-primary", "text-success")
+- current_language: Current language object for URL generation
+{% endcomment %}
+
+{% if books %}
+<div class="mb-5">
+    <div class="section-header">
+        <h2 class="section-title">
+            {{ title }}
+        </h2>
+        <a href="{% url 'reader:book_list' current_language.code %}" class="view-all-link">
+            View All <i class="fas fa-arrow-right ms-1"></i>
+        </a>
+    </div>
+    <div class="book-grid">
+        {% for book in books %}
+            {% include "reader/partials/book_card.html" with book=book current_language=current_language %}
+        {% endfor %}
+    </div>
+</div>
+{% endif %}

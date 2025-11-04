@@ -141,6 +141,60 @@
 
 {% block extra_js %}
 <script>
+// Reading History Tracker - Save to localStorage
+(function() {
+    // Save current reading progress to localStorage
+    function saveReadingProgress() {
+        const readingData = {
+            bookId: {{ book.id }},
+            bookTitle: "{{ book.title|escapejs }}",
+            bookSlug: "{{ book.slug|escapejs }}",
+            chapterId: {{ chapter.id }},
+            chapterNumber: {{ chapter.chaptermaster.chapter_number }},
+            chapterTitle: "{{ chapter.title|escapejs }}",
+            chapterSlug: "{{ chapter.slug|escapejs }}",
+            lastReadAt: new Date().toISOString(),
+            coverImage: "{{ book.effective_cover_image|escapejs }}",
+            languageCode: "{{ current_language.code|escapejs }}"
+        };
+
+        try {
+            // Get existing reading history
+            let readingHistory = JSON.parse(localStorage.getItem('readingHistory') || '[]');
+
+            // Remove any existing entry for this book
+            readingHistory = readingHistory.filter(item => item.bookId !== readingData.bookId);
+
+            // Add current reading to the beginning
+            readingHistory.unshift(readingData);
+
+            // Keep only the most recent 20 books
+            readingHistory = readingHistory.slice(0, 20);
+
+            // Save back to localStorage
+            localStorage.setItem('readingHistory', JSON.stringify(readingHistory));
+
+            console.log('Reading progress saved:', readingData);
+        } catch (error) {
+            console.error('Failed to save reading progress:', error);
+        }
+    }
+
+    // Save progress when page loads
+    document.addEventListener('DOMContentLoaded', function() {
+        saveReadingProgress();
+    });
+
+    // Optional: Update progress when user has been reading for a while
+    let readingTimer = setTimeout(saveReadingProgress, 10000); // Update after 10 seconds
+
+    // Clear timer on page unload
+    window.addEventListener('beforeunload', function() {
+        clearTimeout(readingTimer);
+        saveReadingProgress(); // Final save before leaving
+    });
+})();
+
 // Auto-scroll to content on mobile for better reading experience
 document.addEventListener('DOMContentLoaded', function() {
     if (window.innerWidth <= 768) {

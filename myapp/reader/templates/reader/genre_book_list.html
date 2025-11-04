@@ -83,7 +83,7 @@
         {% if books %}
         <div class="row">
             {% for book in books %}
-            {% include "reader/partials/reader_book_card.html" with book=book current_language=current_language %}
+            {% include "reader/partials/book_card_large.html" with book=book current_language=current_language %}
             {% endfor %}
         </div>
 
