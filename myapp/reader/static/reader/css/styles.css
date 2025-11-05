@@ -2,14 +2,80 @@
    Reader App Styles
    =========================== */
 
+/* ===========================
+   CSS Variables - Color System
+   =========================== */
+:root {
+    /* Primary Brand Colors */
+    --color-primary: #ff6b35;
+    --color-primary-hover: #ff8555;
+    --color-primary-dark: #ff9670;
+    --color-primary-dark-hover: #ffad8c;
 
+    /* Text Colors */
+    --color-text: #333;
+    --color-text-light: #6c757d;
+    --color-text-muted: #999;
+
+    /* Background Colors */
+    --color-bg: #ffffff;
+    --color-bg-light: #f8f9fa;
+    --color-bg-navbar: #ffffff;
+    --color-bg-overlay: rgba(108, 117, 125, 0.1);
+
+    /* Border Colors */
+    --color-border: #dee2e6;
+    --color-border-light: #e9ecef;
+
+    /* Gradient Colors */
+    --gradient-card: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+    --gradient-progress: linear-gradient(90deg, #ff6b35 0%, #ff8555 100%);
+
+    /* Component Filters */
+    --btn-close-filter: none;
+}
+
+/* Dark Theme Variables */
+[data-theme="dark"] {
+    /* Primary Brand Colors (adjusted for dark theme) */
+    --color-primary: #ff9670;
+    --color-primary-hover: #ffad8c;
+    --color-primary-dark: #ff9670;
+    --color-primary-dark-hover: #ffad8c;
+
+    /* Text Colors */
+    --color-text: #d4d4d4;
+    --color-text-light: #aaa;
+    --color-text-muted: #888;
+    --color-text-white: #fff;
+
+    /* Background Colors */
+    --color-bg: #2b2b2b;
+    --color-bg-light: #353535;
+    --color-bg-hover: #454545;
+    --color-bg-navbar: #3a3a3a;
+    --color-bg-overlay: rgba(255, 255, 255, 0.08);
+
+    /* Border Colors */
+    --color-border: #4a4a4a;
+    --color-border-light: #555;
+
+    /* Gradient Colors */
+    --gradient-card: linear-gradient(135deg, #353535 0%, #303030 100%);
+    --gradient-progress: linear-gradient(90deg, #ff9670 0%, #ffad8c 100%);
+
+    /* Component Filters */
+    --btn-close-filter: invert(1) grayscale(100%) brightness(200%);
+}
 
 /* Base Styles */
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     line-height: 1.6;
-    color: #333;
-    padding-top: 58px;        /* Adjust for fixed navbar height */
+    color: var(--color-text);
+    background-color: var(--color-bg);
+    padding-top: 58px;
+    /* Adjust for fixed navbar height */
 }
 
 /* ===========================
@@ -22,6 +88,7 @@ body {
     right: 0;
     z-index: 1030;
     transition: transform 0.3s ease-in-out;
+    background-color: var(--color-bg-navbar);
 }
 
 .navbar.navbar-hidden {
@@ -32,8 +99,12 @@ body {
     font-weight: bold;
 }
 
-.navbar-brand img {
-    transition: filter 0.2s ease;
+.logo-we {
+    color: var(--color-primary);
+}
+
+.logo-readly {
+    color: var(--color-text);
 }
 
 /* ===========================
@@ -43,7 +114,6 @@ body {
     background-color: transparent;
     padding: 0;
     margin: 0;
-    font-size: 1.1rem;
     display: flex;
     align-items: center;
 }
@@ -53,52 +123,200 @@ body {
     align-items: center;
 }
 
-.navbar .breadcrumb-item+.breadcrumb-item::before {
+.navbar .breadcrumb-item::before {
     content: "›";
-    color: #999;
-    padding: 0 0.75rem;
-    font-size: 1.3rem;
+    color: var(--color-text-muted);
+    padding: 0 1rem;
     font-weight: 300;
 }
 
 /* Book title - orange like "we" in logo - always orange */
 .navbar .breadcrumb-item.book-title a,
 .navbar .breadcrumb-item.book-title.active {
-    color: #ff6b35;
+    color: var(--color-primary);
     text-decoration: none;
     font-weight: 700;
 }
 
 .navbar .breadcrumb-item.book-title a:hover {
-    color: #ff8555;
+    color: var(--color-primary-hover);
     text-decoration: none;
 }
 
 /* Chapter title - black like "readly" in logo */
 .navbar .breadcrumb-item.chapter-title,
 .navbar .breadcrumb-item.chapter-title.active {
-    color: #333;
+    color: var(--color-text);
     font-weight: 700;
 }
 
-/* Logo separator before breadcrumb */
-.breadcrumb-separator {
-    color: #999;
-    padding: 0 0.75rem;
-    font-size: 1.3rem;
-    font-weight: 300;
+/* ===========================
+   Button in navbar
+   =========================== */
+.btn-nav {
+    background-color: transparent;
+    border: none;
+    color: var(--color-text-light);
+    font-size: 1.1rem;
+    padding: 0.375rem 0.75rem;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+}
+
+.btn-nav:hover,
+.btn-nav:focus,
+.btn-nav:active {
+    color: var(--color-text);
+    background-color: var(--color-bg-overlay);
+    border-radius: 4px;
+    border: none;
+    box-shadow: none;
+    outline: none;
+}
+
+/* ===========================
+   Dropdown Styles
+   =========================== */
+.dropdown-menu {
+    background-color: var(--color-bg);
+    border: 1px solid var(--color-border);
+}
+
+.dropdown-item {
+    color: var(--color-text);
+}
+
+.dropdown-item:hover,
+.dropdown-item:focus {
+    background-color: var(--color-bg-light);
+    color: var(--color-text);
+}
+
+/* ===========================
+   Offcanvas Styles
+   =========================== */
+.offcanvas {
+    background-color: var(--color-bg);
+    color: var(--color-text);
+}
+
+.offcanvas-header {
+    border-bottom: 1px solid var(--color-border);
+}
+
+.offcanvas-title {
+    color: var(--color-text);
+}
+
+.btn-close {
+    filter: var(--btn-close-filter);
+}
+
+/* ===========================
+   Button Styles
+   =========================== */
+/* Solid Primary Button */
+.btn-primary-custom {
+    background-color: var(--color-primary);
+    border-color: var(--color-primary);
+    color: #fff;
+}
+
+.btn-primary-custom:hover,
+.btn-primary-custom:focus,
+.btn-primary-custom:active {
+    background-color: var(--color-primary-hover);
+    border-color: var(--color-primary-hover);
+    color: #fff;
+}
+
+/* Outline Primary Button */
+.btn-outline-primary-custom {
+    background-color: transparent;
+    border: 1px solid var(--color-primary);
+    color: var(--color-primary);
+}
+
+.btn-outline-primary-custom:hover,
+.btn-outline-primary-custom:focus,
+.btn-outline-primary-custom:active {
+    background-color: var(--color-primary);
+    border-color: var(--color-primary);
+    color: #fff;
+}
+
+/* Button Size Utility */
+.btn-min-width {
+    min-width: 100px;
+}
+
+/* ===========================
+   Card Styles
+   =========================== */
+.card {
+    background-color: var(--color-bg);
+    border: 1px solid var(--color-border);
+    color: var(--color-text);
+}
+
+.card-body {
+    background-color: var(--color-bg);
+}
+
+.card-title {
+    color: var(--color-text);
+}
+
+.card-text {
+    color: var(--color-text);
+}
+
+/* ===========================
+   Footer Styles
+   =========================== */
+footer.footer {
+    background-color: var(--color-bg-light);
+    border-top: 1px solid var(--color-border);
+}
+
+.footer-text {
+    color: var(--color-text-light);
+}
+
+/* Genre Quick Access */
+.genre-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.genre-card {
+    background: var(--gradient-card);
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    padding: 0.75rem 0.5rem;
+    text-align: center;
+    transition: all 0.3s ease;
+    text-decoration: none;
+    color: var(--color-text);
+    flex: 0 0 auto;
+    min-width: 150px;
+}
+
+.genre-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+    border-color: var(--color-primary);
+    color: var(--color-primary);
 }
 
 /* ===========================
    Reading Content
    =========================== */
-.reading-content {
-    max-width: 800px;
-    margin: 0 auto;
-    font-size: 1.1rem;
-    line-height: 1.8;
-}
-
 /* Section Headers */
 .section-header {
     display: flex;
@@ -110,66 +328,18 @@ body {
 .section-title {
     font-size: 1.8rem;
     font-weight: 700;
-    color: #333;
-}
-
-[data-theme="dark"] .section-title {
-    color: #d4d4d4;
+    color: var(--color-text);
 }
 
 .view-all-link {
-    color: #ff6b35;
+    color: var(--color-primary);
     text-decoration: none;
     font-weight: 600;
     transition: color 0.2s ease;
 }
 
 .view-all-link:hover {
-    color: #ff8555;
-}
-
-[data-theme="dark"] .view-all-link {
-    color: #ff9670;
-}
-
-[data-theme="dark"] .view-all-link:hover {
-    color: #ffad8c;
-}
-
-/* Genre Quick Access */
-.genre-bar {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-    gap: 0.5rem;
-}
-
-.genre-card {
-    background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
-    border: 1px solid #dee2e6;
-    border-radius: 6px;
-    padding: 0.75rem 0.5rem;
-    text-align: center;
-    transition: all 0.3s ease;
-    text-decoration: none;
-    color: #333;
-}
-
-.genre-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
-    border-color: #ff6b35;
-    color: #ff6b35;
-}
-
-[data-theme="dark"] .genre-card {
-    background: linear-gradient(135deg, #353535 0%, #303030 100%);
-    border-color: #4a4a4a;
-    color: #d4d4d4;
-}
-
-[data-theme="dark"] .genre-card:hover {
-    border-color: #ff9670;
-    color: #ff9670;
+    color: var(--color-primary-hover);
 }
 
 /* ===========================
@@ -184,7 +354,8 @@ body {
 
 .book-card {
     /* Fixed width with no growing */
-    flex: 0 0 200px; /* no grow, no shrink, fixed 200px width */
+    flex: 0 0 200px;
+    /* no grow, no shrink, fixed 200px width */
     width: 200px;
 }
 
@@ -198,14 +369,16 @@ body {
 
 @media (max-width: 480px) {
     .book-card {
-        flex: 0 0 calc(50% - 0.75rem); /* 2 cards per row with gap */
+        flex: 0 0 calc(50% - 0.75rem);
+        /* 2 cards per row with gap */
         width: calc(50% - 0.75rem);
     }
 }
 
 @media (max-width: 360px) {
     .book-card {
-        flex: 0 0 100%; /* full width on very small screens */
+        flex: 0 0 100%;
+        /* full width on very small screens */
         width: 100%;
     }
 }
@@ -221,7 +394,6 @@ body {
     width: 100%;
     height: 250px;
     overflow: hidden;
-    background: #f0f0f0;
 }
 
 .book-card-image {
@@ -261,7 +433,7 @@ body {
 }
 
 .book-card-info-btn:hover {
-    background: rgba(255, 107, 53, 1);
+    background: var(--color-primary);
     transform: scale(1.1);
 }
 
@@ -274,7 +446,7 @@ body {
     font-size: 1rem;
     font-weight: 600;
     line-height: 1.4;
-    color: #333;
+    color: var(--color-text);
     display: -webkit-box;
     -webkit-line-clamp: 2;
     line-clamp: 2;
@@ -284,227 +456,20 @@ body {
 }
 
 .book-card-link:hover .book-card-title {
-    color: #ff6b35;
+    color: var(--color-primary);
 }
 
-/* Dark mode support */
-[data-theme="dark"] .book-card-title {
-    color: #e0e0e0;
-}
 
-[data-theme="dark"] .book-card-link:hover .book-card-title {
-    color: #ff8555;
-}
-
-[data-theme="dark"] .book-card-image-wrapper {
-    background: #2a2a2a;
-}
 
 /* ===========================
-   Theme and Language Switcher
+   Chapter detail
    =========================== */
-.btn-theme,
-.btn-lang {
-    background-color: transparent;
-    border: none;
-    color: #6c757d;
-    font-size: 1.1rem;
-    padding: 0.375rem 0.75rem;
-    transition: all 0.2s ease;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 40px;
-    height: 40px;
-}
 
-.btn-theme:hover,
-.btn-theme:focus,
-.btn-theme:active,
-.btn-lang:hover,
-.btn-lang:focus,
-.btn-lang:active {
-    color: #495057;
-    background-color: rgba(108, 117, 125, 0.1);
-    border-radius: 4px;
-    border: none;
-    box-shadow: none;
-    outline: none;
-}
-
-.language-switcher .dropdown-menu {
-    min-width: 150px;
-}
-
-/* ===========================
-   Chapter Navigation
-   =========================== */
-.chapter-nav {
-    background: #f8f9fa;
-    border-radius: 8px;
-    padding: 1rem;
-}
-
-.progress-indicator {
-    font-size: 0.9rem;
-    color: #6c757d;
-}
-
-/* ===========================
-   Dark Mode Styles
-   =========================== */
-[data-theme="dark"] {
-    background-color: #2b2b2b;
-    color: #d4d4d4;
-}
-
-[data-theme="dark"] body {
-    background-color: #2b2b2b;
-    color: #d4d4d4;
-}
-
-/* Navbar Dark Mode */
-[data-theme="dark"] .navbar {
-    background-color: #3a3a3a !important;
-    border-bottom: 1px solid #555;
-}
-
-[data-theme="dark"] .navbar-brand {
-    color: #9d8ff7 !important;
-}
-
-[data-theme="dark"] .navbar-brand img {
-    filter: brightness(0) saturate(100%) invert(58%) sepia(85%) saturate(2042%) hue-rotate(336deg) brightness(102%) contrast(101%);
-}
-
-[data-theme="dark"] .breadcrumb-item+.breadcrumb-item::before,
-[data-theme="dark"] .breadcrumb-separator {
-    color: #888;
-}
-
-[data-theme="dark"] .navbar .breadcrumb-item.book-title a,
-[data-theme="dark"] .navbar .breadcrumb-item.book-title.active {
-    color: #ff9670;
-}
-
-[data-theme="dark"] .navbar .breadcrumb-item.chapter-title,
-[data-theme="dark"] .navbar .breadcrumb-item.chapter-title.active {
-    color: #d4d4d4;
-}
-
-/* Switcher Buttons Dark Mode */
-[data-theme="dark"] .btn-lang,
-[data-theme="dark"] .btn-theme {
-    color: #aaa;
-}
-
-[data-theme="dark"] .btn-lang:hover,
-[data-theme="dark"] .btn-theme:hover {
-    color: #d4d4d4;
-    background-color: rgba(255, 255, 255, 0.08);
-}
-
-/* Dropdowns Dark Mode */
-[data-theme="dark"] .dropdown-menu {
-    background-color: #353535;
-    border-color: #4a4a4a;
-}
-
-[data-theme="dark"] .dropdown-item {
-    color: #d4d4d4;
-}
-
-[data-theme="dark"] .dropdown-item:hover {
-    background-color: #454545;
-    color: #fff;
-}
-
-[data-theme="dark"] .dropdown-item.active {
-    background-color: #7c6fd7;
-}
-
-/* Book Cards Dark Mode */
-[data-theme="dark"] .book-card {
-    background-color: #353535;
-    border-color: #4a4a4a;
-}
-
-[data-theme="dark"] .book-card .card-body {
-    background: linear-gradient(135deg, #353535 0%, #303030 100%);
-}
-
-[data-theme="dark"] .book-card .card-title,
-[data-theme="dark"] .book-card .card-text {
-    color: #d4d4d4;
-}
-
-[data-theme="dark"] .book-card .card-title a,
-[data-theme="dark"] .book-card .text-dark {
-    color: #d4d4d4 !important;
-}
-
-[data-theme="dark"] .book-card .card-title a:hover {
-    color: #fff !important;
-}
-
-/* Chapter Navigation Dark Mode */
-[data-theme="dark"] .chapter-nav {
-    background: #353535;
-}
-
-[data-theme="dark"] .progress-indicator {
-    color: #aaa;
-}
-
-/* Footer Dark Mode */
-[data-theme="dark"] footer {
-    background-color: #353535 !important;
-    border-top: 1px solid #4a4a4a;
-}
-
-[data-theme="dark"] .text-muted {
-    color: #aaa !important;
-}
-
-/* Buttons Dark Mode */
-[data-theme="dark"] .btn-outline-primary {
-    color: #9d8ff7;
-    border-color: #9d8ff7;
-}
-
-[data-theme="dark"] .btn-outline-primary:hover {
-    background-color: #9d8ff7;
-    color: #fff;
-}
-
-[data-theme="dark"] .btn-outline-danger {
-    color: #ff8888;
-    border-color: #ff8888;
-}
-
-[data-theme="dark"] .btn-outline-danger:hover {
-    background-color: #ff8888;
-    color: #fff;
-}
-
-/* Genres Button Dark Mode */
-[data-theme="dark"] .genres-btn {
-    color: #ff9670;
-}
-
-[data-theme="dark"] .genres-btn:hover {
-    color: #ffad8c;
-    background-color: rgba(255, 150, 112, 0.1);
-}
-
-.btn-filter {
-    min-width: 100px;
-}
 
 .chapter-content {
     font-size: 1.1rem;
     line-height: 1.8;
-    color: #2d3436;
+    color: var(--color-text);
     max-width: 800px;
     margin: 0 auto;
 }
@@ -515,27 +480,57 @@ body {
 }
 
 .chapter-header {
-    border-bottom: 2px solid #e9ecef;
+    border-bottom: 2px solid var(--color-border-light);
     padding-bottom: 1rem;
     margin-bottom: 2rem;
+    gap: 1rem;
 }
 
-/* Dark mode styles */
-[data-theme="dark"] .chapter-content {
-    color: #d4d4d4;
+.chapter-header-title h1 {
+    color: var(--color-text);
 }
 
-[data-theme="dark"] .chapter-header {
-    border-bottom-color: #4a4a4a;
+.chapter-header-stats {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    text-align: right;
+    white-space: nowrap;
+    flex-shrink: 0;
 }
 
-[data-theme="dark"] .chapter-header h1 {
-    color: #d4d4d4;
+.chapter-header-stats span {
+    font-size: 0.9rem;
 }
 
-[data-theme="dark"] .bg-light {
-    background-color: #353535 !important;
+.chapter-number {
+    margin-bottom: 0.25rem;
 }
+
+.chapter-time {
+    color: var(--color-text-light);
+}
+
+/* Responsive: Stack on small screens */
+@media (max-width: 768px) {
+    .chapter-header {
+        flex-direction: column;
+        align-items: flex-start !important;
+    }
+
+    .chapter-header-stats {
+        flex-direction: row;
+        justify-content: space-between;
+        align-items: center;
+        width: 100%;
+        margin-top: 0.5rem;
+    }
+
+    .chapter-number {
+        margin-bottom: 0;
+    }
+}
+
 
 .reading-progress-bar {
     position: fixed;
@@ -543,7 +538,7 @@ body {
     left: 0;
     width: 0%;
     height: 3px;
-    background: linear-gradient(90deg, #ff6b35 0%, #ff8555 100%);
+    background: var(--gradient-progress);
     z-index: 1031;
     /* Above navbar */
     transition: width 0.1s ease-out, transform 0.3s ease-in-out;
@@ -554,15 +549,4 @@ body {
 .reading-progress-bar.navbar-hidden {
     transform: translateY(0);
     /* Move up with navbar */
-}
-
-.nav-button {
-    min-width: 120px;
-}
-
-@media (max-width: 768px) {
-    .chapter-content {
-        font-size: 1rem;
-        line-height: 1.6;
-    }
 }

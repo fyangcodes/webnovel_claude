@@ -25,20 +25,20 @@
 
 <body>
     <!-- Navigation -->
-    <nav class="navbar navbar-light bg-light shadow-sm">
+    <nav class="navbar shadow-sm">
         <div class="container">
             <!-- Left side: Hamburger + Logo -->
             <div class="d-flex align-items-center gap-2">
                 {% if genres %}
                 <!-- Offcanvas genre-->
-                <button class="btn btn-light" type="button" data-bs-toggle="offcanvas" data-bs-target="#genreOffcanvas">
+                <button class="btn btn-nav" type="button" data-bs-toggle="offcanvas" data-bs-target="#genreOffcanvas">
                     <i class="fa fa-bars"></i>
                 </button>
                 {% endif %}
 
                 <!-- Logo -->
                 <a class="navbar-brand m-0" href="{% if current_language %}{% url 'reader:welcome' current_language.code %}{% else %}/{% endif %}">
-                    <span style="color:#ff6b35">we</span><span style="color:#000">readly</span>
+                    <span class="logo-we">we</span><span class="logo-readly">readly</span>
                 </a>
 
                 <!-- Inline Breadcrumb -->
@@ -55,7 +55,7 @@
 
             <!-- Dropdown configuration -->
             <div class="dropdown">
-                <a class="btn btn-light dropdown-toggle" id="navbarDropdown" role="button" data-bs-toggle="dropdown">
+                <a class="btn btn-nav dropdown-toggle" id="navbarDropdown" role="button" data-bs-toggle="dropdown">
                     <i class="fa fa-gear"></i>
                 </a>
                 <ul class="dropdown-menu dropdown-menu-end">
@@ -63,20 +63,21 @@
                     <li>
                         <button class="dropdown-item" type="button" id="theme-toggle">
                             <div id="theme-icon-moon"> 
-                                <i class="fas fa-moon" ></i> Dark
+                                <i class="fas fa-moon" ></i> 
+                                <span class="px-2 fw-bold"> Dark </span> 
                             </div>
                             <div id="theme-icon-sun" style="display: none;"> 
-                                <i class="fas fa-sun"></i> Light
+                                <i class="fas fa-sun"></i> 
+                                <span class="px-2 fw-bold"> Light </span> 
                             </div>
                         </button>
                     </li>
-
                     <!-- Language Switcher -->
                     <li>                        
                         {% if languages %}
                             <button class="dropdown-item" type="button" data-bs-toggle="modal" data-bs-target="#languageModal">
                                 <i class="fas fa-globe"></i> 
-                                <span> {{ current_language.code|upper }} </span> 
+                                <span class="px-2 fw-bold"> {{ current_language.code|upper }} </span> 
                             </button>                            
                         {% endif %}
                     </li>
@@ -100,23 +101,22 @@
             <div class="offcanvas-body">
                 <ul  class="list-unstyled">
                     <li>
-                        <a class="btn btn-outline-primary m-1" href="{% url 'reader:book_list' current_language.code %}">
+                        <a class="btn btn-outline-primary-custom btn-min-width m-1 fw-bold" href="{% url 'reader:book_list' current_language.code %}">
                             All genres
                         </a>    
                     </li>
                     {% for genre in genres %}
                     <li>
-                        <a class="btn btn-outline-secondary m-1" href="{% url 'reader:genre_book_list' current_language.code genre.slug %}">
+                        <a class="btn btn-outline-primary-custom btn-min-width m-1" href="{% url 'reader:genre_book_list' current_language.code genre.slug %}">
                             {{ genre.localized_name }}
                         </a>
                     </li>
                     {% endfor %}
-                
             </div>
         </div>
         {% endif %}
 
-        <!-- Offcanvas for genres -->
+        <!-- Modal for languages -->
         {% if languages %}  
             <div class="modal fade" id="languageModal" tabindex="-1" >
                 <div class="modal-dialog">
@@ -147,9 +147,9 @@
     </main>
 
     <!-- Footer -->
-    <footer class="bg-light mt-5 py-4">
+    <footer class="footer mt-5 py-4">
         <div class="container text-center">
-            <p class="text-muted mb-0">© 2025 wereadly</p>
+            <p class="footer-text mb-0">© 2025 wereadly</p>
         </div>
     </footer>
 

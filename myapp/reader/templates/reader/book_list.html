@@ -13,12 +13,12 @@
             <div class="mb-4">
                 <div class="d-flex flex-wrap gap-2">
                     <a href="{% url 'reader:book_list' current_language.code %}{% if selected_status %}?status={{ selected_status }}{% endif %}"
-                       class="btn btn-sm btn-filter {% if not selected_genre %}btn-primary{% else %}btn-outline-primary{% endif %}">
+                       class="btn btn-sm btn-min-width {% if not selected_genre %}btn-primary-custom{% else %}btn-outline-primary-custom{% endif %}">
                         All Genres
                     </a>
                     {% for genre in genres %}
                         <a href="{% url 'reader:book_list' current_language.code %}?genre={{ genre.slug }}{% if selected_status %}&status={{ selected_status }}{% endif %}"
-                           class="btn btn-sm btn-filter {% if selected_genre == genre.slug %}btn-primary{% else %}btn-outline-primary{% endif %}">
+                           class="btn btn-sm btn-min-width {% if selected_genre == genre.slug %}btn-primary-custom{% else %}btn-outline-primary-custom{% endif %}">
                             {{ genre.localized_name }}
                         </a>
                     {% endfor %}
@@ -29,15 +29,15 @@
             <div>
                 <div class="d-flex flex-wrap gap-2">
                     <a href="{% url 'reader:book_list' current_language.code %}{% if selected_genre %}?genre={{ selected_genre }}{% endif %}"
-                       class="btn btn-sm btn-filter {% if not selected_status %}btn-primary{% else %}btn-outline-primary{% endif %}">
+                       class="btn btn-sm btn-min-width {% if not selected_status %}btn-primary-custom{% else %}btn-outline-primary-custom{% endif %}">
                         All Status
                     </a>
                     <a href="{% url 'reader:book_list' current_language.code %}?status=ongoing{% if selected_genre %}&genre={{ selected_genre }}{% endif %}"
-                       class="btn btn-sm btn-filter {% if selected_status == 'ongoing' %}btn-primary{% else %}btn-outline-primary{% endif %}">
+                       class="btn btn-sm btn-min-width {% if selected_status == 'ongoing' %}btn-primary-custom{% else %}btn-outline-primary-custom{% endif %}">
                         Ongoing
                     </a>
                     <a href="{% url 'reader:book_list' current_language.code %}?status=completed{% if selected_genre %}&genre={{ selected_genre }}{% endif %}"
-                       class="btn btn-sm btn-filter {% if selected_status == 'completed' %}btn-primary{% else %}btn-outline-primary{% endif %}">
+                       class="btn btn-sm btn-min-width {% if selected_status == 'completed' %}btn-primary-custom{% else %}btn-outline-primary-custom{% endif %}">
                         Completed
                     </a>
                 </div>
@@ -65,12 +65,12 @@
     {% else %}
         <!-- Empty State -->
         <div class="text-center py-5">
-            <div class="display-1 text-muted mb-3">📚</div>
-            <h3 class="text-muted">No books available</h3>
-            <p class="text-muted">
+            <div class="display-1 mb-3">📚</div>
+            <h3>No books available</h3>
+            <p>
                 There are no published books in {{ current_language.name }} yet.
             </p>
-            <a href="{% url 'reader:book_list' current_language.code %}" class="btn btn-outline-primary">
+            <a href="{% url 'reader:book_list' current_language.code %}" class="btn btn-outline-primary-custom">
                 Refresh Page
             </a>
         </div>

@@ -6,7 +6,6 @@
 
 {% block breadcrumb_check %}
 <nav aria-label="breadcrumb" class="d-none d-md-flex align-items-center">
-    <span class="breadcrumb-separator">›</span>
     <ol class="breadcrumb mb-0">
         {% block breadcrumb_items %}
         <li class="breadcrumb-item book-title">
@@ -23,7 +22,7 @@
 <!-- Reading Progress Bar -->
 <div class="reading-progress-bar" id="readingProgressBar"></div>
 
-<div class="row">
+<div class="row mt-2">
     <!-- Left Ad Space (for future use) -->
     <div class="col-lg-2 d-none d-lg-block">
         <!-- Ad space placeholder -->
@@ -32,13 +31,14 @@
     <!-- Main Content -->
     <div class="col-12 col-lg-8">
         <!-- Chapter Header -->
-        <div class="chapter-header text-center">
-            <h1 class="display-6 mb-3">{{ chapter.title }}</h1>
-            <div class="d-flex justify-content-center align-items-center gap-3 text-muted">
-                <span>Chapter {{ chapter.chaptermaster.chapter_number }}</span>
+        <div class="chapter-header d-flex justify-content-between align-items-start">
+            <div class="chapter-header-title">
+                <h1 class="display-6 mb-0">{{ chapter.title }}</h1>
+            </div>
+            <div class="chapter-header-stats">
+                <span class="chapter-number">Chapter {{ chapter.chaptermaster.chapter_number }}</span>
                 {% if chapter.published_at %}
-                <span>•</span>
-                <span>{{ chapter.published_at|naturaltime }}</span>
+                <span class="chapter-time">{{ chapter.published_at|naturaltime }}</span>
                 {% endif %}
             </div>
         </div>
@@ -53,8 +53,8 @@
             {% if next_chapter %}
             <div class="d-grid">
                 <a href="{% url 'reader:chapter_detail' current_language.code book.slug next_chapter.slug %}"
-                   class="btn btn-primary btn-lg">
-                    Next Chapter →
+                   class="btn btn-primary-custom btn-lg">
+                    Next Chapter
                 </a>
                 <div class="mt-2 text-center">
                     <small class="text-muted">{{ next_chapter.title|truncatechars:40 }}</small>
@@ -66,10 +66,10 @@
         <!-- End of Book Message -->
         {% if not next_chapter %}
         <div class="text-center mt-5 p-4 bg-light rounded">
-            <h5 class="text-muted">🎉 You've reached the end!</h5>
-            <p class="text-muted mb-3">Thanks for reading {{ book.title }}!</p>
+            <h5 >🎉 You've reached the end!</h5>
+            <p class="mb-3">Thanks for reading {{ book.title }}!</p>
             <a href="{% url 'reader:book_list' current_language.code %}"
-               class="btn btn-primary">
+               class="btn btn-primary-custom">
                 Explore More Books
             </a>
         </div>
