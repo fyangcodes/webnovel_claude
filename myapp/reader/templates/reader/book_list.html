@@ -2,159 +2,78 @@
 {% load books_extras %}
 {% load static %}
 
-{% block title %}{{ current_language.name }} Books{% endblock %}
-
-{% block extra_css %}
-<style>
-    /* Fixed height book cards */
-    .book-card {
-        height: 100%;
-        min-height: 380px;
-        max-height: 380px;
-    }
-    .book-card .row.g-0 {
-        height: 100%;
-    }
-    .book-card .col-5,
-    .book-card .col-7 {
-        height: 100%;
-    }
-    .book-card .card-body {
-        display: flex;
-        flex-direction: column;
-        height: 100%;
-    }
-    .book-card .flex-grow-1 {
-        flex: 1 1 auto;
-        min-height: 0; /* Allow content to shrink if needed */
-        overflow: hidden;
-    }
-    .book-card .mt-auto {
-        flex-shrink: 0; /* Prevent stats section from shrinking */
-    }
-    
-    .book-card:hover .card-title {
-        max-height: none;
-        overflow: visible;
-        z-index: 10;
-        background: white;
-        color: #333;
-    }
-    .book-card:hover .card-title::after {
-        content: none;
-    }
-    /* Dark mode for card title hover */
-    [data-theme="dark"] .book-card:hover .card-title {
-        background: #353535;
-        color: #d4d4d4;
-    }
-    /* Description with ellipsis at 7 lines */
-    .book-description-container {
-        display: -webkit-box;
-        -webkit-line-clamp: 7;
-        -webkit-box-orient: vertical;
-        overflow: hidden;
-        text-overflow: ellipsis;
-    }
-</style>
-{% endblock %}
+{% block title %}All Books{% endblock %}
 
 {% block content %}
-<div class="row">
-    <div class="col-12">
-        <!-- Website Introduction -->
-        <div class="card border-0 shadow-sm mb-5" style="background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 50%, #1d4ed8 100%);">
-            <div class="card-body p-4 text-white">
-                <div class="row align-items-center">
-                    <div class="col-md-8">
-                        <h3 class="card-title mb-3 fw-bold">Welcome to wereadly</h3>
-                        <p class="card-text mb-3" style="line-height: 1.6;">
-                            Discover an amazing collection of novels from around the world.
-                            Our platform brings you high-quality translations of popular stories,
-                            making literature accessible to readers everywhere.
-                        </p>
-                        <div class="d-flex flex-wrap gap-3">
-                            <div class="d-flex align-items-center">
-                                <i class="fas fa-language me-2"></i>
-                                <span>Professional Translations</span>
-                            </div>
-                            <div class="d-flex align-items-center">
-                                <i class="fas fa-book-reader me-2"></i>
-                                <span>Regular Updates</span>
-                            </div>
-                            <div class="d-flex align-items-center">
-                                <i class="fas fa-heart me-2"></i>
-                                <span>Free to Read</span>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-4 text-center">
-                        <div class="display-3 mb-3">
-                            <img src="{% static 'reader/favicon_final.png' %}" alt="wereadly" height="128">
-                        </div>
-                        <p class="mb-0 fw-semibold">We share, we read!</p>
-                    </div>
+<!-- Query Section -->
+<section class="m-2 col-lg-9">
+    <div class="card">
+        <div class="card-body">
+            <!-- Genre Filter -->
+            <div class="mb-4">
+                <div class="d-flex flex-wrap gap-2">
+                    <a href="{% url 'reader:book_list' current_language.code %}{% if selected_status %}?status={{ selected_status }}{% endif %}"
+                       class="btn btn-sm btn-min-width {% if not selected_genre %}btn-primary-custom{% else %}btn-outline-primary-custom{% endif %}">
+                        All Genres
+                    </a>
+                    {% for genre in genres %}
+                        <a href="{% url 'reader:book_list' current_language.code %}?genre={{ genre.slug }}{% if selected_status %}&status={{ selected_status }}{% endif %}"
+                           class="btn btn-sm btn-min-width {% if selected_genre == genre.slug %}btn-primary-custom{% else %}btn-outline-primary-custom{% endif %}">
+                            {{ genre.localized_name }}
+                        </a>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Status Filter -->
+            <div>
+                <div class="d-flex flex-wrap gap-2">
+                    <a href="{% url 'reader:book_list' current_language.code %}{% if selected_genre %}?genre={{ selected_genre }}{% endif %}"
+                       class="btn btn-sm btn-min-width {% if not selected_status %}btn-primary-custom{% else %}btn-outline-primary-custom{% endif %}">
+                        All Status
+                    </a>
+                    <a href="{% url 'reader:book_list' current_language.code %}?status=ongoing{% if selected_genre %}&genre={{ selected_genre }}{% endif %}"
+                       class="btn btn-sm btn-min-width {% if selected_status == 'ongoing' %}btn-primary-custom{% else %}btn-outline-primary-custom{% endif %}">
+                        Ongoing
+                    </a>
+                    <a href="{% url 'reader:book_list' current_language.code %}?status=completed{% if selected_genre %}&genre={{ selected_genre }}{% endif %}"
+                       class="btn btn-sm btn-min-width {% if selected_status == 'completed' %}btn-primary-custom{% else %}btn-outline-primary-custom{% endif %}">
+                        Completed
+                    </a>
                 </div>
             </div>
         </div>
-
+    </div>
+    <!-- Count -->
+    <div class="my-2">
         {% if books %}
-        <div class="row">
-            {% for book in books %}
-            {% include "reader/partials/reader_book_card.html" with book=book current_language=current_language %}
-            {% endfor %}
-        </div>
-
-        <!-- Pagination -->
-        {% if is_paginated %}
-        <nav aria-label="Books pagination" class="mt-5">
-            <ul class="pagination justify-content-center">
-                {% if page_obj.has_previous %}
-                <li class="page-item">
-                    <a class="page-link" href="?page=1">First</a>
-                </li>
-                <li class="page-item">
-                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}">Previous</a>
-                </li>
-                {% endif %}
-
-                {% for num in page_obj.paginator.page_range %}
-                {% if page_obj.number == num %}
-                <li class="page-item active">
-                    <span class="page-link">{{ num }}</span>
-                </li>
-                {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
-                <li class="page-item">
-                    <a class="page-link" href="?page={{ num }}">{{ num }}</a>
-                </li>
-                {% endif %}
-                {% endfor %}
-
-                {% if page_obj.has_next %}
-                <li class="page-item">
-                    <a class="page-link" href="?page={{ page_obj.next_page_number }}">Next</a>
-                </li>
-                <li class="page-item">
-                    <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}">Last</a>
-                </li>
-                {% endif %}
-            </ul>
-        </nav>
-        {% endif %}
-
+            <p><strong>{{ paginator.count }} matches found</strong><p>
         {% else %}
+            <p><strong>No matches found</strong><p>
+        {% endif %}
+    </div>
+</section>
+
+<!-- Book List Section -->
+<section>
+    {% if books %}
+        <div class="book-grid">
+        {% for book in books %}
+            {% include "reader/partials/book_card.html" with book=book current_language=current_language %}
+        {% endfor %}
+        </div>
+    {% else %}
         <!-- Empty State -->
         <div class="text-center py-5">
-            <div class="display-1 text-muted mb-3">📚</div>
-            <h3 class="text-muted">No books available</h3>
-            <p class="text-muted">
+            <div class="display-1 mb-3">📚</div>
+            <h3>No books available</h3>
+            <p>
                 There are no published books in {{ current_language.name }} yet.
             </p>
-            <a href="{% url 'reader:book_list' current_language.code %}" class="btn btn-outline-primary">
+            <a href="{% url 'reader:book_list' current_language.code %}" class="btn btn-outline-primary-custom">
                 Refresh Page
             </a>
         </div>
-        {% endif %}
-    </div>
-</div>
+    {% endif %}
+</section>
 {% endblock %}

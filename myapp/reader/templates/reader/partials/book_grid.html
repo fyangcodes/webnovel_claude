@@ -1,5 +1,5 @@
 {% comment %}
-Book Carousel Partial
+Book Grid Partial
 Parameters:
 - books: QuerySet of books to display
 - title: Section title text
@@ -9,7 +9,7 @@ Parameters:
 {% endcomment %}
 
 {% if books %}
-<div class="mb-5">
+<div class="mb-4">
     <div class="section-header">
         <h2 class="section-title">
             {{ title }}
@@ -19,8 +19,8 @@ Parameters:
         </a>
     </div>
     <div class="book-grid">
-        {% for book in books|slice:":8" %}
-        {% include "reader/partials/book_card.html" with book=book current_language=current_language cover_width=200 cover_height=280 %}
+        {% for book in books %}
+            {% include "reader/partials/book_card.html" with book=book current_language=current_language %}
         {% endfor %}
     </div>
 </div>

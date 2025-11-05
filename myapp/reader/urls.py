@@ -77,12 +77,6 @@ urlpatterns = [
         views.WelcomeView.as_view(),
         name="welcome",
     ),
-    # Genre overview page
-    path(
-        "<str:language_code>/genres/",
-        views.GenreListView.as_view(),
-        name="genre_list",
-    ),
     # Specific genre's books
     path(
         "<str:language_code>/genre/<slug:genre_slug>/",

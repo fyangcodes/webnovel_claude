@@ -9,6 +9,9 @@ cd myapp
 echo "Running collectstatic..."
 python manage.py collectstatic --noinput
 
+echo "Making migrations..."
+python manage.py makemigrations
+
 echo "Running migrations..."
 python manage.py migrate
 

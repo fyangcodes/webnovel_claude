@@ -1,10 +1,12 @@
-from django.shortcuts import get_object_or_404
+from django.shortcuts import get_object_or_404, redirect
+from django.urls import reverse
 from django.views.generic import ListView, DetailView, TemplateView
 from django.http import Http404
 from django.core.paginator import Paginator
-from django.db.models import Count, Max
+from django.db.models import Max
+from django.conf import settings
 
-from books.models import Book, Chapter, Language, Genre, BookGenre
+from books.models import Book, Chapter, Language, Genre, BookGenre, BookMaster
 
 
 class BaseTailwindView(TemplateView):
@@ -85,7 +87,7 @@ class BaseBookListView(ListView):
         enriched_books = []
         for book in books:
             published_chapters = book.chapters.filter(is_public=True)
-            published_count = published_chapters.count()    
+            published_count = published_chapters.count()
 
             # Add the info to the book object
             book.published_chapters_count = published_count
@@ -131,20 +133,37 @@ class WelcomeView(TemplateView):
         context["languages"] = Language.objects.all().order_by("name")
 
         # Get all genres with localized names
-        genres = Genre.objects.all().order_by("name")
-        for genre in genres:
+        all_genres = Genre.objects.all().order_by("name")
+        for genre in all_genres:
             genre.localized_name = genre.get_localized_name(language_code)
-        context["genres"] = genres
+        context["genres"] = all_genres
 
-        # Featured/Popular books (books with most chapters)
-        featured_books = (
-            Book.objects.filter(language=language, is_public=True)
-            .select_related("bookmaster", "language")
-            .prefetch_related("chapters", "bookmaster__genres")
-            .annotate(chapter_count=Count("chapters"))
-            .order_by("-chapter_count", "-published_at")[:6]
-        )
-        context["featured_books"] = self._enrich_books(featured_books, language_code)
+        # Get featured genres from settings (only show if defined)
+        featured_genre_ids = getattr(settings, "FEATURED_GENRES", [])
+        if featured_genre_ids:
+            featured_genres = Genre.objects.filter(id__in=featured_genre_ids)
+            for genre in featured_genres:
+                genre.localized_name = genre.get_localized_name(language_code)
+            context["featured_genres"] = featured_genres
+        else:
+            context["featured_genres"] = []
+
+        # Get featured books from settings (only show if defined)
+        featured_bookmaster_ids = getattr(settings, "FEATURED_BOOKS", [])
+        if featured_bookmaster_ids:
+            # Get books for the specified bookmasters in the current language
+            featured_books = (
+                Book.objects.filter(
+                    bookmaster_id__in=featured_bookmaster_ids,
+                    language=language,
+                    is_public=True
+                )
+                .select_related("bookmaster", "language")
+                .prefetch_related("chapters", "bookmaster__genres")
+            )
+            context["featured_books"] = self._enrich_books(featured_books, language_code)
+        else:
+            context["featured_books"] = []
 
         # Recently updated books (by most recent chapter published_at)
         recently_updated = (
@@ -154,7 +173,9 @@ class WelcomeView(TemplateView):
             .annotate(latest_chapter=Max("chapters__published_at"))
             .order_by("-latest_chapter")[:6]
         )
-        context["recently_updated"] = self._enrich_books(recently_updated, language_code)
+        context["recently_updated"] = self._enrich_books(
+            recently_updated, language_code
+        )
 
         # New arrivals (recently published books)
         new_arrivals = (
@@ -182,61 +203,6 @@ class WelcomeView(TemplateView):
         return enriched_books
 
 
-class GenreListView(TemplateView):
-    """Genre overview page showing all genres"""
-
-    template_name = "reader/genre_list.html"
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        language_code = self.kwargs.get("language_code")
-        language = get_object_or_404(Language, code=language_code)
-
-        context["current_language"] = language
-        context["languages"] = Language.objects.all().order_by("name")
-
-        # Get all genres with book counts for this language
-        genres = Genre.objects.all().order_by("name")
-
-        enriched_genres = []
-        for genre in genres:
-            # Get localized name
-            genre.localized_name = genre.get_localized_name(language_code)
-
-            # Get bookmaster IDs for this genre
-            bookmaster_ids = BookGenre.objects.filter(genre=genre).values_list(
-                "bookmaster_id", flat=True
-            )
-
-            # Count books in this language with this genre
-            genre.book_count = Book.objects.filter(
-                language=language, is_public=True, bookmaster_id__in=bookmaster_ids
-            ).count()
-
-            # Get preview books (top 3 for this genre)
-            genre.preview_books = (
-                Book.objects.filter(
-                    language=language, is_public=True, bookmaster_id__in=bookmaster_ids
-                )
-                .select_related("bookmaster", "language")
-                .prefetch_related("chapters")
-                .order_by("-published_at")[:3]
-            )
-
-            # Enrich preview books with chapter counts
-            for book in genre.preview_books:
-                book.published_chapters_count = book.chapters.filter(
-                    is_public=True
-                ).count()
-
-            enriched_genres.append(genre)
-
-        context["genres"] = enriched_genres
-        context["all_genres"] = Genre.objects.all().order_by("name")
-
-        return context
-
-
 class BookListView(BaseBookListView):
     """Reader-friendly book listing page"""
 
@@ -244,44 +210,50 @@ class BookListView(BaseBookListView):
 
     def get_queryset(self):
         language = self.get_language()
+        queryset = Book.objects.filter(language=language, is_public=True)
+
+        # Filter by genre if specified
+        genre_slug = self.request.GET.get("genre")
+        if genre_slug:
+            genre = Genre.objects.filter(slug=genre_slug).first()
+            if genre:
+                # Get bookmaster IDs that have this genre
+                bookmaster_ids = BookGenre.objects.filter(genre=genre).values_list(
+                    "bookmaster_id", flat=True
+                )
+                queryset = queryset.filter(bookmaster_id__in=bookmaster_ids)
+
+        # Filter by progress/status if specified
+        progress = self.request.GET.get("status")
+        if progress and progress in ["draft", "ongoing", "completed"]:
+            queryset = queryset.filter(progress=progress)
 
         return (
-            Book.objects.filter(language=language, is_public=True)
-            .select_related("bookmaster", "language")
-            .prefetch_related("chapters", "bookmaster__genres")
-            .order_by("-published_at", "-created_at")
-        )
-
-
-class GenreBookListView(BaseBookListView):
-    """Genre-filtered book listing page"""
-
-    template_name = "reader/genre_book_list.html"
-
-    def get_queryset(self):
-        language = self.get_language()
-        genre_slug = self.kwargs.get("genre_slug")
-        genre = get_object_or_404(Genre, slug=genre_slug)
-
-        # Get bookmaster IDs that have this genre
-        bookmaster_ids = BookGenre.objects.filter(genre=genre).values_list(
-            "bookmaster_id", flat=True
-        )
-
-        return (
-            Book.objects.filter(
-                language=language, is_public=True, bookmaster_id__in=bookmaster_ids
-            )
-            .select_related("bookmaster", "language")
+            queryset.select_related("bookmaster", "language")
             .prefetch_related("chapters", "bookmaster__genres")
             .order_by("-published_at", "-created_at")
         )
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        genre_slug = self.kwargs.get("genre_slug")
-        context["current_genre"] = get_object_or_404(Genre, slug=genre_slug)
+
+        # Add current filter values to context
+        context["selected_genre"] = self.request.GET.get("genre", "")
+        context["selected_status"] = self.request.GET.get("status", "")
+
         return context
+
+
+class GenreBookListView(BaseBookListView):
+    """Redirect to query-based filtering"""
+
+    def get(self, request, *args, **kwargs):
+        language_code = kwargs.get("language_code")
+        genre_slug = kwargs.get("genre_slug")
+
+        # Build URL with query parameters
+        url = reverse("reader:book_list", args=[language_code])
+        return redirect(f"{url}?genre={genre_slug}")
 
 
 class BookDetailView(DetailView):

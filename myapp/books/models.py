@@ -127,6 +127,12 @@ class BookMaster(TimeStampedModel):
         null=True,
         help_text="Default cover image for all language versions",
     )
+    hero_image=models.ImageField(
+        upload_to="book_covers/masters/",
+        blank=True,
+        null=True,
+        help_text="Hero image for promotion",
+    )
     owner = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,

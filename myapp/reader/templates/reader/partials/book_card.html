@@ -1,70 +1,104 @@
-{% load books_extras %}
-{# Book card partial - displays a book cover with metadata and optional hover card #}
-{# Parameters: #}
-{#   - book: Book object #}
-{#   - current_language: Language object #}
-{#   - cover_width: Width in pixels (default: 300) #}
-{#   - cover_height: Height in pixels (default: 400) #}
-{#   - enable_hover: Boolean to enable/disable hover card (default: true) #}
-{#   - show_metadata: Boolean to show metadata below cover (default: true) #}
-{#   - wrapper_class: Additional CSS class for the wrapper (optional) #}
+{% comment %}
+Book Card Partial
+Parameters:
+- book: Book object to display
+- current_language: Current language object for URL generation
+{% endcomment %}
 
-{% with cover_width=cover_width|default:"300" cover_height=cover_height|default:"400" %}
-<a href="{% url 'reader:book_detail' current_language.code book.slug %}" class="cover-link {{ wrapper_class|default:'' }}{% if enable_hover == False %} no-hover{% endif %}{% if show_metadata == False %} no-metadata{% endif %}" style="--cover-width: {{ cover_width }}px; --cover-height: {{ cover_height }}px;">
-    <div class="cover-wrapper">
-        <img src="{{ book.effective_cover_image }}" class="ribbon-cover" alt="{{ book.title }}">
-        <div class="hover-overlay"></div>
-    </div>
+<div class="book-card">
+    <a href="{% url 'reader:book_detail' current_language.code book.slug %}" class="book-card-link">
+        <div class="book-card-image-wrapper">
+            <img src="{{ book.effective_cover_image }}" alt="{{ book.title }}" class="book-card-image">
 
-    {% if show_metadata != False %}
-    <div class="cover-metadata">
-        <h3 class="cover-title">{{ book.title }}</h3>
-        <div class="cover-info">
-            <div class="cover-genres">
-                {% for genre in book.bookmaster.genres.all|slice:":2" %}
-                <span class="genre-badge">{{ genre.localized_name }}</span>
-                {% if not forloop.last %} · {% endif %}
-                {% endfor %}
-            </div>
-            <div class="cover-status">
-                {% if book.progress == 'completed' %}
-                <span class="status-badge completed">Completed</span>
-                {% else %}
-                <span class="status-badge ongoing">Ongoing</span>
-                {% endif %}
-            </div>
-        </div>
-    </div>
-    {% endif %}
-
-    {% if enable_hover != False %}
-    {# Hover card #}
-    <div class="hover-card" style="background-image: url('{{ book.effective_cover_image }}');">
-        <div class="hover-card-content">
-            <h4 class="hover-title">{{ book.title }}</h4>
-            {% if book.author %}
-            <p class="hover-author">{{ book.author }}</p>
+            <!-- Status Badge -->
+            {% if book.progress == 'ongoing' %}
+                <span class="badge bg-primary position-absolute top-0 end-0 m-2">Ongoing</span>
+            {% elif book.progress == 'completed' %}
+                <span class="badge bg-success position-absolute top-0 end-0 m-2">Completed</span>
             {% endif %}
-            <div class="hover-genres">
-                {% for genre in book.bookmaster.genres.all|slice:":3" %}
-                <span class="hover-genre-tag">{{ genre.localized_name }}</span>
-                {% endfor %}
+
+            <button class="book-card-info-btn" data-bs-toggle="modal" data-bs-target="#bookModal{{ book.id }}" onclick="event.preventDefault(); event.stopPropagation();">
+                <i class="fas fa-info"></i>
+            </button>
+        </div>
+        <h3 class="book-card-title">{{ book.title }}</h3>
+        <div class="d-flex justify-content-between muted small">
+            {% with book.bookmaster.genres.all|first as first_genre %}
+                {% if first_genre %}
+                    <p class="mb-0">{{ first_genre.localized_name }}</p>
+                {% else %}
+                    <p class="mb-0"></p>
+                {% endif %}
+            {% endwith %}
+            <p class="mb-0"><i class="fa fa-list"></i> {{ book.published_chapters_count }}</p>
+        </div>
+    </a>
+</div>
+
+<!-- Book Info Modal -->
+<div class="modal fade" id="bookModal{{ book.id }}" tabindex="-1" aria-labelledby="bookModalLabel{{ book.id }}" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="bookModalLabel{{ book.id }}">Book Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="hover-stats">
-                <div class="hover-stat-item">
-                    <i class="fas fa-list"></i>
-                    <span>{{ book.published_chapters_count }}</span>
+            <div class="modal-body">
+                <div class="row">
+                    <!-- Left: Book Cover -->
+                    <div class="col-md-4">
+                        <img src="{{ book.effective_cover_image }}" alt="{{ book.title }}" class="img-fluid">
+                        {% if book.bookmaster.genres.all %}
+                        <div class="mt-3">
+                            {% for genre in book.bookmaster.genres.all %}
+                            <span class="badge bg-secondary me-1 mb-1">{{ genre.localized_name }}</span>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+                    <!-- Right: Book Info -->
+                    <div class="col-md-8">
+                        <h4 class="fw-bold modal-book-title">{{ book.title }}</h4>
+                        {% if book.author %}
+                        <p class="modal-book-author mb-3">
+                            {{ book.author }}
+                        </p>
+                        {% endif %}
+
+                        {% if book.description %}
+                        <div class="mb-3">
+                            <p class="modal-book-description">{{ book.description|striptags }}</p>
+                        </div>
+                        {% endif %}
+
+                        <div class="book-stats">
+                            <div class="row g-3">
+                                <div class="col-6">
+                                    <div class="stat-item">
+                                        <i class="fas fa-list me-2" style="color: var(--color-primary);"></i>
+                                        <span class="stat-label">Chapters:</span>
+                                        <span class="stat-value">{{ book.published_chapters_count }}</span>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="stat-item">
+                                        <i class="fas fa-signal me-2" style="color: var(--color-primary);"></i>
+                                        <span class="stat-label">Status:</span>
+                                        <span class="stat-value">{{ book.get_progress_display }}</span>
+                                    </div>
+                                </div>
+
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <div class="hover-stat-item">
-                    {% if book.progress == 'completed' %}
-                    <i class="fas fa-check-circle"></i>
-                    {% else %}
-                    <i class="fas fa-hourglass-half"></i>
-                    {% endif %}
-                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-primary-custom" data-bs-dismiss="modal">Close</button>
+                <a href="{% url 'reader:book_detail' current_language.code book.slug %}" class="btn btn-primary-custom">
+                    Read Now
+                </a>
             </div>
         </div>
     </div>
-    {% endif %}
-</a>
-{% endwith %}
+</div>

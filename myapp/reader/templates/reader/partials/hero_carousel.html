@@ -1,0 +1,36 @@
+{% load static %}
+{% load books_extras %}
+{# Hero carousel partial - displays featured books in a carousel with captions #}
+{# Parameters: books (queryset), current_language (Language object) #}
+
+{% if books %}
+<div id="carouselCaptions" class="carousel slide rounded" data-bs-ride="carousel" style="max-height: 400px; overflow: hidden;">
+  <div class="carousel-indicators">
+    {% for book in books %}
+    <button type="button" data-bs-target="#carouselCaptions" data-bs-slide-to="{{ forloop.counter0 }}" {% if forloop.first %}class="active" aria-current="true"{% endif %} aria-label="Slide {{ forloop.counter }}"></button>
+    {% endfor %}
+  </div>
+  <div class="carousel-inner">
+    {% for book in books %}
+    <div class="carousel-item {% if forloop.first %}active{% endif %}" style="position: relative;">
+      <img src="{{ book.bookmaster.hero_image.url }}" class="d-block w-100" style="max-height: 350px; object-fit: cover;" alt="{{ book.title }}">
+      <div style="position: absolute; top: 0; left: 0; width: 35%; height: 100%; background: linear-gradient(to right, rgba(0, 0, 0, 0.7), transparent);"></div>
+      <div class="carousel-caption" style="position: absolute; top: 50%; left: 2%; transform: translateY(-50%); text-align: left; width: 25%; right: auto; bottom: auto;">
+        <h4><a href="{% url 'reader:book_detail' current_language.code book.slug %}" class="text-white text-decoration-none">{{ book.title }}</a></h4>
+        <div class="d-none d-md-block mb-2">
+          {% if book.bookmaster.genres.all %}
+            {% for genre in book.bookmaster.genres.all %}
+              <span class="badge bg-secondary me-1">{{ genre.localized_name }}</span>
+            {% endfor %}
+          {% endif %}
+        </div>
+        <div class="d-none d-md-block">
+          <a href="{% url 'reader:book_detail' current_language.code book.slug %}" class="btn btn-outline-primary-custom">Read Now</a>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+

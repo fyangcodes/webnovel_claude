@@ -6,7 +6,6 @@
 
 {% block breadcrumb_check %}
 <nav aria-label="breadcrumb" class="d-none d-md-flex align-items-center">
-    <span class="breadcrumb-separator">›</span>
     <ol class="breadcrumb mb-0">
         {% block breadcrumb_items %}
         <li class="breadcrumb-item book-title active">{{ book.title }}</li>
@@ -16,18 +15,18 @@
 {% endblock %}
 
 {% block content %}
-<div class="row">
+<div class="row mt-2">
     <!-- Book Information -->
     <div class="col-lg-8">
         <div class="mb-4">
             <h1 class="display-5 mb-3">{{ book.title }}</h1>
             
             {% if book.author %}
-            <p class="lead text-muted mb-3">by {{ book.author }}</p>
+            <p class="lead mb-3">by {{ book.author }}</p>
             {% endif %}
             
             <!-- Book Stats -->
-            <div class="d-flex flex-wrap gap-3 mb-4 text-muted" style="font-size: 0.95rem;">
+            <div class="d-flex flex-wrap gap-3 mb-4" style="font-size: 0.95rem;">
                 <div>
                     <i class="fas fa-list"></i>
                     <strong>{{ total_chapters }}</strong> chapter{{ total_chapters|pluralize }}
@@ -76,7 +75,7 @@
             {% for chapter in chapters %}
             <div class="col-lg-3 col-md-4 col-sm-6 mb-3">
                 <a href="{% url 'reader:chapter_detail' current_language.code book.slug chapter.slug %}" 
-                   class="btn btn-outline-primary w-100 text-start p-3" 
+                   class="btn btn-outline-primary-custom w-100 text-start p-3" 
                    style="min-height: 60px; display: flex; align-items: center;">
                     <span class="fw-medium">{{ chapter.title }}</span>
                 </a>

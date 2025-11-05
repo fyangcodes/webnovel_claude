@@ -6,7 +6,6 @@
 
 {% block breadcrumb_check %}
 <nav aria-label="breadcrumb" class="d-none d-md-flex align-items-center">
-    <span class="breadcrumb-separator">›</span>
     <ol class="breadcrumb mb-0">
         {% block breadcrumb_items %}
         <li class="breadcrumb-item book-title">
@@ -18,68 +17,12 @@
 </nav>
 {% endblock %}
 
-{% block extra_css %}
-<style>
-    .chapter-content {
-        font-size: 1.1rem;
-        line-height: 1.8;
-        color: #2d3436;
-        max-width: 800px;
-        margin: 0 auto;
-    }
-    .chapter-content p {
-        margin-bottom: 1.2rem;
-        text-align: justify;
-    }
-    .chapter-header {
-        border-bottom: 2px solid #e9ecef;
-        padding-bottom: 1rem;
-        margin-bottom: 2rem;
-    }
-    /* Dark mode styles */
-    [data-theme="dark"] .chapter-content {
-        color: #d4d4d4;
-    }
-    [data-theme="dark"] .chapter-header {
-        border-bottom-color: #4a4a4a;
-    }
-    [data-theme="dark"] .chapter-header h1 {
-        color: #d4d4d4;
-    }
-    [data-theme="dark"] .bg-light {
-        background-color: #353535 !important;
-    }
-    .reading-progress-bar {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 0%;
-        height: 3px;
-        background: linear-gradient(90deg, #ff6b35 0%, #ff8555 100%);
-        z-index: 1031; /* Above navbar */
-        transition: width 0.1s ease-out, transform 0.3s ease-in-out;
-        transform: translateY(57px); /* Position below navbar */
-    }
-    .reading-progress-bar.navbar-hidden {
-        transform: translateY(0); /* Move up with navbar */
-    }
-    .nav-button {
-        min-width: 120px;
-    }
-    @media (max-width: 768px) {
-        .chapter-content {
-            font-size: 1rem;
-            line-height: 1.6;
-        }
-    }
-</style>
-{% endblock %}
 
 {% block content %}
 <!-- Reading Progress Bar -->
 <div class="reading-progress-bar" id="readingProgressBar"></div>
 
-<div class="row">
+<div class="row mt-2">
     <!-- Left Ad Space (for future use) -->
     <div class="col-lg-2 d-none d-lg-block">
         <!-- Ad space placeholder -->
@@ -88,13 +31,14 @@
     <!-- Main Content -->
     <div class="col-12 col-lg-8">
         <!-- Chapter Header -->
-        <div class="chapter-header text-center">
-            <h1 class="display-6 mb-3">{{ chapter.title }}</h1>
-            <div class="d-flex justify-content-center align-items-center gap-3 text-muted">
-                <span>Chapter {{ chapter.chaptermaster.chapter_number }}</span>
+        <div class="chapter-header d-flex justify-content-between align-items-start">
+            <div class="chapter-header-title">
+                <h1 class="display-6 mb-0">{{ chapter.title }}</h1>
+            </div>
+            <div class="chapter-header-stats">
+                <span class="chapter-number">Chapter {{ chapter.chaptermaster.chapter_number }}</span>
                 {% if chapter.published_at %}
-                <span>•</span>
-                <span>{{ chapter.published_at|naturaltime }}</span>
+                <span class="chapter-time">{{ chapter.published_at|naturaltime }}</span>
                 {% endif %}
             </div>
         </div>
@@ -109,11 +53,11 @@
             {% if next_chapter %}
             <div class="d-grid">
                 <a href="{% url 'reader:chapter_detail' current_language.code book.slug next_chapter.slug %}"
-                   class="btn btn-primary btn-lg">
-                    Next Chapter →
+                   class="btn btn-primary-custom btn-lg">
+                    Next Chapter
                 </a>
                 <div class="mt-2 text-center">
-                    <small class="text-muted">{{ next_chapter.title|truncatechars:40 }}</small>
+                    <small>{{ next_chapter.title|truncatechars:40 }}</small>
                 </div>
             </div>
             {% endif %}
@@ -122,10 +66,10 @@
         <!-- End of Book Message -->
         {% if not next_chapter %}
         <div class="text-center mt-5 p-4 bg-light rounded">
-            <h5 class="text-muted">🎉 You've reached the end!</h5>
-            <p class="text-muted mb-3">Thanks for reading {{ book.title }}!</p>
+            <h5 >🎉 You've reached the end!</h5>
+            <p class="mb-3">Thanks for reading {{ book.title }}!</p>
             <a href="{% url 'reader:book_list' current_language.code %}"
-               class="btn btn-primary">
+               class="btn btn-primary-custom">
                 Explore More Books
             </a>
         </div>
@@ -141,6 +85,60 @@
 
 {% block extra_js %}
 <script>
+// Reading History Tracker - Save to localStorage
+(function() {
+    // Save current reading progress to localStorage
+    function saveReadingProgress() {
+        const readingData = {
+            bookId: {{ book.id }},
+            bookTitle: "{{ book.title|escapejs }}",
+            bookSlug: "{{ book.slug|escapejs }}",
+            chapterId: {{ chapter.id }},
+            chapterNumber: {{ chapter.chaptermaster.chapter_number }},
+            chapterTitle: "{{ chapter.title|escapejs }}",
+            chapterSlug: "{{ chapter.slug|escapejs }}",
+            lastReadAt: new Date().toISOString(),
+            coverImage: "{{ book.effective_cover_image|escapejs }}",
+            languageCode: "{{ current_language.code|escapejs }}"
+        };
+
+        try {
+            // Get existing reading history
+            let readingHistory = JSON.parse(localStorage.getItem('readingHistory') || '[]');
+
+            // Remove any existing entry for this book
+            readingHistory = readingHistory.filter(item => item.bookId !== readingData.bookId);
+
+            // Add current reading to the beginning
+            readingHistory.unshift(readingData);
+
+            // Keep only the most recent 20 books
+            readingHistory = readingHistory.slice(0, 20);
+
+            // Save back to localStorage
+            localStorage.setItem('readingHistory', JSON.stringify(readingHistory));
+
+            console.log('Reading progress saved:', readingData);
+        } catch (error) {
+            console.error('Failed to save reading progress:', error);
+        }
+    }
+
+    // Save progress when page loads
+    document.addEventListener('DOMContentLoaded', function() {
+        saveReadingProgress();
+    });
+
+    // Optional: Update progress when user has been reading for a while
+    let readingTimer = setTimeout(saveReadingProgress, 10000); // Update after 10 seconds
+
+    // Clear timer on page unload
+    window.addEventListener('beforeunload', function() {
+        clearTimeout(readingTimer);
+        saveReadingProgress(); // Final save before leaving
+    });
+})();
+
 // Auto-scroll to content on mobile for better reading experience
 document.addEventListener('DOMContentLoaded', function() {
     if (window.innerWidth <= 768) {
