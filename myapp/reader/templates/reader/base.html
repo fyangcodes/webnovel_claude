@@ -128,10 +128,10 @@
                             </h5>
                             <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                         </div>
-                        <div class="modal-body ">
-                            <div class="d-flex ">
+                        <div class="modal-body">
+                            <div class="d-flex flex-wrap gap-2">
                                 {% for lang in languages %}
-                                    <a class="badge {% if lang == current_language %}bg-primary{% else %}bg-secondary{% endif %} p-2 m-2 text-decoration-none" href="{% url 'reader:welcome' lang.code %}">
+                                    <a class="btn btn-sm {% if lang == current_language %}btn-primary-custom{% else %}btn-outline-primary-custom{% endif %}" href="{% url 'reader:welcome' lang.code %}">
                                         {{ lang.local_name }}
                                     </a>
                                 {% endfor %}

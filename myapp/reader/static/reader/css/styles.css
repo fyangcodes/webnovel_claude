@@ -276,6 +276,58 @@ body {
 }
 
 /* ===========================
+   Modal Styles
+   =========================== */
+.modal-content {
+    background-color: var(--color-bg);
+    border: 1px solid var(--color-border);
+    color: var(--color-text);
+}
+
+.modal-header {
+    border-bottom: 1px solid var(--color-border);
+}
+
+.modal-title {
+    color: var(--color-text);
+}
+
+.modal-body {
+    color: var(--color-text);
+}
+
+.modal-footer {
+    border-top: 1px solid var(--color-border);
+}
+
+/* Book Modal Specific Styles */
+.modal-book-title {
+    color: var(--color-text);
+}
+
+.modal-book-author {
+    color: var(--color-text-light);
+}
+
+.modal-book-description {
+    color: var(--color-text);
+}
+
+.stat-item {
+    color: var(--color-text);
+}
+
+.stat-label {
+    color: var(--color-text-light);
+    font-weight: 600;
+}
+
+.stat-value {
+    color: var(--color-text);
+    font-weight: 700;
+}
+
+/* ===========================
    Footer Styles
    =========================== */
 footer.footer {

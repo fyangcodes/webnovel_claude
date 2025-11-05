@@ -58,16 +58,16 @@ Parameters:
                     </div>
                     <!-- Right: Book Info -->
                     <div class="col-md-8">
-                        <h4 class="fw-bold">{{ book.title }}</h4>
+                        <h4 class="fw-bold modal-book-title">{{ book.title }}</h4>
                         {% if book.author %}
-                        <p class="text-muted mb-3">
+                        <p class="modal-book-author mb-3">
                             {{ book.author }}
                         </p>
                         {% endif %}
 
                         {% if book.description %}
                         <div class="mb-3">
-                            <p>{{ book.description|striptags }}</p>
+                            <p class="modal-book-description">{{ book.description|striptags }}</p>
                         </div>
                         {% endif %}
 
@@ -75,27 +75,27 @@ Parameters:
                             <div class="row g-3">
                                 <div class="col-6">
                                     <div class="stat-item">
-                                        <i class="fas fa-list text-primary me-2"></i>
+                                        <i class="fas fa-list me-2" style="color: var(--color-primary);"></i>
                                         <span class="stat-label">Chapters:</span>
                                         <span class="stat-value">{{ book.published_chapters_count }}</span>
                                     </div>
                                 </div>
                                 <div class="col-6">
                                     <div class="stat-item">
-                                        <i class="fas fa-signal text-warning me-2"></i>
+                                        <i class="fas fa-signal me-2" style="color: var(--color-primary);"></i>
                                         <span class="stat-label">Status:</span>
                                         <span class="stat-value">{{ book.get_progress_display }}</span>
                                     </div>
                                 </div>
-          
+
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                <a href="{% url 'reader:book_detail' current_language.code book.slug %}" class="btn btn-primary">
+                <button type="button" class="btn btn-outline-primary-custom" data-bs-dismiss="modal">Close</button>
+                <a href="{% url 'reader:book_detail' current_language.code book.slug %}" class="btn btn-primary-custom">
                     Read Now
                 </a>
             </div>
