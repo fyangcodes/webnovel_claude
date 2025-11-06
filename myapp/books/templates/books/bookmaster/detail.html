@@ -95,7 +95,7 @@
                                 <th style="width: 40px;" class="text-center align-middle">
                                     <input type="checkbox" id="select-all" class="form-check-input" onchange="toggleAllChapters()">
                                 </th>
-                                <th style="min-width: 200px;">Chapter</th>
+                                <th style="min-width: 200px;">Chaptermaster</th>
                                 {% for language in languages %}
                                 <th class="text-center" style="min-width: 100px;">{{ language.name }}</th>
                                 {% endfor %}
@@ -119,10 +119,10 @@
                                     {% with chapter_info=row.chapters|get_item:language.code %}
                                         {% if chapter_info.chapter %}
                                             <div class="d-flex align-items-center justify-content-center gap-1">
-                                                <span class="badge 
+                                                <span class="badge
                                                     {% if chapter_info.status_code == 'completed' %}bg-success
                                                     {% elif chapter_info.status_code == 'translating' %}bg-warning
-                                                    {% else %}bg-secondary{% endif %} 
+                                                    {% else %}bg-secondary{% endif %}
                                                     badge-sm">
                                                     {{ chapter_info.status }}
                                                 </span>
@@ -130,6 +130,9 @@
                                                     <i class="fas fa-eye text-success" title="Public" style="font-size: 0.8rem;"></i>
                                                 {% else %}
                                                     <i class="fas fa-eye-slash text-muted" title="Private" style="font-size: 0.8rem;"></i>
+                                                {% endif %}
+                                                {% if chapter_info.has_context %}
+                                                    <i class="fas fa-brain text-info" title="Has Context" style="font-size: 0.8rem;"></i>
                                                 {% endif %}
                                             </div>
                                         {% else %}

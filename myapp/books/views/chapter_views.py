@@ -86,6 +86,9 @@ class ChapterDetailView(LoginRequiredMixin, DetailView):
             context["book"] = chapter.book
             context["bookmaster"] = chapter.book.bookmaster
             context["chaptermaster"] = chapter.chaptermaster
+            # Check if chapter has context
+            if hasattr(chapter, 'context'):
+                context["chapter_context"] = chapter.context
         return context
 
 

@@ -102,11 +102,13 @@ class BookMasterDetailView(LoginRequiredMixin, DetailView):
             for language in languages:
                 try:
                     chapter = chaptermaster.chapters.get(book__language=language)
+                    has_context = hasattr(chapter, 'context')
                     row["chapters"][language.code] = {
                         "chapter": chapter,
                         "status": chapter.get_progress_display(),
                         "status_code": chapter.progress,
                         "is_public": chapter.is_public,
+                        "has_context": has_context,
                         "url": (
                             chapter.get_absolute_url()
                             if hasattr(chapter, "get_absolute_url")
@@ -119,6 +121,7 @@ class BookMasterDetailView(LoginRequiredMixin, DetailView):
                         "status": "Not Created",
                         "status_code": "none",
                         "is_public": False,
+                        "has_context": False,
                         "url": None,
                     }
 

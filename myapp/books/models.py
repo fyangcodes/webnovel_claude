@@ -370,7 +370,7 @@ class Chapter(TimeStampedModel, SlugGeneratorMixin):
         ]
 
     def __str__(self):
-        return f"{self.title} ({self.chaptermaster.canonical_title})"
+        return f"{self.title} ({self.chaptermaster.bookmaster.canonical_title} > {self.chaptermaster.canonical_title})"
 
     def save(self, *args, **kwargs):
         base_slug = slugify(self.title, allow_unicode=True)
@@ -563,16 +563,16 @@ class ChapterContext(TimeStampedModel):
             )
 
             # Store structured data
+            self.summary = result["summary"]
             self.key_terms = {
                 "characters": result["characters"],
                 "places": result["places"],
                 "terms": result["terms"],
             }
-            self.summary = result["summary"]
             self.save()
 
             # Create BookEntity records
-            self._create_book_entities(result)
+            self._create_book_entities()
 
             return result
 
@@ -583,12 +583,12 @@ class ChapterContext(TimeStampedModel):
             logger.error(f"Failed to analyze chapter {self.chapter.id} with AI: {e}")
             return self._get_fallback_analysis()
 
-    def _create_book_entities(self, extraction_result):
-        """Create BookEntity records from AI extraction"""
+    def _create_book_entities(self):
+        """Create BookEntity records from stored key_terms"""
         entity_mappings = [
-            (extraction_result["characters"], EntityType.CHARACTER),
-            (extraction_result["places"], EntityType.PLACE),
-            (extraction_result["terms"], EntityType.TERM),
+            (self.key_terms.get("characters", []), EntityType.CHARACTER),
+            (self.key_terms.get("places", []), EntityType.PLACE),
+            (self.key_terms.get("terms", []), EntityType.TERM),
         ]
 
         entities = []
