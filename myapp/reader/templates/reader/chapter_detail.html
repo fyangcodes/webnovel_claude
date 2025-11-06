@@ -65,7 +65,7 @@
 
         <!-- End of Book Message -->
         {% if not next_chapter %}
-        <div class="text-center mt-5 p-4 bg-light rounded">
+        <div class="text-center mt-5 p-4 rounded">
             <h5 >🎉 You've reached the end!</h5>
             <p class="mb-3">Thanks for reading {{ book.title }}!</p>
             <a href="{% url 'reader:book_list' current_language.code %}"

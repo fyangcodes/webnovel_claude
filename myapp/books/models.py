@@ -179,6 +179,13 @@ class BookMaster(TimeStampedModel):
             from django.templatetags.static import static
 
             return static("books/images/default_book_cover.png")
+        
+    @property
+    def effective_hero_image(self):
+        if self.hero_image:
+            return self.hero_image.url
+        else:
+            return self.effective_cover_image()
 
 
 class Book(TimeStampedModel, SlugGeneratorMixin):

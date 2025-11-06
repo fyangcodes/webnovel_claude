@@ -285,5 +285,5 @@ if not DEBUG:
 
 
 # Featured Books and Genres
-FEATURED_BOOKS = [1]
-FEATURED_GENRES = [1]
+FEATURED_BOOKS = [int(x) for x in os.getenv("FEATURED_BOOKS", "").split(",") if x.strip()]
+FEATURED_GENRES = [int(x) for x in os.getenv("FEATURED_GENRES", "").split(",") if x.strip()]

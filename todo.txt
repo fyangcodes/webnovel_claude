@@ -5,38 +5,7 @@ improve reader views design
 
 consistence by translation
 
+redis: cache / book stats
 
-Homepage Design Improvements
-1. Genre-Separated Sections (Recommended)
-Instead of showing all books in a single grid, create genre-based carousels/sections:
-Featured/Popular books carousel at the top
-Genre sections (Action, Romance, Fantasy, etc.) with horizontal scrollable book cards
-"Recently Updated" section
-"New Arrivals" section
-!!IN PROGRESS optimizaiton of rotating carousel needed
+SEO
 
-2. Hero Section Improvements
-Your current blue gradient hero is nice, but could be:
-More visually striking with a background image or pattern
-Include a search bar for finding books
-Add quick genre tags/filters
-Show real-time stats (total books, total chapters, active readers)
-3. Book Discovery Features
-Trending/Hot badge on popular books
-New badge on recently published books
-Book rating/popularity indicators
-Genre tags displayed more prominently on cards
-4. Layout Options
-Switch between grid view and list view
-Compact cards vs. expanded cards
-Filter/sort options (by update date, popularity, alphabetical)
-5. Additional Sections
-"Continue Reading" section for logged-in users
-"Editor's Picks" or "Staff Recommendations"
-"Most Read This Week/Month"
-Genre spotlight with featured book
-6. Visual Improvements
-Add genre color coding
-Better spacing and typography hierarchy
-Reading progress bars on book cards for logged-in users
-More prominent genre navigation (not just dropdown)
