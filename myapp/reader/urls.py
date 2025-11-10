@@ -101,4 +101,10 @@ urlpatterns = [
         views.ChapterDetailView.as_view(),
         name="chapter_detail",
     ),
+    # API endpoint for reading progress tracking
+    path(
+        "api/stats/reading-progress/",
+        views.update_reading_progress,
+        name="reading_progress_api",
+    ),
 ]

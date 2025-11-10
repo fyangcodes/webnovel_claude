@@ -1,16 +1,130 @@
+version: '3.8'
+
 services:
-  postgres:
-    image: postgres:15
-    container_name: webnovel_postgres
+  # PostgreSQL Database
+  db:
+    image: postgres:15-alpine
+    container_name: webnovel_db
     environment:
       POSTGRES_DB: webnovel
-      POSTGRES_USER: webnovel
-      POSTGRES_PASSWORD: webnovel
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # Redis for Celery and Caching
+  redis:
+    image: redis:7-alpine
+    container_name: webnovel_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # Django Web Application
+  web:
+    build: .
+    container_name: webnovel_web
+    command: python myapp/manage.py runserver 0.0.0.0:8000
+    volumes:
+      - .:/app
+      - static_volume:/app/staticfiles
+      - media_volume:/app/media
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/webnovel
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/0
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    stdin_open: true
+    tty: true
+    restart: unless-stopped
+
+  # Celery Worker
+  celery_worker:
+    build: .
+    container_name: webnovel_celery_worker
+    working_dir: /app/myapp
+    command: celery -A myapp worker --loglevel=info --concurrency=2
+    volumes:
+      - .:/app
+    env_file:
+      - .env
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/webnovel
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - PYTHONPATH=/app/myapp
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Celery Beat (Scheduler)
+  celery_beat:
+    build: .
+    container_name: webnovel_celery_beat
+    working_dir: /app/myapp
+    command: celery -A myapp beat --loglevel=info
+    volumes:
+      - .:/app
+    env_file:
+      - .env
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/webnovel
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - PYTHONPATH=/app/myapp
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Celery Flower (Optional - Monitoring UI)
+  flower:
+    build: .
+    container_name: webnovel_flower
+    working_dir: /app/myapp
+    command: celery -A myapp flower --port=5555
+    ports:
+      - "5555:5555"
+    env_file:
+      - .env
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - PYTHONPATH=/app/myapp
+    depends_on:
+      - redis
+      - celery_worker
     restart: unless-stopped
 
 volumes:
   postgres_data:
+  redis_data:
+  static_volume:
+  media_volume:

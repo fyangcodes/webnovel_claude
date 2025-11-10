@@ -44,7 +44,7 @@
         </div>
 
         <!-- Chapter Content -->
-        <div class="chapter-content">
+        <div class="chapter-content" id="chapter-content">
             {{ chapter.content|markdown }}
         </div>
 
@@ -84,6 +84,25 @@
 {% endblock %}
 
 {% block extra_js %}
+<!-- Load reading tracker library -->
+{% load static %}
+<script src="{% static 'reader/js/reading-tracker.js' %}"></script>
+
+<script>
+// Initialize reading progress tracking
+document.addEventListener('DOMContentLoaded', function() {
+    {% if view_event_id %}
+    window.readingTracker.init(
+        {{ view_event_id }},
+        "{% url 'reader:reading_progress_api' %}",
+        '#chapter-content'
+    );
+    {% else %}
+    console.log('Reading tracking disabled: No view_event_id available');
+    {% endif %}
+});
+</script>
+
 <script>
 // Reading History Tracker - Save to localStorage
 (function() {

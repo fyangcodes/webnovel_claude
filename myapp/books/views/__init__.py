@@ -34,6 +34,9 @@ from .entity_views import (
     BookEntityUpdateView,
     BookEntityDeleteView,
 )
+from .stats_views import (
+    update_reading_progress,
+)
 
 __all__ = [
     # Bookmaster
@@ -65,5 +68,7 @@ __all__ = [
     # Utils
     "ChapterTranslationView",
     "TaskStatusView",
-    "BatchActionView"
+    "BatchActionView",
+    # Stats
+    "update_reading_progress",
 ]

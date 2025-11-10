@@ -58,6 +58,7 @@ INSTALLED_APPS = [
     "crispy_bootstrap5",
     "storages",
     "background_task",
+    "django_celery_beat",
     # Local apps - simplified
     "common.apps.CommonConfig",
     "books.apps.BooksConfig",
@@ -74,6 +75,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "books.middleware.StatsTrackingMiddleware",  # Stats tracking
 ]
 
 ROOT_URLCONF = "myapp.urls"
@@ -89,6 +91,7 @@ TEMPLATES = [
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
                 "books.context_processors.breadcrumb_context",
+                "common.context_processors.stats_context",
             ],
         },
     },
@@ -287,3 +290,79 @@ if not DEBUG:
 # Featured Books and Genres
 FEATURED_BOOKS = [int(x) for x in os.getenv("FEATURED_BOOKS", "").split(",") if x.strip()]
 FEATURED_GENRES = [int(x) for x in os.getenv("FEATURED_GENRES", "").split(",") if x.strip()]
+
+# ==============================================================================
+# REDIS & CACHING CONFIGURATION
+# ==============================================================================
+
+# Redis URL from environment
+REDIS_URL = os.getenv('REDIS_URL', 'redis://localhost:6379/0')
+
+# Cache configuration using Redis
+CACHES = {
+    'default': {
+        'BACKEND': 'django_redis.cache.RedisCache',
+        'LOCATION': REDIS_URL,
+        'OPTIONS': {
+            'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+            'SOCKET_CONNECT_TIMEOUT': 5,
+            'SOCKET_TIMEOUT': 5,
+            'RETRY_ON_TIMEOUT': True,
+            'CONNECTION_POOL_KWARGS': {
+                'max_connections': 50,
+                'retry_on_timeout': True,
+            },
+            'PARSER_CLASS': 'redis.connection.HiredisParser',
+        },
+        'KEY_PREFIX': 'webnovel',
+        'TIMEOUT': 300,  # Default cache timeout (5 minutes)
+    }
+}
+
+# Session storage using Redis (optional, for better performance)
+# SESSION_ENGINE = 'django.contrib.sessions.backends.cache'
+# SESSION_CACHE_ALIAS = 'default'
+
+# ==============================================================================
+# CELERY CONFIGURATION
+# ==============================================================================
+
+# Celery Broker (Redis)
+CELERY_BROKER_URL = os.getenv('CELERY_BROKER_URL', REDIS_URL)
+
+# Celery Result Backend (Redis)
+CELERY_RESULT_BACKEND = REDIS_URL
+
+# Celery Task Serialization
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+
+# Celery Timezone
+CELERY_TIMEZONE = TIME_ZONE
+CELERY_ENABLE_UTC = True
+
+# Celery Task Configuration
+CELERY_TASK_TRACK_STARTED = True
+CELERY_TASK_TIME_LIMIT = 30 * 60  # 30 minutes max per task
+CELERY_TASK_SOFT_TIME_LIMIT = 25 * 60  # 25 minutes soft limit
+
+# Celery Worker Configuration
+CELERY_WORKER_PREFETCH_MULTIPLIER = 4
+CELERY_WORKER_MAX_TASKS_PER_CHILD = 1000  # Restart worker after 1000 tasks
+
+# Celery Beat (Scheduler) Configuration
+CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers:DatabaseScheduler'
+
+# Celery Result Backend Settings
+CELERY_RESULT_EXPIRES = 3600  # Results expire after 1 hour
+
+# ==============================================================================
+# STATS & ANALYTICS CONFIGURATION
+# ==============================================================================
+
+STATS_CONFIG = {
+    'view_event_retention_days': 90,  # Keep ViewEvents for 90 days
+    'enable_realtime_stats': True,    # Merge Redis data in queries
+    'trending_decay_factor': 0.7,     # Weight for trending algorithm
+}

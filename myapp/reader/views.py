@@ -7,6 +7,7 @@ from django.db.models import Max
 from django.conf import settings
 
 from books.models import Book, Chapter, Language, Genre, BookGenre, BookMaster
+from books.views.stats_views import update_reading_progress
 
 
 class BaseTailwindView(TemplateView):
@@ -306,6 +307,11 @@ class BookDetailView(DetailView):
         latest_chapter = all_chapters.order_by("-published_at").first()
         context["last_update"] = latest_chapter.published_at if latest_chapter else None
 
+        # Create ViewEvent immediately for tracking (before template renders)
+        from books.stats import StatsService
+        view_event = StatsService.track_book_view(self.object, self.request)
+        context["view_event_id"] = view_event.id if view_event else None
+
         return context
 
 
@@ -359,5 +365,10 @@ class ChapterDetailView(DetailView):
             chaptermaster__chapter_number__lte=current_chapter_number
         ).count()
         context["total_chapters"] = published_chapters.count()
+
+        # Create ViewEvent immediately for tracking (before template renders)
+        from books.stats import StatsService
+        view_event = StatsService.track_chapter_view(self.object, self.request)
+        context["view_event_id"] = view_event.id if view_event else None
 
         return context

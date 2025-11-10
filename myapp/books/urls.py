@@ -115,4 +115,10 @@ urlpatterns = [
     ),
     # Task status view
     path("task-status/", views.TaskStatusView.as_view(), name="task_status"),
+    # Stats API endpoints
+    path(
+        "api/stats/reading-progress/",
+        views.update_reading_progress,
+        name="update_reading_progress",
+    ),
 ]

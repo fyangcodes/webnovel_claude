@@ -69,3 +69,6 @@ def natural_count(value, language_code="en"):
 
     except Language.DoesNotExist:
         pass
+
+    # Fallback: return the number as-is if no formatting rules matched
+    return str(int(num))
