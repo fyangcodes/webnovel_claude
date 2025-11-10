@@ -1,9 +1,5 @@
-check all templates for VariableDeosNotExistException
-
 improve reader views design
 - i18n
-
-consistence by translation
 
 redis: cache / book stats
 

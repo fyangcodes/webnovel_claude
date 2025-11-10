@@ -509,7 +509,7 @@ class BookEntity(TimeStampedModel):
         choices=EntityType.choices,
     )
     source_name = models.CharField(max_length=255)
-    translations = models.JSONField(default=dict)  # {"en": "Li Wei", "es": "Li Wei"}
+    translations = models.JSONField(default=dict, blank=True)  # {"en": "Li Wei", "es": "Li Wei"}
     first_chapter = models.ForeignKey(
         Chapter,
         on_delete=models.CASCADE,

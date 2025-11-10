@@ -196,7 +196,7 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 # OpenAI settings / Simple translation settings
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 TRANSLATION_MODEL = "gpt-3.5-turbo"
-TRANSLATION_MAX_TOKENS = 2000
+TRANSLATION_MAX_TOKENS = 4000
 TRANSLATION_TEMPERATURE = 0.3
 
 # Login/Logout

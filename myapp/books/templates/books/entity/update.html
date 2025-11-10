@@ -1,0 +1,125 @@
+{% extends "books/base_books.html" %}
+{% load static %}
+
+{% block title %}Edit Entity - {{ entity.source_name }}{% endblock %}
+
+{% block books_content %}
+<div class="mb-4">
+    <div class="d-flex justify-content-between align-items-start mb-3">
+        <div>
+            <h1>
+                <i class="fas fa-edit text-primary"></i> Edit Entity
+            </h1>
+            <h5 class="text-muted">{{ bookmaster.canonical_title }}</h5>
+        </div>
+        <div class="btn-group" role="group">
+            <a href="{% url 'books:bookmaster_entities' bookmaster.id %}" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left"></i> Back to Entity List
+            </a>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+            <form method="post" id="entity-form">
+                {% csrf_token %}
+
+                <div class="mb-3">
+                    <label for="{{ form.entity_type.id_for_label }}" class="form-label">
+                        Entity Type <span class="text-danger">*</span>
+                    </label>
+                    <select name="{{ form.entity_type.name }}"
+                            id="{{ form.entity_type.id_for_label }}"
+                            class="form-select {% if form.entity_type.errors %}is-invalid{% endif %}"
+                            required>
+                        {% for value, label in form.entity_type.field.choices %}
+                        <option value="{{ value }}" {% if form.entity_type.value == value %}selected{% endif %}>
+                            {{ label }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                    {% if form.entity_type.errors %}
+                        <div class="invalid-feedback">{{ form.entity_type.errors }}</div>
+                    {% endif %}
+                    <small class="form-text text-muted">
+                        The type of entity (Character, Place, or Term)
+                    </small>
+                </div>
+
+                <div class="mb-3">
+                    <label for="{{ form.source_name.id_for_label }}" class="form-label">
+                        Source Name <span class="text-danger">*</span>
+                    </label>
+                    <input type="text"
+                           name="{{ form.source_name.name }}"
+                           id="{{ form.source_name.id_for_label }}"
+                           value="{{ form.source_name.value|default:'' }}"
+                           class="form-control {% if form.source_name.errors %}is-invalid{% endif %}"
+                           required>
+                    {% if form.source_name.errors %}
+                        <div class="invalid-feedback">{{ form.source_name.errors }}</div>
+                    {% endif %}
+                    <small class="form-text text-muted">
+                        The name of the entity in the original language
+                    </small>
+                </div>
+
+                <div class="mb-3">
+                    <label for="{{ form.translations.id_for_label }}" class="form-label">
+                        Translations
+                    </label>
+                    <textarea name="{{ form.translations.name }}"
+                              id="{{ form.translations.id_for_label }}"
+                              class="form-control {% if form.translations.errors %}is-invalid{% endif %}"
+                              rows="8"
+                              placeholder='{"en": "Translation Name", "es": "Nombre Traducido"}'>{{ form.translations.value|default:'' }}</textarea>
+                    {% if form.translations.errors %}
+                        <div class="invalid-feedback">{{ form.translations.errors }}</div>
+                    {% endif %}
+                    <small class="form-text text-muted">
+                        JSON object with language codes as keys and translated names as values
+                    </small>
+                </div>
+
+                <div class="d-flex justify-content-between">
+                    <a href="{% url 'books:bookmaster_entities' bookmaster.id %}" class="btn btn-secondary">
+                        <i class="fas fa-times"></i> Cancel
+                    </a>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save"></i> Save Changes
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Auto-format JSON in translations field
+    const translationsField = document.getElementById('{{ form.translations.id_for_label }}');
+    if (translationsField && translationsField.value) {
+        try {
+            const json = JSON.parse(translationsField.value);
+            translationsField.value = JSON.stringify(json, null, 2);
+        } catch (e) {
+            // If parsing fails, leave as is
+        }
+    }
+
+    // Validate JSON before submit
+    document.getElementById('entity-form').addEventListener('submit', function(e) {
+        const translationsField = document.getElementById('{{ form.translations.id_for_label }}');
+        if (translationsField.value.trim()) {
+            try {
+                JSON.parse(translationsField.value);
+            } catch (e) {
+                e.preventDefault();
+                alert('Invalid JSON format in translations field. Please check your syntax.');
+                translationsField.focus();
+            }
+        }
+    });
+});
+</script>
+{% endblock %}

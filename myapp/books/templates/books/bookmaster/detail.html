@@ -12,9 +12,12 @@
             <a href="{% url 'books:bookmaster_list' %}" class="btn btn-outline-secondary">
                 <i class="fas fa-arrow-left"></i> Back to List
             </a>
+            <a href="{% url 'books:bookmaster_entities' bookmaster.pk %}" class="btn btn-outline-info">
+                <i class="fas fa-list-alt"></i> Manage Entities
+            </a>
             <a href="{% url 'books:bookmaster_update' bookmaster.pk %}" class="btn btn-outline-primary">
                 <i class="fas fa-edit"></i> Edit
-            </a>         
+            </a>
             <a href="{% url 'books:bookmaster_delete' bookmaster.pk %}" class="btn btn-outline-danger">
                 <i class="fas fa-trash"></i> Delete
             </a>

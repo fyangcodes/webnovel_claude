@@ -97,9 +97,19 @@ class TranslationService:
 
             # Call OpenAI API with retry logic
             translation_result = self._call_openai_with_retry(prompt)
+
+            # Log the raw response for debugging (first 500 chars)
+            logger.debug(f"Raw AI response preview: {translation_result[:500]}...")
+
             translated_title, translated_content, entity_mappings, translator_notes = (
                 self._parse_translation_result(translation_result)
             )
+
+            # Log entity mappings for debugging
+            if entity_mappings:
+                logger.info(f"Received {len(entity_mappings)} entity mappings from AI: {list(entity_mappings.keys())}")
+            else:
+                logger.warning("No entity mappings received from AI translation")
 
             # Create new chapter in target language with transaction safety
             translated_chapter = self._create_translated_chapter(
@@ -308,7 +318,8 @@ class TranslationService:
                 "- Use translations from the FOUND ENTITIES section if available.",
                 "- Translate entities in NEW ENTITIES section consistently with the established style.",
                 "- Reference the CONTEXT section to maintain consistency with previous translations and ensure story continuity.",
-                "- For proper nouns (e.g., names, places), use Pinyin transliteration for characters (e.g., 陆飞 as Lu Fei) and standard English names for places (e.g., 广州 as Guangzhou) unless specified otherwise.",
+                "- For Chinese proper nouns (names, places), use simple Pinyin WITHOUT tone marks/diacritics (e.g., 陆飞 → Lu Fei, NOT Lù Fēi; 鲲邪 → Kun Xie, NOT Kūn Xié).",
+                "- For place names, use standard English names when available (e.g., 广州 → Guangzhou, 北京 → Beijing).",
                 "",
             ]
         )
@@ -350,14 +361,23 @@ class TranslationService:
         prompt_parts.extend(
             [
                 "### RESPONSE FORMAT",
-                "Please format your response exactly as follows:",
+                "**CRITICAL: You MUST include ALL four sections below in your response, even if some are empty.**",
+                "",
+                "Format your response EXACTLY as follows (do not omit any section):",
                 "",
                 "TITLE: [translated title here]",
+                "",
                 "CONTENT: [translated content here]",
-                "ENTITY_MAPPINGS: [JSON object with source→translation pairs for entities that appear in your translation]",
+                "",
+                "ENTITY_MAPPINGS: {\"source_entity\": \"translated_entity\", \"another_entity\": \"another_translation\"}",
+                "",
                 "TRANSLATOR_NOTES: [Any assumptions, clarifications, or issues encountered]",
                 "",
-                'Format: {"原文名": "Translated Name", "另一个名": "Another Name"}',
+                "Important:",
+                "- ENTITY_MAPPINGS must be a valid JSON object on the same line as the marker",
+                "- If there are no entity mappings, use: ENTITY_MAPPINGS: {}",
+                "- Do NOT omit the ENTITY_MAPPINGS or TRANSLATOR_NOTES lines",
+                "- For Chinese names in ENTITY_MAPPINGS, use simple Pinyin WITHOUT tone marks (e.g., \"鲲邪\": \"Kun Xie\", NOT \"Kūn Xié\")",
                 "",
             ]
         )
@@ -616,20 +636,29 @@ class TranslationService:
             if mappings_start is not None:
                 try:
                     mappings_line = lines[mappings_start].strip()
+                    logger.debug(f"Entity mappings line found: {mappings_line}")
+
                     if mappings_line.startswith("ENTITY_MAPPINGS:"):
                         mappings_json = mappings_line[16:].strip()
+                        logger.debug(f"Extracted JSON string: {mappings_json}")
+
                         if (
                             mappings_json
                             and mappings_json
-                            != "[entity mappings in JSON format if requested above]"
+                            not in ["", "[entity mappings in JSON format if requested above]", "[]", "null", "None"]
                         ):
                             import json
 
                             entity_mappings = json.loads(mappings_json)
-                            logger.debug(f"Parsed entity mappings: {entity_mappings}")
+                            logger.info(f"Successfully parsed entity mappings: {entity_mappings}")
+                        else:
+                            logger.warning(f"Entity mappings JSON is empty or placeholder: '{mappings_json}'")
+                            entity_mappings = {}
                 except (json.JSONDecodeError, ValueError) as e:
-                    logger.warning(f"Failed to parse entity mappings: {e}")
+                    logger.warning(f"Failed to parse entity mappings JSON: {e}. Raw line: {mappings_line}")
                     entity_mappings = {}
+            else:
+                logger.warning("No ENTITY_MAPPINGS marker found in AI response. The AI did not follow the required response format.")
 
             # Parse translator notes
             if notes_start is not None:
@@ -750,6 +779,7 @@ class TranslationService:
         from books.models import BookEntity
 
         try:
+            stored_count = 0
             for source_name, translated_name in entity_mappings.items():
                 if source_name and translated_name and source_name != translated_name:
                     try:
@@ -761,14 +791,19 @@ class TranslationService:
                         logger.debug(
                             f"Stored mapping: {source_name} → {translated_name}"
                         )
+                        stored_count += 1
 
                     except BookEntity.DoesNotExist:
-                        # Entity not in database yet, skip for now
-                        logger.debug(
-                            f"Entity {source_name} not found in database, skipping mapping"
+                        # Entity not in database yet, log a warning
+                        # This can happen if:
+                        # 1. Translation happened before entity extraction on original chapter
+                        # 2. AI returned entities not in the original chapter's extraction
+                        logger.warning(
+                            f"Entity '{source_name}' not found in database. Translation '{translated_name}' cannot be stored. "
+                            f"Ensure entity extraction has been run on the original language chapter first."
                         )
 
-            logger.info(f"Stored {len(entity_mappings)} entity mappings")
+            logger.info(f"Stored {stored_count} out of {len(entity_mappings)} entity mappings")
 
         except Exception as e:
             # Don't fail the translation if entity mapping fails

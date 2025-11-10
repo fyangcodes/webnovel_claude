@@ -29,6 +29,11 @@ from .utils_views import (
     TaskStatusView,
     BatchActionView,
 )
+from .entity_views import (
+    BookEntityListView,
+    BookEntityUpdateView,
+    BookEntityDeleteView,
+)
 
 __all__ = [
     # Bookmaster
@@ -53,6 +58,10 @@ __all__ = [
     "ChapterDetailView",
     "ChapterUpdateView",
     "ChapterDeleteView",
+    # Entity
+    "BookEntityListView",
+    "BookEntityUpdateView",
+    "BookEntityDeleteView",
     # Utils
     "ChapterTranslationView",
     "TaskStatusView",

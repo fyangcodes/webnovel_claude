@@ -16,11 +16,7 @@ echo "Running migrations..."
 python manage.py migrate
 
 echo "Starting background worker..."
-python manage.py process_tasks &
+python manage.py process_translations &
 
 echo "Starting web server..."
 python manage.py runserver
-
-# npm run build:css
-# npm run watch:css
-# npm run build:css:min
