@@ -3,67 +3,11 @@ from django.urls import reverse
 from django.views.generic import ListView, DetailView, TemplateView
 from django.http import Http404
 from django.core.paginator import Paginator
-from django.db.models import Max
 from django.conf import settings
 
 from books.models import Book, Chapter, Language, Genre, BookGenre, BookMaster
 from books.views.stats_views import update_reading_progress
-
-
-class BaseTailwindView(TemplateView):
-    """
-    Base view for reader-tw templates providing common context.
-
-    This view provides the basic context needed by reader-tw/base.html:
-    - current_language: Language object from URL
-    - languages: All available languages
-    - genres: All genres with localized names
-    """
-
-    def get_language(self):
-        """Get language from URL kwargs"""
-        language_code = self.kwargs.get("language_code")
-        return get_object_or_404(Language, code=language_code)
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        language_code = self.kwargs.get("language_code")
-
-        # Current language
-        context["current_language"] = self.get_language()
-
-        # All available languages for language switcher
-        context["languages"] = Language.objects.all().order_by("name")
-
-        # All genres with localized names for genres dropdown
-        genres = Genre.objects.all().order_by("name")
-        for genre in genres:
-            genre.localized_name = genre.get_localized_name(language_code)
-        context["genres"] = genres
-
-        return context
-
-
-class TailwindExampleView(BaseTailwindView):
-    """
-    Example view demonstrating how to use BaseTailwindView.
-
-    To use this view in your own views:
-    1. Inherit from BaseTailwindView
-    2. Set template_name to your reader-tw template
-    3. Override get_context_data() to add custom context
-    """
-    template_name = "reader-tw/example.html"
-
-    def get_context_data(self, **kwargs):
-        # Call parent to get basic context (current_language, languages, genres)
-        context = super().get_context_data(**kwargs)
-
-        # Add any custom context here
-        # context["custom_data"] = "your data"
-
-        return context
-
+from reader import cache
 
 class BaseBookListView(ListView):
     """Base view with common reader functionality"""
@@ -87,11 +31,8 @@ class BaseBookListView(ListView):
         """Add published chapters count, reading time, and localized genres to books"""
         enriched_books = []
         for book in books:
-            published_chapters = book.chapters.filter(is_public=True)
-            published_count = published_chapters.count()
-
-            # Add the info to the book object
-            book.published_chapters_count = published_count
+            # Use cached chapter count (eliminates N+1 query)
+            book.published_chapters_count = cache.get_cached_chapter_count(book.id)
 
             # Add localized names to each genre
             for genre in book.bookmaster.genres.all():
@@ -106,13 +47,15 @@ class BaseBookListView(ListView):
         language_code = self.kwargs.get("language_code")
 
         context["current_language"] = self.get_language()
-        context["languages"] = Language.objects.all().order_by("name")
 
-        # Add localized genre names for navigation
-        genres = Genre.objects.all().order_by("name")
+        # Use cached languages (eliminates 1 query per request)
+        context["languages"] = cache.get_cached_languages()
+
+        # Add localized genre names for navigation (cached)
+        genres = cache.get_cached_genres()
         context["genres"] = self.add_localized_genre_names(genres, language_code)
 
-        # Enrich books with metadata
+        # Enrich books with metadata (using cached chapter counts)
         context["books"] = self.enrich_books_with_metadata(
             context["books"], language_code
         )
@@ -131,69 +74,58 @@ class WelcomeView(TemplateView):
         language = get_object_or_404(Language, code=language_code)
 
         context["current_language"] = language
-        context["languages"] = Language.objects.all().order_by("name")
 
-        # Get all genres with localized names
-        all_genres = Genre.objects.all().order_by("name")
-        for genre in all_genres:
-            genre.localized_name = genre.get_localized_name(language_code)
-        context["genres"] = all_genres
+        # Use cached languages (eliminates 1 query per request)
+        context["languages"] = cache.get_cached_languages()
+
+        # Use cached genres (eliminates 1 query per request)
+        all_genres = cache.get_cached_genres()
+        context["genres"] = self._add_localized_names(all_genres, language_code)
 
         # Get featured genres from settings (only show if defined)
         featured_genre_ids = getattr(settings, "FEATURED_GENRES", [])
         if featured_genre_ids:
-            featured_genres = Genre.objects.filter(id__in=featured_genre_ids)
-            for genre in featured_genres:
-                genre.localized_name = genre.get_localized_name(language_code)
-            context["featured_genres"] = featured_genres
+            featured_genres = cache.get_cached_featured_genres(featured_genre_ids)
+            context["featured_genres"] = self._add_localized_names(
+                featured_genres, language_code
+            )
         else:
             context["featured_genres"] = []
 
-        # Get featured books from settings (only show if defined)
+        # Get featured books from settings (cached, eliminates complex query)
         featured_bookmaster_ids = getattr(settings, "FEATURED_BOOKS", [])
         if featured_bookmaster_ids:
-            # Get books for the specified bookmasters in the current language
-            featured_books = (
-                Book.objects.filter(
-                    bookmaster_id__in=featured_bookmaster_ids,
-                    language=language,
-                    is_public=True
-                )
-                .select_related("bookmaster", "language")
-                .prefetch_related("chapters", "bookmaster__genres")
+            featured_books = cache.get_cached_featured_books(
+                language_code, featured_bookmaster_ids
             )
             context["featured_books"] = self._enrich_books(featured_books, language_code)
         else:
             context["featured_books"] = []
 
-        # Recently updated books (by most recent chapter published_at)
-        recently_updated = (
-            Book.objects.filter(language=language, is_public=True)
-            .select_related("bookmaster", "language")
-            .prefetch_related("chapters", "bookmaster__genres")
-            .annotate(latest_chapter=Max("chapters__published_at"))
-            .order_by("-latest_chapter")[:6]
-        )
+        # Recently updated books - cached (eliminates annotated query + N+1)
+        recently_updated = cache.get_cached_recently_updated(language_code, limit=6)
         context["recently_updated"] = self._enrich_books(
             recently_updated, language_code
         )
 
-        # New arrivals (recently published books)
-        new_arrivals = (
-            Book.objects.filter(language=language, is_public=True)
-            .select_related("bookmaster", "language")
-            .prefetch_related("chapters", "bookmaster__genres")
-            .order_by("-published_at")[:6]
-        )
+        # New arrivals - cached (eliminates query + N+1)
+        new_arrivals = cache.get_cached_new_arrivals(language_code, limit=6)
         context["new_arrivals"] = self._enrich_books(new_arrivals, language_code)
+
         return context
+
+    def _add_localized_names(self, genres, language_code):
+        """Add localized names to genre objects"""
+        for genre in genres:
+            genre.localized_name = genre.get_localized_name(language_code)
+        return genres
 
     def _enrich_books(self, books, language_code):
         """Add published chapters count and localized genres to books"""
         enriched_books = []
         for book in books:
-            published_chapters = book.chapters.filter(is_public=True)
-            book.published_chapters_count = published_chapters.count()
+            # Use cached chapter count (eliminates N+1 query)
+            book.published_chapters_count = cache.get_cached_chapter_count(book.id)
 
             # Add localized names to each genre
             for genre in book.bookmaster.genres.all():
@@ -281,6 +213,9 @@ class BookDetailView(DetailView):
         language_code = self.kwargs.get("language_code")
         context["current_language"] = get_object_or_404(Language, code=language_code)
 
+        # Use cached languages for language switcher
+        context["languages"] = cache.get_cached_languages()
+
         # Get all published chapters
         all_chapters = (
             self.object.chapters.filter(is_public=True)
@@ -344,27 +279,33 @@ class ChapterDetailView(DetailView):
         context["current_language"] = get_object_or_404(Language, code=language_code)
         context["book"] = self.object.book
 
-        # Navigation context - previous/next chapters
+        # Use cached languages for language switcher
+        context["languages"] = cache.get_cached_languages()
+
+        # Get cached navigation data (eliminates 4 queries: previous, next, position, total)
         current_chapter_number = self.object.chaptermaster.chapter_number
-        published_chapters = (
-            Chapter.objects.filter(book=self.object.book, is_public=True)
-            .select_related("chaptermaster")
-            .order_by("chaptermaster__chapter_number")
+        nav_data = cache.get_cached_chapter_navigation(
+            self.object.book.id,
+            current_chapter_number
         )
 
-        # Find previous and next chapters
-        context["previous_chapter"] = published_chapters.filter(
-            chaptermaster__chapter_number__lt=current_chapter_number
-        ).last()
-        context["next_chapter"] = published_chapters.filter(
-            chaptermaster__chapter_number__gt=current_chapter_number
-        ).first()
+        # Convert cached navigation data to Chapter objects for template compatibility
+        if nav_data['previous']:
+            context["previous_chapter"] = Chapter.objects.filter(
+                id=nav_data['previous']['id']
+            ).first()
+        else:
+            context["previous_chapter"] = None
 
-        # Reading progress
-        context["chapter_position"] = published_chapters.filter(
-            chaptermaster__chapter_number__lte=current_chapter_number
-        ).count()
-        context["total_chapters"] = published_chapters.count()
+        if nav_data['next']:
+            context["next_chapter"] = Chapter.objects.filter(
+                id=nav_data['next']['id']
+            ).first()
+        else:
+            context["next_chapter"] = None
+
+        context["chapter_position"] = nav_data['position']
+        context["total_chapters"] = nav_data['total']
 
         # Create ViewEvent immediately for tracking (before template renders)
         from books.stats import StatsService

@@ -312,7 +312,9 @@ CACHES = {
                 'max_connections': 50,
                 'retry_on_timeout': True,
             },
-            'PARSER_CLASS': 'redis.connection.HiredisParser',
+            # HiredisParser is optional and requires hiredis package
+            # If hiredis is installed, django-redis will use it automatically
+            # 'PARSER_CLASS': 'redis.connection.HiredisParser',  # Removed - not needed
         },
         'KEY_PREFIX': 'webnovel',
         'TIMEOUT': 300,  # Default cache timeout (5 minutes)
@@ -322,6 +324,14 @@ CACHES = {
 # Session storage using Redis (optional, for better performance)
 # SESSION_ENGINE = 'django.contrib.sessions.backends.cache'
 # SESSION_CACHE_ALIAS = 'default'
+
+# Cache timeout durations (in seconds)
+# These can be tuned for production performance based on data change frequency
+CACHE_TIMEOUT_STATIC_DATA = 3600        # 1 hour - Languages, genres (rarely change, admin-only)
+CACHE_TIMEOUT_METADATA = 1800           # 30 minutes - Chapter counts, book stats (updates on publish)
+CACHE_TIMEOUT_CONTENT_LIST = 900        # 15 minutes - Book lists, featured books, carousels
+CACHE_TIMEOUT_HOMEPAGE = 600            # 10 minutes - Homepage sections (high traffic, balance freshness)
+CACHE_TIMEOUT_NAVIGATION = 1800         # 30 minutes - Chapter navigation (updates when new chapters added)
 
 # ==============================================================================
 # CELERY CONFIGURATION
