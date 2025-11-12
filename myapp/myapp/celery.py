@@ -20,10 +20,10 @@ app.autodiscover_tasks()
 
 # Configure Celery Beat schedule
 app.conf.beat_schedule = {
-    # Aggregate stats from Redis to PostgreSQL every hour
-    'aggregate-stats-hourly': {
+    # Aggregate stats from Redis to PostgreSQL every 5 minutes (for development)
+    'aggregate-stats-frequent': {
         'task': 'books.tasks.aggregate_stats_hourly',
-        'schedule': crontab(minute=0),  # Every hour at :00
+        'schedule': crontab(minute='*/5'),  # Every 5 minutes
     },
     # Update unique view counts daily
     'update-time-period-uniques': {

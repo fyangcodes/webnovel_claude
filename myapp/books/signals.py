@@ -15,7 +15,7 @@ from django.db.models.signals import post_save, post_delete, m2m_changed
 from django.dispatch import receiver
 from django.core.cache import cache
 
-from books.models import Book, Chapter, Language, Genre, BookGenre
+from books.models import Book, Chapter, Language, Genre, BookGenre, ChapterStats
 
 
 # ==============================================================================
@@ -32,12 +32,14 @@ def invalidate_chapter_caches(sender, instance, **kwargs):
     2. Chapter navigation for the book (previous/next links)
     3. Book chapter list pages (paginated chapter lists)
     4. Homepage recently updated carousel (if chapter just published)
+    5. Total chapter views for the book (when chapter is published/unpublished)
     """
     from reader.cache import (
         invalidate_chapter_count,
         invalidate_chapter_navigation,
         invalidate_book_chapter_caches,
-        invalidate_homepage_caches
+        invalidate_homepage_caches,
+        invalidate_total_chapter_views
     )
 
     book = instance.book
@@ -47,6 +49,7 @@ def invalidate_chapter_caches(sender, instance, **kwargs):
     invalidate_chapter_count(book.id)
     invalidate_chapter_navigation(book.id)
     invalidate_book_chapter_caches(book.id)
+    invalidate_total_chapter_views(book.id)  # New: invalidate aggregated views
 
     # If chapter is public (or was just published), invalidate homepage
     if instance.is_public:
@@ -134,3 +137,24 @@ def invalidate_book_genre_caches(sender, instance, action, **kwargs):
         for book in books:
             from reader.cache import invalidate_homepage_caches
             invalidate_homepage_caches(book.language.code)
+
+
+# ==============================================================================
+# STATS SIGNALS
+# ==============================================================================
+
+@receiver(post_save, sender=ChapterStats)
+def invalidate_chapter_stats_caches(sender, instance, **kwargs):
+    """
+    Invalidate caches when chapter stats are updated.
+
+    This is triggered when Celery tasks aggregate view events into ChapterStats.
+    When chapter view counts change, we need to refresh the book's total view count.
+
+    Affected caches:
+    1. Total chapter views for the book (aggregated from all chapter stats)
+    """
+    from reader.cache import invalidate_total_chapter_views
+
+    book = instance.chapter.book
+    invalidate_total_chapter_views(book.id)

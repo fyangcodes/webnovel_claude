@@ -23,16 +23,17 @@ from books.models import Book, Chapter, Language, Genre
 
 
 # Cache timeout constants with fallback defaults
-TIMEOUT_STATIC = getattr(settings, 'CACHE_TIMEOUT_STATIC_DATA', 3600)
-TIMEOUT_METADATA = getattr(settings, 'CACHE_TIMEOUT_METADATA', 1800)
-TIMEOUT_LISTS = getattr(settings, 'CACHE_TIMEOUT_CONTENT_LIST', 900)
-TIMEOUT_HOMEPAGE = getattr(settings, 'CACHE_TIMEOUT_HOMEPAGE', 600)
-TIMEOUT_NAVIGATION = getattr(settings, 'CACHE_TIMEOUT_NAVIGATION', 1800)
+TIMEOUT_STATIC = getattr(settings, "CACHE_TIMEOUT_STATIC_DATA", 3600)
+TIMEOUT_METADATA = getattr(settings, "CACHE_TIMEOUT_METADATA", 1800)
+TIMEOUT_LISTS = getattr(settings, "CACHE_TIMEOUT_CONTENT_LIST", 900)
+TIMEOUT_HOMEPAGE = getattr(settings, "CACHE_TIMEOUT_HOMEPAGE", 600)
+TIMEOUT_NAVIGATION = getattr(settings, "CACHE_TIMEOUT_NAVIGATION", 1800)
 
 
 # ==============================================================================
 # STATIC DATA CACHING (Languages & Genres)
 # ==============================================================================
+
 
 def get_cached_languages():
     """
@@ -45,11 +46,11 @@ def get_cached_languages():
     Returns:
         QuerySet: All Language objects ordered by name
     """
-    cache_key = 'languages:all'
+    cache_key = "languages:all"
     languages = cache.get(cache_key)
 
     if languages is None:
-        languages = list(Language.objects.all().order_by('name'))
+        languages = list(Language.objects.all().order_by("name"))
         cache.set(cache_key, languages, timeout=TIMEOUT_STATIC)
 
     return languages
@@ -66,11 +67,11 @@ def get_cached_genres():
     Returns:
         QuerySet: All Genre objects ordered by name
     """
-    cache_key = 'genres:all'
+    cache_key = "genres:all"
     genres = cache.get(cache_key)
 
     if genres is None:
-        genres = list(Genre.objects.all().order_by('name'))
+        genres = list(Genre.objects.all().order_by("name"))
         cache.set(cache_key, genres, timeout=TIMEOUT_STATIC)
 
     return genres
@@ -93,7 +94,7 @@ def get_cached_featured_genres(featured_genre_ids):
     if not featured_genre_ids:
         return []
 
-    cache_key = 'genres:featured'
+    cache_key = "genres:featured"
     genres = cache.get(cache_key)
 
     if genres is None:
@@ -106,6 +107,7 @@ def get_cached_featured_genres(featured_genre_ids):
 # ==============================================================================
 # METADATA CACHING (Counts & Stats)
 # ==============================================================================
+
 
 def get_cached_chapter_count(book_id):
     """
@@ -123,7 +125,7 @@ def get_cached_chapter_count(book_id):
     Returns:
         int: Number of published chapters
     """
-    cache_key = f'book:{book_id}:chapters:count'
+    cache_key = f"book:{book_id}:chapters:count"
     count = cache.get(cache_key)
 
     if count is None:
@@ -141,13 +143,52 @@ def invalidate_chapter_count(book_id):
     Args:
         book_id: The book's primary key
     """
-    cache_key = f'book:{book_id}:chapters:count'
+    cache_key = f"book:{book_id}:chapters:count"
+    cache.delete(cache_key)
+
+
+def get_cached_total_chapter_views(book_id):
+    """
+    Get total chapter views for a book including real-time Redis counts.
+
+    This function does NOT cache the result because it includes real-time
+    Redis data that changes frequently. The underlying BookStats query
+    is efficient (single aggregation query + Redis lookups).
+
+    Args:
+        book_id: The book's primary key
+
+    Returns:
+        int: Sum of total_views from all published chapters (PostgreSQL + Redis)
+    """
+    from books.models import BookStats
+
+    try:
+        book_stats = BookStats.objects.get(book_id=book_id)
+        # Include real-time Redis counts for immediate feedback
+        total_views = book_stats.get_total_chapter_views(include_realtime=True)
+    except BookStats.DoesNotExist:
+        total_views = 0
+
+    return total_views
+
+
+def invalidate_total_chapter_views(book_id):
+    """
+    Manually invalidate the total chapter views cache for a book.
+    Called by signals when chapter stats are updated.
+
+    Args:
+        book_id: The book's primary key
+    """
+    cache_key = f"book:{book_id}:total_chapter_views"
     cache.delete(cache_key)
 
 
 # ==============================================================================
 # HOMEPAGE CACHING (Carousels)
 # ==============================================================================
+
 
 def get_cached_featured_books(language_code, featured_bookmaster_ids):
     """
@@ -167,7 +208,7 @@ def get_cached_featured_books(language_code, featured_bookmaster_ids):
     if not featured_bookmaster_ids:
         return []
 
-    cache_key = f'homepage:featured:{language_code}'
+    cache_key = f"homepage:featured:{language_code}"
     books = cache.get(cache_key)
 
     if books is None:
@@ -175,10 +216,10 @@ def get_cached_featured_books(language_code, featured_bookmaster_ids):
             Book.objects.filter(
                 bookmaster_id__in=featured_bookmaster_ids,
                 language__code=language_code,
-                is_public=True
+                is_public=True,
             )
-            .select_related('bookmaster', 'language')
-            .prefetch_related('chapters', 'bookmaster__genres')
+            .select_related("bookmaster", "language")
+            .prefetch_related("chapters", "bookmaster__genres")
         )
         cache.set(cache_key, books, timeout=TIMEOUT_HOMEPAGE)
 
@@ -200,16 +241,16 @@ def get_cached_recently_updated(language_code, limit=6):
     Returns:
         list: Recently updated Book objects with latest_chapter annotation
     """
-    cache_key = f'homepage:recently_updated:{language_code}'
+    cache_key = f"homepage:recently_updated:{language_code}"
     books = cache.get(cache_key)
 
     if books is None:
         books = list(
             Book.objects.filter(language__code=language_code, is_public=True)
-            .select_related('bookmaster', 'language')
-            .prefetch_related('chapters', 'bookmaster__genres')
-            .annotate(latest_chapter=Max('chapters__published_at'))
-            .order_by('-latest_chapter')[:limit]
+            .select_related("bookmaster", "language")
+            .prefetch_related("chapters", "bookmaster__genres")
+            .annotate(latest_chapter=Max("chapters__published_at"))
+            .order_by("-latest_chapter")[:limit]
         )
         cache.set(cache_key, books, timeout=TIMEOUT_HOMEPAGE)
 
@@ -231,15 +272,15 @@ def get_cached_new_arrivals(language_code, limit=6):
     Returns:
         list: Recently published Book objects
     """
-    cache_key = f'homepage:new_arrivals:{language_code}'
+    cache_key = f"homepage:new_arrivals:{language_code}"
     books = cache.get(cache_key)
 
     if books is None:
         books = list(
             Book.objects.filter(language__code=language_code, is_public=True)
-            .select_related('bookmaster', 'language')
-            .prefetch_related('chapters', 'bookmaster__genres')
-            .order_by('-published_at')[:limit]
+            .select_related("bookmaster", "language")
+            .prefetch_related("chapters", "bookmaster__genres")
+            .order_by("-published_at")[:limit]
         )
         cache.set(cache_key, books, timeout=TIMEOUT_HOMEPAGE)
 
@@ -254,14 +295,15 @@ def invalidate_homepage_caches(language_code):
     Args:
         language_code: Language code to invalidate caches for
     """
-    cache.delete(f'homepage:featured:{language_code}')
-    cache.delete(f'homepage:recently_updated:{language_code}')
-    cache.delete(f'homepage:new_arrivals:{language_code}')
+    cache.delete(f"homepage:featured:{language_code}")
+    cache.delete(f"homepage:recently_updated:{language_code}")
+    cache.delete(f"homepage:new_arrivals:{language_code}")
 
 
 # ==============================================================================
 # BOOK DETAIL CACHING
 # ==============================================================================
+
 
 def get_cached_book_chapters(book_id, page_number=1, per_page=20):
     """
@@ -279,7 +321,7 @@ def get_cached_book_chapters(book_id, page_number=1, per_page=20):
     Returns:
         dict: Contains 'chapters' list and pagination metadata
     """
-    cache_key = f'book:{book_id}:chapters:page:{page_number}'
+    cache_key = f"book:{book_id}:chapters:page:{page_number}"
     result = cache.get(cache_key)
 
     if result is None:
@@ -287,19 +329,19 @@ def get_cached_book_chapters(book_id, page_number=1, per_page=20):
 
         all_chapters = list(
             Chapter.objects.filter(book_id=book_id, is_public=True)
-            .select_related('chaptermaster')
-            .order_by('chaptermaster__chapter_number')
+            .select_related("chaptermaster")
+            .order_by("chaptermaster__chapter_number")
         )
 
         paginator = Paginator(all_chapters, per_page)
         page_obj = paginator.get_page(page_number)
 
         result = {
-            'chapters': list(page_obj),
-            'has_next': page_obj.has_next(),
-            'has_previous': page_obj.has_previous(),
-            'num_pages': paginator.num_pages,
-            'total_count': paginator.count,
+            "chapters": list(page_obj),
+            "has_next": page_obj.has_next(),
+            "has_previous": page_obj.has_previous(),
+            "num_pages": paginator.num_pages,
+            "total_count": paginator.count,
         }
         cache.set(cache_key, result, timeout=TIMEOUT_LISTS)
 
@@ -319,21 +361,22 @@ def invalidate_book_chapter_caches(book_id):
     from django_redis import get_redis_connection
 
     try:
-        redis_conn = get_redis_connection('default')
+        redis_conn = get_redis_connection("default")
         # Delete all chapter page caches for this book
-        pattern = f'webnovel:1:book:{book_id}:chapters:page:*'
+        pattern = f"webnovel:1:book:{book_id}:chapters:page:*"
         keys = redis_conn.keys(pattern)
         if keys:
             redis_conn.delete(*keys)
     except Exception:
         # Fallback: just delete common pages if pattern delete fails
         for page in range(1, 11):  # Clear first 10 pages
-            cache.delete(f'book:{book_id}:chapters:page:{page}')
+            cache.delete(f"book:{book_id}:chapters:page:{page}")
 
 
 # ==============================================================================
 # CHAPTER NAVIGATION CACHING
 # ==============================================================================
+
 
 def get_cached_chapter_navigation(book_id, chapter_number):
     """
@@ -353,24 +396,29 @@ def get_cached_chapter_navigation(book_id, chapter_number):
     Returns:
         dict: Contains previous_chapter, next_chapter, position, total
     """
-    cache_key = f'chapter:nav:{book_id}:{chapter_number}'
+    cache_key = f"chapter:nav:{book_id}:{chapter_number}"
     nav_data = cache.get(cache_key)
 
     if nav_data is None:
-        published = Chapter.objects.filter(
-            book_id=book_id,
-            is_public=True
-        ).select_related('chaptermaster').order_by('chaptermaster__chapter_number')
+        published = (
+            Chapter.objects.filter(book_id=book_id, is_public=True)
+            .select_related("chaptermaster")
+            .order_by("chaptermaster__chapter_number")
+        )
 
         # Get previous chapter
-        previous = published.filter(
-            chaptermaster__chapter_number__lt=chapter_number
-        ).values('id', 'slug', 'title', 'chaptermaster__chapter_number').last()
+        previous = (
+            published.filter(chaptermaster__chapter_number__lt=chapter_number)
+            .values("id", "slug", "title", "chaptermaster__chapter_number")
+            .last()
+        )
 
         # Get next chapter
-        next_ch = published.filter(
-            chaptermaster__chapter_number__gt=chapter_number
-        ).values('id', 'slug', 'title', 'chaptermaster__chapter_number').first()
+        next_ch = (
+            published.filter(chaptermaster__chapter_number__gt=chapter_number)
+            .values("id", "slug", "title", "chaptermaster__chapter_number")
+            .first()
+        )
 
         # Calculate position
         position = published.filter(
@@ -380,10 +428,10 @@ def get_cached_chapter_navigation(book_id, chapter_number):
         total = published.count()
 
         nav_data = {
-            'previous': previous,
-            'next': next_ch,
-            'position': position,
-            'total': total
+            "previous": previous,
+            "next": next_ch,
+            "position": position,
+            "total": total,
         }
 
         cache.set(cache_key, nav_data, timeout=TIMEOUT_NAVIGATION)
@@ -402,9 +450,9 @@ def invalidate_chapter_navigation(book_id):
     from django_redis import get_redis_connection
 
     try:
-        redis_conn = get_redis_connection('default')
+        redis_conn = get_redis_connection("default")
         # Delete all navigation caches for chapters in this book
-        pattern = f'webnovel:1:chapter:nav:{book_id}:*'
+        pattern = f"webnovel:1:chapter:nav:{book_id}:*"
         keys = redis_conn.keys(pattern)
         if keys:
             redis_conn.delete(*keys)

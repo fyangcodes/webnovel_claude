@@ -49,7 +49,7 @@ class GenreAdmin(admin.ModelAdmin):
             "Translations",
             {
                 "fields": ("translations",),
-                "description": "JSON field containing localized names and descriptions for different languages",
+                "description": 'JSON field containing localized names and descriptions for different languages, {"zh":{"name":"名称","discription":"描述"}}',
                 "classes": ("collapse",),
             },
         ),

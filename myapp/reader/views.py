@@ -28,11 +28,14 @@ class BaseBookListView(ListView):
         return genres
 
     def enrich_books_with_metadata(self, books, language_code):
-        """Add published chapters count, reading time, and localized genres to books"""
+        """Add published chapters count, total views, and localized genres to books"""
         enriched_books = []
         for book in books:
             # Use cached chapter count (eliminates N+1 query)
             book.published_chapters_count = cache.get_cached_chapter_count(book.id)
+
+            # Add total chapter views (eliminates N+1 query)
+            book.total_chapter_views = cache.get_cached_total_chapter_views(book.id)
 
             # Add localized names to each genre
             for genre in book.bookmaster.genres.all():
@@ -121,11 +124,14 @@ class WelcomeView(TemplateView):
         return genres
 
     def _enrich_books(self, books, language_code):
-        """Add published chapters count and localized genres to books"""
+        """Add published chapters count, total views, and localized genres to books"""
         enriched_books = []
         for book in books:
             # Use cached chapter count (eliminates N+1 query)
             book.published_chapters_count = cache.get_cached_chapter_count(book.id)
+
+            # Add total chapter views (eliminates N+1 query)
+            book.total_chapter_views = cache.get_cached_total_chapter_views(book.id)
 
             # Add localized names to each genre
             for genre in book.bookmaster.genres.all():
@@ -241,6 +247,9 @@ class BookDetailView(DetailView):
         # Last update from most recently published chapter
         latest_chapter = all_chapters.order_by("-published_at").first()
         context["last_update"] = latest_chapter.published_at if latest_chapter else None
+
+        # Add total chapter views from cache
+        context["total_chapter_views"] = cache.get_cached_total_chapter_views(self.object.id)
 
         # Create ViewEvent immediately for tracking (before template renders)
         from books.stats import StatsService

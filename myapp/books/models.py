@@ -758,6 +758,46 @@ class BookStats(TimeStampedModel):
             return 0
         return self.total_read_time_seconds // self.total_views
 
+    def get_total_chapter_views(self, include_realtime=True):
+        """
+        Calculate total views across all published chapters of this book.
+
+        Args:
+            include_realtime: Include pending Redis counts (default: True)
+
+        Returns:
+            int: Sum of total_views from all published chapters' ChapterStats
+        """
+        from django.db.models import Sum
+
+        # Get all published chapters for this book
+        published_chapters = self.book.chapters.filter(is_public=True)
+
+        # Aggregate total views from ChapterStats (PostgreSQL)
+        result = ChapterStats.objects.filter(
+            chapter__in=published_chapters
+        ).aggregate(total=Sum('total_views'))
+
+        total_views = result['total'] or 0
+
+        # Add real-time Redis counts (not yet aggregated to PostgreSQL)
+        if include_realtime:
+            try:
+                from .stats import StatsService
+                redis_client = StatsService._get_redis_client()
+
+                if redis_client:
+                    for chapter in published_chapters:
+                        redis_key = f"{StatsService.REDIS_PREFIX}:chapter:{chapter.id}:views"
+                        redis_views = redis_client.get(redis_key)
+                        if redis_views:
+                            total_views += int(redis_views)
+            except Exception:
+                # Silently fail if Redis is unavailable
+                pass
+
+        return total_views
+
 
 class ViewEvent(TimeStampedModel):
     """
