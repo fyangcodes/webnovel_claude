@@ -1,6 +1,6 @@
 from django.core.management.base import BaseCommand
 from books.models import Chapter, Language
-from translation.services import TranslationService
+from books.utils import ChapterTranslationService
 
 
 class Command(BaseCommand):
@@ -34,7 +34,7 @@ class Command(BaseCommand):
             self.stdout.write(f"Target language: {target_language.name}")
 
             # Create translation service and build prompt
-            service = TranslationService()
+            service = ChapterTranslationService()
             prompt = service._build_translation_prompt(chapter, target_language)
 
             # Output the prompt

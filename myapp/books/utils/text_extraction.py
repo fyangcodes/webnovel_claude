@@ -1,3 +1,7 @@
+"""
+Text extraction utilities for processing uploaded files.
+"""
+
 import os
 import logging
 import re

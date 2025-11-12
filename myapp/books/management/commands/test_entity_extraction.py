@@ -1,10 +1,10 @@
 """
-Django management command to test EntityExtractionService
+Django management command to test ChapterAnalysisService
 Usage: python manage.py test_entity_extraction
 """
 
 from django.core.management.base import BaseCommand
-from translation.services import EntityExtractionService
+from books.utils import ChapterAnalysisService
 
 
 class Command(BaseCommand):
@@ -20,13 +20,13 @@ class Command(BaseCommand):
         在玄武城，他将遇到来自其他宗门的强者，包括剑宗的天才弟子。
         """
 
-        self.stdout.write("Testing EntityExtractionService...")
+        self.stdout.write("Testing ChapterAnalysisService...")
         self.stdout.write(f"Sample content: {sample_content[:100]}...")
 
         try:
             # Initialize service
-            extractor = EntityExtractionService()
-            self.stdout.write(self.style.SUCCESS("✓ EntityExtractionService initialized"))
+            extractor = ChapterAnalysisService()
+            self.stdout.write(self.style.SUCCESS("✓ ChapterAnalysisService initialized"))
 
             # Extract entities
             result = extractor.extract_entities_and_summary(sample_content, "zh")

@@ -8,22 +8,21 @@ from django.views.generic import (
     DeleteView,
 )
 from django.views.generic.edit import FormView
+from django.views import View
 from django.urls import reverse_lazy
 from django.http import JsonResponse
 from django.core.exceptions import ValidationError
-from django.db import transaction, models
 from django.core.paginator import Paginator
 
 from books.models import (
     Book,
     BookMaster,
     Language,
-    ChapterMaster,
-    Chapter,
+    FileUploadJob,
 )
 from books.forms import BookForm, BookFileUploadForm
-from books.choices import ChapterProgress
-from books.utils import TextExtractor
+from books.choices import ProcessingStatus
+from books.tasks import process_file_upload
 
 
 # Book CRUD Views
@@ -165,7 +164,7 @@ class BookDeleteView(LoginRequiredMixin, DeleteView):
 
 
 class BookFileUploadView(LoginRequiredMixin, FormView):
-    """Async file upload view for books"""
+    """File upload view that queues background processing job"""
 
     form_class = BookFileUploadForm
     template_name = "books/book/upload_file.html"
@@ -191,116 +190,85 @@ class BookFileUploadView(LoginRequiredMixin, FormView):
         auto_create_chapters = form.cleaned_data["auto_create_chapters"]
 
         try:
-            # Extract text and chapters using the utility function
-            result = TextExtractor.extract_text_from_file(
-                uploaded_file, include_chapters=True
+            # Read file content
+            file_content = uploaded_file.read()
+            filename = uploaded_file.name
+
+            # Create FileUploadJob
+            job = FileUploadJob.objects.create(
+                book=book,
+                created_by=self.request.user,
+                auto_create_chapters=auto_create_chapters,
+                status=ProcessingStatus.PENDING,
             )
 
-            if auto_create_chapters and result.get("chapters"):
-                created_count = self._create_chapters_from_upload(
-                    book, result["chapters"]
-                )
-                messages.success(
-                    self.request,
-                    f"Successfully processed file and created {created_count} chapters "
-                    f"from {result['chapter_count']} detected chapters.",
-                )
-                # Update result for JSON response
-                result["created_chapter_count"] = created_count
-            else:
-                # Just extract text without creating chapters
-                messages.info(
-                    self.request,
-                    f"File processed successfully. {result['word_count']} words, "
-                    f"{result['character_count']} characters found. "
-                    f"{result['chapter_count']} potential chapters detected.",
-                )
-                result["created_chapter_count"] = 0
+            # Dispatch Celery task
+            task = process_file_upload.delay(job.id, file_content, filename)
 
-            # If this is an AJAX request, return JSON response
-            if self.request.headers.get("X-Requested-With") == "XMLHttpRequest":
-                message = (
-                    f"File processed successfully. Created {result['created_chapter_count']} chapters."
-                    if auto_create_chapters
-                    else f"File processed successfully. {result['chapter_count']} potential chapters detected."
-                )
-                return JsonResponse(
-                    {
-                        "success": True,
-                        "message": message,
-                        "redirect_url": str(self.get_success_url()),
-                        "stats": {
-                            "word_count": result["word_count"],
-                            "character_count": result["character_count"],
-                            "detected_chapter_count": result["chapter_count"],
-                            "created_chapter_count": result["created_chapter_count"],
-                        },
-                    }
-                )
+            # Store task ID for tracking
+            job.celery_task_id = task.id
+            job.save(update_fields=['celery_task_id'])
+
+            messages.success(
+                self.request,
+                f"File '{filename}' uploaded successfully. Processing in background..."
+            )
+            return redirect(self.get_success_url())
 
         except ValidationError as e:
-            error_msg = str(e)
-            messages.error(self.request, f"File processing failed: {error_msg}")
-
-            if self.request.headers.get("X-Requested-With") == "XMLHttpRequest":
-                return JsonResponse({"success": False, "error": error_msg}, status=400)
+            messages.error(self.request, f"File validation failed: {str(e)}")
+            return self.form_invalid(form)
 
         except Exception as e:
-            error_msg = f"Unexpected error during file processing: {str(e)}"
-            messages.error(self.request, error_msg)
+            messages.error(self.request, f"Unexpected error during file upload: {str(e)}")
+            return self.form_invalid(form)
 
-            if self.request.headers.get("X-Requested-With") == "XMLHttpRequest":
-                return JsonResponse({"success": False, "error": error_msg}, status=500)
 
-        return super().form_valid(form)
+class UploadJobStatusView(LoginRequiredMixin, View):
+    """API endpoint to check the status of a file upload job"""
 
-    @transaction.atomic
-    def _create_chapters_from_upload(self, book, chapters_data):
-        """Create chapters and chapter masters from extracted data"""
-        # Get the highest existing chapter number for this bookmaster
-        existing_max_number = (
-            ChapterMaster.objects.filter(bookmaster=book.bookmaster).aggregate(
-                max_number=models.Max("chapter_number")
-            )["max_number"]
-            or 0
-        )
+    def get(self, request, job_id):
+        """Return the current status of a file upload job"""
+        try:
+            job = get_object_or_404(
+                FileUploadJob.objects.select_related('book', 'book__bookmaster'),
+                id=job_id,
+                book__bookmaster__owner=request.user,
+            )
 
-        created_chapters = 0
-        for i, chapter_info in enumerate(chapters_data, 1):
-            try:
-                # Check if ChapterMaster with this number already exists
-                chapter_number = existing_max_number + i
-                chapter_master, _ = ChapterMaster.objects.get_or_create(
-                    bookmaster=book.bookmaster,
-                    chapter_number=chapter_number,
-                    defaults={"canonical_title": chapter_info["title"]},
-                )
+            response_data = {
+                "job_id": job.id,
+                "status": job.status,
+                "book_id": job.book.id,
+                "book_title": job.book.title,
+                "auto_create_chapters": job.auto_create_chapters,
+                "created_at": job.created_at.isoformat(),
+                "updated_at": job.updated_at.isoformat(),
+            }
 
-                # If ChapterMaster wasn't created, it means it already exists
-                # Check if Chapter already exists for this book
-                if not Chapter.objects.filter(
-                    chaptermaster=chapter_master, book=book
-                ).exists():
-                    # Create Chapter - let the model handle word/character count calculation
-                    chapter = Chapter.objects.create(
-                        title=chapter_info["title"],
-                        chaptermaster=chapter_master,
-                        book=book,
-                        content=chapter_info["content"],
-                        progress=ChapterProgress.DRAFT,
-                        is_public=False,
-                    )
+            # Add results if completed
+            if job.status == ProcessingStatus.COMPLETED:
+                response_data.update({
+                    "word_count": job.word_count,
+                    "character_count": job.character_count,
+                    "detected_chapter_count": job.detected_chapter_count,
+                    "created_chapter_count": job.created_chapter_count,
+                    "message": f"Successfully processed file. Created {job.created_chapter_count} chapters from {job.detected_chapter_count} detected.",
+                })
+            elif job.status == ProcessingStatus.FAILED:
+                response_data.update({
+                    "error": job.error_message,
+                    "message": f"File processing failed: {job.error_message}",
+                })
+            elif job.status == ProcessingStatus.PROCESSING:
+                response_data["message"] = "Processing file..."
+            else:  # PENDING
+                response_data["message"] = "Waiting to process file..."
 
-                    created_chapters += 1
+            return JsonResponse(response_data)
 
-            except Exception as e:
-                # Log the error but continue with other chapters
-                import logging
-
-                logger = logging.getLogger(__name__)
-                logger.error(f"Error creating chapter {i}: {str(e)}")
-                continue
-
-        # Update book metadata after all chapters are created
-        book.update_metadata()
-        return created_chapters
+        except FileUploadJob.DoesNotExist:
+            return JsonResponse(
+                {"error": "Upload job not found"},
+                status=404
+            )

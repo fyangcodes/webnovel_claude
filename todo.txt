@@ -1,6 +1,6 @@
-redis: cache / book stats
+test the book file upload and further process
 
-change book split, chapter analysis and translation to celery task
+taks overview for extraction, analysis and translation on staff
 
 improve reader views design
 - i18n

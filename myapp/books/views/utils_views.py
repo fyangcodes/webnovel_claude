@@ -20,12 +20,13 @@ from books.models import (
     ChapterMaster,
 )
 from books.choices import ProcessingStatus, ChapterProgress
-from translation.services import (
-    TranslationService,
-    ValidationError as TranslationValidationError,
-    APIError,
+from books.utils import (
+    ChapterTranslationService,
+    TranslationValidationError,
+    TranslationAPIError,
     RateLimitError,
 )
+from books.tasks import process_translation_jobs
 
 logger = logging.getLogger(__name__)
 
@@ -154,6 +155,9 @@ class ChapterTranslationView(LoginRequiredMixin, View):
                 created_by=request.user,
                 status=ProcessingStatus.PENDING,
             )
+
+            # Trigger Celery task to process this job immediately
+            process_translation_jobs.delay(max_jobs=1)
 
             return JsonResponse(
                 {
@@ -362,6 +366,7 @@ class BatchActionView(LoginRequiredMixin, View):
     def _create_translation_jobs(self, item, target_language_code, model_type):
         """Create translation jobs for an item"""
         target_language = get_object_or_404(Language, code=target_language_code)
+        job_created = False
 
         if model_type == "chaptermaster":
             # Get the source chapter from the original language only
@@ -394,6 +399,7 @@ class BatchActionView(LoginRequiredMixin, View):
                     target_language=target_language,
                     created_by=self.request.user,
                 )
+                job_created = True
         else:
             # Direct chapter - find source chapter from original language
             original_language = item.chaptermaster.bookmaster.original_language
@@ -425,6 +431,11 @@ class BatchActionView(LoginRequiredMixin, View):
                     target_language=target_language,
                     created_by=self.request.user,
                 )
+                job_created = True
+
+        # Trigger Celery task if a new job was created
+        if job_created:
+            process_translation_jobs.delay(max_jobs=1)
 
     def _delete_item(self, item, model_type):
         """Delete an item"""

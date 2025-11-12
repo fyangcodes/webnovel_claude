@@ -84,6 +84,11 @@ urlpatterns = [
         name="bookfile_upload",
     ),
     path(
+        "upload-jobs/<int:job_id>/status/",
+        views.UploadJobStatusView.as_view(),
+        name="upload_job_status",
+    ),
+    path(
         "books/<int:book_pk>/batch-action/",
         views.BatchActionView.as_view(),
         name="book_batch_action",

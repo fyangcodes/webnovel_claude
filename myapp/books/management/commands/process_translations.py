@@ -1,5 +1,5 @@
 from django.core.management.base import BaseCommand
-from translation.services import process_translation_jobs
+from books.tasks import process_translation_jobs
 
 
 class Command(BaseCommand):

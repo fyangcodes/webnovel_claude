@@ -9,6 +9,8 @@ from .models import (
     ChapterMaster,
     Chapter,
     TranslationJob,
+    AnalysisJob,
+    FileUploadJob,
     BookEntity,
     ChapterContext,
     ChapterStats,
@@ -252,6 +254,109 @@ class TranslationJobAdmin(admin.ModelAdmin):
     process_all_pending_jobs.short_description = "Queue all pending jobs (max 50)"
 
 
+@admin.register(AnalysisJob)
+class AnalysisJobAdmin(admin.ModelAdmin):
+    list_display = [
+        "chapter",
+        "status",
+        "characters_found",
+        "places_found",
+        "terms_found",
+        "retry_count",
+        "created_at",
+    ]
+    list_filter = ["status", "created_at"]
+    search_fields = ["chapter__title", "chapter__book__title"]
+    readonly_fields = [
+        "created_at",
+        "updated_at",
+        "characters_found",
+        "places_found",
+        "terms_found",
+        "retry_count",
+        "celery_task_id",
+    ]
+    ordering = ["-created_at"]
+    actions = ["retry_failed_jobs"]
+
+    def retry_failed_jobs(self, request, queryset):
+        """Retry selected failed analysis jobs"""
+        from books.choices import ProcessingStatus
+        from books.tasks import analyze_chapter_entities
+
+        failed_jobs = queryset.filter(status=ProcessingStatus.FAILED)
+        job_count = failed_jobs.count()
+
+        if job_count == 0:
+            self.message_user(request, "No failed jobs selected")
+            return
+
+        # Reset status and trigger tasks
+        for job in failed_jobs:
+            job.status = ProcessingStatus.PENDING
+            job.error_message = ""
+            job.save()
+            analyze_chapter_entities.delay(job.chapter.id)
+
+        self.message_user(
+            request,
+            f"Retrying {job_count} analysis jobs. Check back in a few minutes.",
+        )
+
+    retry_failed_jobs.short_description = "Retry failed analysis jobs"
+
+
+@admin.register(FileUploadJob)
+class FileUploadJobAdmin(admin.ModelAdmin):
+    list_display = [
+        "book",
+        "status",
+        "created_by",
+        "auto_create_chapters",
+        "detected_chapter_count",
+        "created_chapter_count",
+        "created_at",
+    ]
+    list_filter = ["status", "auto_create_chapters", "created_at"]
+    search_fields = ["book__title", "created_by__username"]
+    readonly_fields = [
+        "created_at",
+        "updated_at",
+        "word_count",
+        "character_count",
+        "detected_chapter_count",
+        "created_chapter_count",
+        "celery_task_id",
+    ]
+    ordering = ["-created_at"]
+
+    fieldsets = (
+        (
+            None,
+            {"fields": ("book", "created_by", "status", "auto_create_chapters")},
+        ),
+        (
+            "Job Results",
+            {
+                "fields": (
+                    "word_count",
+                    "character_count",
+                    "detected_chapter_count",
+                    "created_chapter_count",
+                    "error_message",
+                ),
+            },
+        ),
+        (
+            "Technical",
+            {
+                "fields": ("celery_task_id", "created_at", "updated_at"),
+                "classes": ("collapse",),
+            },
+        ),
+    )
+
+
 @admin.register(BookEntity)
 class BookEntityAdmin(admin.ModelAdmin):
     list_display = [
@@ -434,7 +539,7 @@ class ViewEventAdmin(admin.ModelAdmin):
 @background(schedule=0)  # Execute immediately
 def process_single_job(job_id):
     """Background task to process a single translation job"""
-    from translation.services import TranslationService
+    from books.utils import ChapterTranslationService
     from books.choices import ProcessingStatus
     import logging
 
@@ -453,7 +558,7 @@ def process_single_job(job_id):
         job.save()
 
         # Process the translation
-        service = TranslationService()
+        service = ChapterTranslationService()
         service.translate_chapter(job.chapter, job.target_language.code)
 
         # Mark as completed

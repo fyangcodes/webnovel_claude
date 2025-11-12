@@ -1,13 +1,20 @@
 """
-Celery tasks for stats aggregation and maintenance.
+Celery tasks for analytics and stats aggregation.
+
+These tasks handle:
+- Aggregating Redis counters to database stats
+- Updating unique view counts across time periods
+- Cleaning up old view events
+- Calculating trending scores for books and chapters
 """
 
 from celery import shared_task
 from django.utils import timezone
 from django.contrib.contenttypes.models import ContentType
-from django.db.models import Count, Sum
-from datetime import timedelta, date
+from django.db.models import Sum
+from datetime import timedelta
 import logging
+import math
 
 logger = logging.getLogger(__name__)
 
@@ -18,8 +25,8 @@ def aggregate_stats_hourly():
     Aggregate Redis counters to PostgreSQL stats models.
     Runs every hour via Celery Beat.
     """
-    from .models import Chapter, Book, ChapterStats, BookStats
-    from .stats import StatsService
+    from books.models import Chapter, Book, ChapterStats, BookStats
+    from books.stats import StatsService
 
     redis_client = StatsService._get_redis_client()
     if not redis_client:
@@ -110,7 +117,7 @@ def update_time_period_uniques():
     Update unique view counts for different time periods (24h, 7d, 30d).
     Runs daily via Celery Beat.
     """
-    from .models import Chapter, Book, ChapterStats, BookStats, ViewEvent
+    from books.models import Chapter, Book, ChapterStats, BookStats, ViewEvent
 
     now = timezone.now()
     counts_updated = {"chapters": 0, "books": 0}
@@ -273,7 +280,7 @@ def cleanup_old_view_events():
     Aggregated stats are preserved in ChapterStats/BookStats.
     """
     from django.conf import settings
-    from .models import ViewEvent
+    from books.models import ViewEvent
 
     # Get retention days from settings (default 90 days)
     retention_days = getattr(settings, "STATS_CONFIG", {}).get(
@@ -295,10 +302,8 @@ def calculate_trending_scores():
     Runs every 6 hours via Celery Beat.
     Stores results in Redis sorted sets for fast retrieval.
     """
-    from .models import Book, Chapter, ViewEvent
-    from .stats import StatsService
-    from django.db.models import Q
-    import math
+    from books.models import Book, ViewEvent
+    from books.stats import StatsService
 
     redis_client = StatsService._get_redis_client()
     if not redis_client:
@@ -306,7 +311,6 @@ def calculate_trending_scores():
         return
 
     now = timezone.now()
-    cutoff_7d = now - timedelta(days=7)
 
     # Calculate trending books per language
     languages = Book.objects.values_list("language__code", flat=True).distinct()

@@ -58,6 +58,15 @@ class ChapterCreateView(LoginRequiredMixin, CreateView):
         form.instance.chaptermaster = chaptermaster
 
         response = super().form_valid(form)
+
+        # Trigger AI analysis for original language chapters with content
+        if (
+            self.object.content
+            and self.object.book.language == self.object.book.bookmaster.original_language
+        ):
+            from books.tasks import analyze_chapter_entities
+            analyze_chapter_entities.delay(self.object.id)
+
         messages.success(
             self.request, f"Chapter '{form.instance.title}' created successfully!"
         )
@@ -112,7 +121,22 @@ class ChapterUpdateView(LoginRequiredMixin, UpdateView):
         return reverse_lazy("books:chapter_detail", kwargs={"pk": self.object.pk})
 
     def form_valid(self, form):
+        # Check if content changed before saving
+        content_changed = False
+        if 'content' in form.changed_data:
+            content_changed = True
+
         response = super().form_valid(form)
+
+        # Trigger AI analysis if content changed and it's original language
+        if (
+            content_changed
+            and self.object.content
+            and self.object.book.language == self.object.book.bookmaster.original_language
+        ):
+            from books.tasks import analyze_chapter_entities
+            analyze_chapter_entities.delay(self.object.id)
+
         messages.success(
             self.request, f"Chapter '{form.instance.title}' updated successfully!"
         )

@@ -1,6 +1,6 @@
 from django.core.management.base import BaseCommand, CommandError
 from books.models import Chapter
-from translation.services import EntityExtractionService
+from books.utils import ChapterAnalysisService
 
 
 class Command(BaseCommand):
@@ -43,7 +43,7 @@ class Command(BaseCommand):
         self.stdout.write("-" * 60)
 
         # Test the extraction service
-        service = EntityExtractionService()
+        service = ChapterAnalysisService()
 
         # Show the prompt that will be used
         prompt = service._build_extraction_prompt(
@@ -83,7 +83,7 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS("Testing extraction on sample text"))
         self.stdout.write("-" * 60)
 
-        service = EntityExtractionService()
+        service = ChapterAnalysisService()
 
         # Show the prompt
         prompt = service._build_extraction_prompt(sample_content, "en")
