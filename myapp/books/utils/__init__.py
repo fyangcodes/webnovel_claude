@@ -16,6 +16,7 @@ from .chapter_translation import (
     APIError as TranslationAPIError,
     RateLimitError,
 )
+from .job_concurrency import JobConcurrencyManager
 
 __all__ = [
     # Text extraction
@@ -31,4 +32,6 @@ __all__ = [
     "TranslationValidationError",
     "TranslationAPIError",
     "RateLimitError",
+    # Job concurrency
+    "JobConcurrencyManager",
 ]

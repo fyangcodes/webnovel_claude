@@ -1,12 +1,10 @@
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse
 from django.views.generic import ListView, DetailView, TemplateView
-from django.http import Http404
 from django.core.paginator import Paginator
 from django.conf import settings
 
 from books.models import Book, Chapter, Language, Genre, BookGenre, BookMaster
-from books.views.stats_views import update_reading_progress
 from reader import cache
 
 class BaseBookListView(ListView):

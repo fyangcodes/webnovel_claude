@@ -366,6 +366,15 @@ CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers:DatabaseScheduler'
 # Celery Result Backend Settings
 CELERY_RESULT_EXPIRES = 3600  # Results expire after 1 hour
 
+# Job Processing Concurrency Limits
+# Global limit across all job types to manage hardware resources
+JOB_PROCESSING_GLOBAL_LIMIT = int(os.getenv('JOB_PROCESSING_GLOBAL_LIMIT', 6))
+
+# Individual job type limits (must sum to <= global limit)
+JOB_PROCESSING_TRANSLATION_LIMIT = int(os.getenv('JOB_PROCESSING_TRANSLATION_LIMIT', 1))  # Sequential
+JOB_PROCESSING_ANALYSIS_LIMIT = int(os.getenv('JOB_PROCESSING_ANALYSIS_LIMIT', 3))  # Parallel
+JOB_PROCESSING_EXTRACTION_LIMIT = int(os.getenv('JOB_PROCESSING_EXTRACTION_LIMIT', 3))  # Parallel
+
 # ==============================================================================
 # STATS & ANALYTICS CONFIGURATION
 # ==============================================================================

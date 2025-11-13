@@ -1,0 +1,296 @@
+{% extends "books/base_books.html" %}
+{% load static %}
+
+{% block title %}Background Tasks{% endblock %}
+
+{% block books_content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2><i class="fas fa-tasks"></i> Background Tasks</h2>
+        <div class="d-flex gap-2">
+            <span class="badge bg-secondary">Pending: {{ task_counts.pending }}</span>
+            <span class="badge bg-primary">Processing: {{ task_counts.processing }}</span>
+            <span class="badge bg-success">Completed: {{ task_counts.completed }}</span>
+            <span class="badge bg-danger">Failed: {{ task_counts.failed }}</span>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="card mb-3">
+        <div class="card-body">
+            <form method="get" class="row g-3">
+                <div class="col-md-3">
+                    <label for="task_type" class="form-label">Task Type</label>
+                    <select name="task_type" id="task_type" class="form-select form-select-sm" onchange="this.form.submit()">
+                        {% for value, label in task_type_options %}
+                        <option value="{{ value }}" {% if value == current_task_type %}selected{% endif %}>
+                            {{ label }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label for="status" class="form-label">Status</label>
+                    <select name="status" id="status" class="form-select form-select-sm" onchange="this.form.submit()">
+                        {% for value, label in status_options %}
+                        <option value="{{ value }}" {% if value == current_status %}selected{% endif %}>
+                            {{ label }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3 d-flex align-items-end">
+                    <a href="{% url 'books:task_list' %}" class="btn btn-outline-secondary btn-sm">
+                        <i class="fas fa-redo"></i> Clear Filters
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Task List Table -->
+    {% if tasks %}
+    <div class="table-responsive">
+        <table class="table table-hover table-sm">
+            <thead class="table-light">
+                <tr>
+                    <th style="width: 5%;" class="text-center">Type</th>
+                    <th style="width: 40%;">Task</th>
+                    <th style="width: 15%;" class="text-center">Status</th>
+                    <th style="width: 15%;" class="text-center">Created</th>
+                    <th style="width: 15%;" class="text-center">Details</th>
+                    <th style="width: 10%;" class="text-center">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for task in tasks %}
+                <tr class="task-row" data-task-id="{{ task.id }}" data-task-type="{{ task.task_type }}">
+                    <!-- Type Icon -->
+                    <td class="text-center align-middle">
+                        {% if task.task_type == 'translation' %}
+                        <i class="fas fa-language fa-lg text-primary" title="Translation"></i>
+                        {% elif task.task_type == 'analysis' %}
+                        <i class="fas fa-brain fa-lg text-info" title="Analysis"></i>
+                        {% elif task.task_type == 'extraction' %}
+                        <i class="fas fa-file-upload fa-lg text-success" title="Extraction"></i>
+                        {% endif %}
+                    </td>
+
+                    <!-- Task Title -->
+                    <td class="align-middle">
+                        <div>
+                            <strong>{{ task.title }}</strong>
+                        </div>
+                        <div class="small text-muted">
+                            {% if task.task_type == 'translation' %}
+                                Book: {{ task.details.book_title }}
+                            {% elif task.task_type == 'analysis' %}
+                                Book: {{ task.details.book_title }}
+                            {% elif task.task_type == 'extraction' %}
+                                Book: {{ task.details.book_title }}
+                            {% endif %}
+                        </div>
+                        {% if task.error_message %}
+                        <div class="small text-danger mt-1">
+                            <i class="fas fa-exclamation-triangle"></i> {{ task.error_message|truncatewords:10 }}
+                        </div>
+                        {% endif %}
+                    </td>
+
+                    <!-- Status Badge -->
+                    <td class="text-center align-middle">
+                        {% if task.status == 'pending' %}
+                        <span class="badge bg-secondary">
+                            <i class="fas fa-clock"></i> {{ task.status_display }}
+                        </span>
+                        {% elif task.status == 'processing' %}
+                        <span class="badge bg-primary">
+                            <i class="fas fa-spinner fa-spin"></i> {{ task.status_display }}
+                        </span>
+                        {% elif task.status == 'completed' %}
+                        <span class="badge bg-success">
+                            <i class="fas fa-check"></i> {{ task.status_display }}
+                        </span>
+                        {% elif task.status == 'failed' %}
+                        <span class="badge bg-danger">
+                            <i class="fas fa-times"></i> {{ task.status_display }}
+                        </span>
+                        {% endif %}
+                    </td>
+
+                    <!-- Created Time -->
+                    <td class="text-center align-middle">
+                        <div class="small">{{ task.created_at|date:"M d, Y" }}</div>
+                        <div class="small text-muted">{{ task.created_at|date:"g:i A" }}</div>
+                    </td>
+
+                    <!-- Task-specific Details -->
+                    <td class="text-center align-middle">
+                        <div class="small">
+                            {% if task.task_type == 'translation' %}
+                                <i class="fas fa-arrow-right"></i> {{ task.details.target_language }}
+                            {% elif task.task_type == 'analysis' and task.status == 'completed' %}
+                                <i class="fas fa-users"></i> {{ task.details.characters_found }} |
+                                <i class="fas fa-map-marker-alt"></i> {{ task.details.places_found }} |
+                                <i class="fas fa-book"></i> {{ task.details.terms_found }}
+                            {% elif task.task_type == 'extraction' and task.status == 'completed' %}
+                                <i class="fas fa-file-alt"></i> {{ task.details.created_chapters }}/{{ task.details.detected_chapters }} chapters
+                            {% else %}
+                                -
+                            {% endif %}
+                        </div>
+                    </td>
+
+                    <!-- Actions -->
+                    <td class="text-center align-middle">
+                        <div class="btn-group btn-group-sm" role="group">
+                            {% if task.result_url %}
+                            <a href="{{ task.result_url }}" class="btn btn-outline-primary btn-sm" title="View Result">
+                                <i class="fas fa-eye"></i>
+                            </a>
+                            {% endif %}
+
+                            {% if task.status == 'failed' %}
+                            <button class="btn btn-outline-warning btn-sm task-action" data-action="retry" title="Retry">
+                                <i class="fas fa-redo"></i>
+                            </button>
+                            {% endif %}
+
+                            {% if task.status == 'pending' or task.status == 'processing' %}
+                            <button class="btn btn-outline-danger btn-sm task-action" data-action="cancel" title="Cancel">
+                                <i class="fas fa-ban"></i>
+                            </button>
+                            {% endif %}
+
+                            {% if task.status == 'completed' or task.status == 'failed' %}
+                            <button class="btn btn-outline-danger btn-sm task-action" data-action="delete" title="Delete">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Pagination -->
+    {% if is_paginated %}
+    <nav aria-label="Task pagination">
+        <ul class="pagination justify-content-center">
+            {% if page_obj.has_previous %}
+            <li class="page-item">
+                <a class="page-link" href="?page=1{% if current_task_type != 'all' %}&task_type={{ current_task_type }}{% endif %}{% if current_status != 'all' %}&status={{ current_status }}{% endif %}">First</a>
+            </li>
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if current_task_type != 'all' %}&task_type={{ current_task_type }}{% endif %}{% if current_status != 'all' %}&status={{ current_status }}{% endif %}">Previous</a>
+            </li>
+            {% endif %}
+
+            <li class="page-item active">
+                <span class="page-link">
+                    Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+                </span>
+            </li>
+
+            {% if page_obj.has_next %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if current_task_type != 'all' %}&task_type={{ current_task_type }}{% endif %}{% if current_status != 'all' %}&status={{ current_status }}{% endif %}">Next</a>
+            </li>
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if current_task_type != 'all' %}&task_type={{ current_task_type }}{% endif %}{% if current_status != 'all' %}&status={{ current_status }}{% endif %}">Last</a>
+            </li>
+            {% endif %}
+        </ul>
+    </nav>
+    {% endif %}
+
+    {% else %}
+    <div class="alert alert-info text-center">
+        <i class="fas fa-info-circle fa-2x mb-3"></i>
+        <h5>No tasks found</h5>
+        <p>There are no background tasks matching your filters.</p>
+    </div>
+    {% endif %}
+</div>
+
+<!-- JavaScript for task actions and auto-refresh -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const taskRows = document.querySelectorAll('.task-row');
+
+    // Handle task actions (retry, cancel, delete)
+    document.querySelectorAll('.task-action').forEach(button => {
+        button.addEventListener('click', function() {
+            const row = this.closest('.task-row');
+            const taskId = row.dataset.taskId;
+            const taskType = row.dataset.taskType;
+            const action = this.dataset.action;
+
+            if (action === 'delete' && !confirm('Are you sure you want to delete this task?')) {
+                return;
+            }
+
+            if (action === 'cancel' && !confirm('Are you sure you want to cancel this task?')) {
+                return;
+            }
+
+            fetch('{% url "books:task_action" %}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify({
+                    task_id: taskId,
+                    task_type: taskType,
+                    action: action
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    window.location.reload();
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred while performing the action');
+            });
+        });
+    });
+
+    // Auto-refresh for pending/processing tasks
+    const hasPendingOrProcessing = Array.from(taskRows).some(row => {
+        const statusBadge = row.querySelector('.badge');
+        return statusBadge && (statusBadge.textContent.includes('Pending') || statusBadge.textContent.includes('Processing'));
+    });
+
+    if (hasPendingOrProcessing) {
+        // Refresh every 10 seconds if there are pending or processing tasks
+        setTimeout(() => {
+            window.location.reload();
+        }, 10000);
+    }
+
+    // Helper function to get CSRF token
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+});
+</script>
+{% endblock %}

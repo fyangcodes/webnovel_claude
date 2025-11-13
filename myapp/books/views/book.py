@@ -13,12 +13,14 @@ from django.urls import reverse_lazy
 from django.http import JsonResponse
 from django.core.exceptions import ValidationError
 from django.core.paginator import Paginator
+from django.db.models import Prefetch
 
 from books.models import (
     Book,
     BookMaster,
     Language,
     FileUploadJob,
+    AnalysisJob,
 )
 from books.forms import BookForm, BookFileUploadForm
 from books.choices import ProcessingStatus
@@ -87,9 +89,19 @@ class BookDetailView(LoginRequiredMixin, DetailView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
 
-        # Get all chapters ordered by chapter number
-        chapters_queryset = self.object.chapters.all().order_by(
-            "chaptermaster__chapter_number"
+        # Get all chapters ordered by chapter number, with analysis job data
+        # Prefetch only the latest analysis job for each chapter for efficiency
+        latest_analysis = Prefetch(
+            "analysis_jobs",
+            queryset=AnalysisJob.objects.order_by("-created_at")[:1],
+            to_attr="latest_analysis_job"
+        )
+
+        chapters_queryset = (
+            self.object.chapters.all()
+            .select_related("chaptermaster")
+            .prefetch_related(latest_analysis)
+            .order_by("chaptermaster__chapter_number")
         )
 
         # Add pagination
@@ -224,51 +236,3 @@ class BookFileUploadView(LoginRequiredMixin, FormView):
             return self.form_invalid(form)
 
 
-class UploadJobStatusView(LoginRequiredMixin, View):
-    """API endpoint to check the status of a file upload job"""
-
-    def get(self, request, job_id):
-        """Return the current status of a file upload job"""
-        try:
-            job = get_object_or_404(
-                FileUploadJob.objects.select_related('book', 'book__bookmaster'),
-                id=job_id,
-                book__bookmaster__owner=request.user,
-            )
-
-            response_data = {
-                "job_id": job.id,
-                "status": job.status,
-                "book_id": job.book.id,
-                "book_title": job.book.title,
-                "auto_create_chapters": job.auto_create_chapters,
-                "created_at": job.created_at.isoformat(),
-                "updated_at": job.updated_at.isoformat(),
-            }
-
-            # Add results if completed
-            if job.status == ProcessingStatus.COMPLETED:
-                response_data.update({
-                    "word_count": job.word_count,
-                    "character_count": job.character_count,
-                    "detected_chapter_count": job.detected_chapter_count,
-                    "created_chapter_count": job.created_chapter_count,
-                    "message": f"Successfully processed file. Created {job.created_chapter_count} chapters from {job.detected_chapter_count} detected.",
-                })
-            elif job.status == ProcessingStatus.FAILED:
-                response_data.update({
-                    "error": job.error_message,
-                    "message": f"File processing failed: {job.error_message}",
-                })
-            elif job.status == ProcessingStatus.PROCESSING:
-                response_data["message"] = "Processing file..."
-            else:  # PENDING
-                response_data["message"] = "Waiting to process file..."
-
-            return JsonResponse(response_data)
-
-        except FileUploadJob.DoesNotExist:
-            return JsonResponse(
-                {"error": "Upload job not found"},
-                status=404
-            )

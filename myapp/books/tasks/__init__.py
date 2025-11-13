@@ -21,6 +21,7 @@ from .analytics import (
 # Chapter analysis tasks
 from .chapter_analysis import (
     analyze_chapter_entities,
+    process_analysis_jobs,
 )
 
 # Chapter translation tasks
@@ -31,6 +32,7 @@ from .chapter_translation import (
 # Text extraction tasks
 from .text_extraction import (
     process_file_upload,
+    process_extraction_jobs,
 )
 
 __all__ = [
@@ -41,8 +43,10 @@ __all__ = [
     "calculate_trending_scores",
     # Chapter analysis
     "analyze_chapter_entities",
+    "process_analysis_jobs",
     # Chapter translation
     "process_translation_jobs",
     # Text extraction
     "process_file_upload",
+    "process_extraction_jobs",
 ]

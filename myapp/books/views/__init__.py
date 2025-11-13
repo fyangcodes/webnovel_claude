@@ -1,41 +1,44 @@
-from .bookmaster_views import (
+from .bookmaster import (
     BookMasterCreateView,
     BookMasterListView,
     BookMasterDetailView,
     BookMasterUpdateView,
     BookMasterDeleteView,
 )
-from .chaptermaster_views import (
+from .chaptermaster import (
     ChapterMasterCreateView,
     ChapterMasterDetailView,
     ChapterMasterUpdateView,
     ChapterMasterDeleteView,
 )
-from .book_views import (
+from .book import (
     BookCreateView,
     BookDetailView,
     BookUpdateView,
     BookDeleteView,
     BookFileUploadView,
-    UploadJobStatusView,
 )
-from .chapter_views import (
+from .chapter import (
     ChapterCreateView,
     ChapterDetailView,
     ChapterUpdateView,
     ChapterDeleteView,
 )
-from .utils_views import (
-    ChapterTranslationView,
-    TaskStatusView,
-    BatchActionView,
-)
-from .entity_views import (
+from .entity import (
     BookEntityListView,
     BookEntityUpdateView,
     BookEntityDeleteView,
 )
-from .stats_views import (
+from .task import (
+    TaskListView,
+    TaskCountView,
+    TaskActionView,
+)
+from .translation import (
+    ChapterTranslationView,
+    BatchActionView,
+)
+from .stats import (
     update_reading_progress,
 )
 
@@ -57,7 +60,6 @@ __all__ = [
     "BookUpdateView",
     "BookDeleteView",
     "BookFileUploadView",
-    "UploadJobStatusView",
     # Chapter
     "ChapterCreateView",
     "ChapterDetailView",
@@ -67,9 +69,12 @@ __all__ = [
     "BookEntityListView",
     "BookEntityUpdateView",
     "BookEntityDeleteView",
-    # Utils
+    # Task
+    "TaskListView",
+    "TaskCountView",
+    "TaskActionView",
+    # Translation
     "ChapterTranslationView",
-    "TaskStatusView",
     "BatchActionView",
     # Stats
     "update_reading_progress",

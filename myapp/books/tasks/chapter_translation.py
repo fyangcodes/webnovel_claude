@@ -14,12 +14,17 @@ logger = logging.getLogger(__name__)
 
 
 @shared_task(bind=True)
-def process_translation_jobs(self, max_jobs):
+def process_translation_jobs(self, max_jobs=None):
     """
     Process pending translation jobs with concurrency protection.
 
+    Uses both individual (translation=1) and global limits to control concurrency.
+    Translation jobs are processed sequentially as they depend on context from
+    previous chapters.
+
     Args:
-        max_jobs: Maximum number of jobs to process in this batch
+        max_jobs: Maximum number of jobs to process in this batch.
+                 If None, uses available slots from concurrency manager.
 
     Returns:
         int: Number of jobs processed
@@ -32,12 +37,33 @@ def process_translation_jobs(self, max_jobs):
         RateLimitError,
         TranslationAPIError,
         TranslationError,
+        JobConcurrencyManager,
     )
 
     service = ChapterTranslationService()
+    concurrency_manager = JobConcurrencyManager()
     processed_count = 0
 
+    # Determine how many jobs to process
+    # If max_jobs is None, process all pending jobs (respecting concurrency limits per job)
+    # If max_jobs is specified, stop after processing that many
+    process_all = max_jobs is None
+    if process_all:
+        max_jobs = float('inf')  # Process until queue is empty
+
+    logger.info(
+        f"Processing {'all pending' if process_all else f'up to {max_jobs}'} translation jobs"
+    )
+
     while processed_count < max_jobs:
+        # Check if we can acquire a slot before claiming a job
+        if not concurrency_manager.can_acquire_slot('translation'):
+            logger.info(
+                "No translation slots available (global or type limit reached). "
+                f"Processed {processed_count} jobs so far."
+            )
+            break
+
         # SQLite doesn't support row locking, use single job claiming
         with transaction.atomic():
             # Get the oldest pending job
@@ -68,20 +94,29 @@ def process_translation_jobs(self, max_jobs):
             job.save(update_fields=["status", "celery_task_id"])
 
         # Process the job outside the transaction to avoid long locks
+        # Use concurrency manager to track this job slot
         try:
-            logger.info(f"Starting translation of {job.chapter.title}")
+            with concurrency_manager.acquire_slot('translation'):
+                logger.info(f"Starting translation of {job.chapter.title}")
 
-            service.translate_chapter(job.chapter, job.target_language.code)
+                service.translate_chapter(job.chapter, job.target_language.code)
 
-            # Update job status
-            job.status = ProcessingStatus.COMPLETED
-            job.error_message = ""  # Clear any previous error
+                # Update job status
+                job.status = ProcessingStatus.COMPLETED
+                job.error_message = ""  # Clear any previous error
+                job.save()
+
+                print(
+                    f"✓ Translated chapter '{job.chapter.title}' to {job.target_language.name}"
+                )
+                processed_count += 1
+
+        except ValueError as e:
+            # Slot acquisition failed - shouldn't happen due to pre-check
+            logger.error(f"Failed to acquire translation slot: {e}")
+            job.status = ProcessingStatus.PENDING
             job.save()
-
-            print(
-                f"✓ Translated chapter '{job.chapter.title}' to {job.target_language.name}"
-            )
-            processed_count += 1
+            break
 
         except TranslationValidationError as e:
             job.status = ProcessingStatus.FAILED

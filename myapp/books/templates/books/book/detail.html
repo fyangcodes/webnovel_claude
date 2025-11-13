@@ -197,7 +197,26 @@
                         </a>
                     </td>
                     <td class="text-center align-middle">
-                        {% include "books/partials/status_badge.html" with status=chapter.progress %}
+                        <div class="d-flex justify-content-center align-items-center gap-2">
+                            {% include "books/partials/status_badge.html" with status=chapter.progress %}
+                            {% if chapter.latest_analysis_job %}
+                                {% with latest_analysis=chapter.latest_analysis_job.0 %}
+                                {% if latest_analysis.status == 'completed' %}
+                                <span title="AI Analysis Completed - {{ latest_analysis.characters_found }} characters, {{ latest_analysis.places_found }} places, {{ latest_analysis.terms_found }} terms">
+                                    <i class="fas fa-brain text-info" style="font-size: 0.9rem;"></i>
+                                </span>
+                                {% elif latest_analysis.status == 'processing' %}
+                                <span title="AI Analysis in Progress">
+                                    <i class="fas fa-spinner fa-spin text-primary" style="font-size: 0.9rem;"></i>
+                                </span>
+                                {% elif latest_analysis.status == 'failed' %}
+                                <span title="AI Analysis Failed: {{ latest_analysis.error_message }}">
+                                    <i class="fas fa-exclamation-triangle text-danger" style="font-size: 0.9rem;"></i>
+                                </span>
+                                {% endif %}
+                                {% endwith %}
+                            {% endif %}
+                        </div>
                     </td>
                     <td class="text-center align-middle">
                         {% if chapter.is_public %}
@@ -210,15 +229,18 @@
                         {% endif %}
                     </td>
                     <td class="text-center align-middle">
-                        <div class="small text-muted">
-                            {{ chapter.word_count }} words
-                        </div>
-                        <div class="small text-muted">
-                            {{ chapter.character_count }} chars
+                        <div class="d-flex justify-content-center align-items-center gap-2">
+                            <div class="small text-muted">
+                                {{ chapter.word_count }} words
+                            </div>
+                            <div class="small text-muted">
+                                {{ chapter.character_count }} chars
+                            </div>
                         </div>
                     </td>
                     <td class="text-center align-middle">
                         <div class="btn-group btn-group-sm">
+                            <a href="{% url 'books:chapter_detail' chapter.pk %}" class="btn btn-secondary">View</a>
                             <a href="{% url 'books:chapter_update' chapter.pk %}" class="btn btn-primary">Edit</a>
                             <a href="{% url 'books:chapter_delete' chapter.pk %}" class="btn btn-danger">Delete</a>
                         </div>

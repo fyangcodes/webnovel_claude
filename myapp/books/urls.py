@@ -84,11 +84,6 @@ urlpatterns = [
         name="bookfile_upload",
     ),
     path(
-        "upload-jobs/<int:job_id>/status/",
-        views.UploadJobStatusView.as_view(),
-        name="upload_job_status",
-    ),
-    path(
         "books/<int:book_pk>/batch-action/",
         views.BatchActionView.as_view(),
         name="book_batch_action",
@@ -118,8 +113,10 @@ urlpatterns = [
         views.ChapterTranslationView.as_view(),
         name="chapter_translate",
     ),
-    # Task status view
-    path("task-status/", views.TaskStatusView.as_view(), name="task_status"),
+    # Task management views
+    path("tasks/", views.TaskListView.as_view(), name="task_list"),
+    path("tasks/count/", views.TaskCountView.as_view(), name="task_count"),
+    path("tasks/action/", views.TaskActionView.as_view(), name="task_action"),
     # Stats API endpoints
     path(
         "api/stats/reading-progress/",

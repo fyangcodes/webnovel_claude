@@ -65,7 +65,7 @@ class ChapterCreateView(LoginRequiredMixin, CreateView):
             and self.object.book.language == self.object.book.bookmaster.original_language
         ):
             from books.tasks import analyze_chapter_entities
-            analyze_chapter_entities.delay(self.object.id)
+            analyze_chapter_entities.delay(self.object.id, created_by_id=self.request.user.id)
 
         messages.success(
             self.request, f"Chapter '{form.instance.title}' created successfully!"
@@ -135,7 +135,7 @@ class ChapterUpdateView(LoginRequiredMixin, UpdateView):
             and self.object.book.language == self.object.book.bookmaster.original_language
         ):
             from books.tasks import analyze_chapter_entities
-            analyze_chapter_entities.delay(self.object.id)
+            analyze_chapter_entities.delay(self.object.id, created_by_id=self.request.user.id)
 
         messages.success(
             self.request, f"Chapter '{form.instance.title}' updated successfully!"

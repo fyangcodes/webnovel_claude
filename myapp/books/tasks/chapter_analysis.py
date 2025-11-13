@@ -4,16 +4,18 @@ Celery tasks for AI-powered chapter analysis.
 These tasks handle:
 - Entity extraction and summarization for chapters
 - Async processing of chapter context analysis
+- Batch processing with concurrency control
 """
 
 from celery import shared_task
+from django.db import transaction
 import logging
 
 logger = logging.getLogger(__name__)
 
 
 @shared_task(bind=True, max_retries=3)
-def analyze_chapter_entities(self, chapter_id):
+def analyze_chapter_entities(self, chapter_id, created_by_id=None):
     """
     Async task to analyze chapter entities and summary using AI.
 
@@ -22,12 +24,16 @@ def analyze_chapter_entities(self, chapter_id):
 
     Args:
         chapter_id: Chapter primary key
+        created_by_id: User ID who created the chapter (optional)
 
     Returns:
         dict: Analysis result with status and entity counts
     """
     from books.models import Chapter, ChapterContext, AnalysisJob
     from books.choices import ProcessingStatus
+    from django.contrib.auth import get_user_model
+
+    User = get_user_model()
 
     # Get or create the analysis job
     job = None
@@ -37,6 +43,14 @@ def analyze_chapter_entities(self, chapter_id):
             'book__language',
             'book__bookmaster'
         ).get(id=chapter_id)
+
+        # Determine the user who should be set as created_by
+        created_by = None
+        if created_by_id:
+            try:
+                created_by = User.objects.get(id=created_by_id)
+            except User.DoesNotExist:
+                logger.warning(f"User {created_by_id} not found for analysis job")
 
         # Check if any job already exists for this chapter
         existing_job = AnalysisJob.objects.filter(chapter=chapter).first()
@@ -62,6 +76,9 @@ def analyze_chapter_entities(self, chapter_id):
                 job.celery_task_id = self.request.id
                 job.retry_count = self.request.retries
                 job.error_message = ""
+                # Update created_by if provided and not already set
+                if created_by and not job.created_by:
+                    job.created_by = created_by
                 job.save()
             else:
                 # PENDING or PROCESSING - update it
@@ -70,6 +87,9 @@ def analyze_chapter_entities(self, chapter_id):
                 job.status = ProcessingStatus.PROCESSING
                 job.celery_task_id = self.request.id
                 job.retry_count = self.request.retries
+                # Update created_by if provided and not already set
+                if created_by and not job.created_by:
+                    job.created_by = created_by
                 job.save()
         else:
             # Create new job
@@ -78,6 +98,7 @@ def analyze_chapter_entities(self, chapter_id):
                 chapter=chapter,
                 status=ProcessingStatus.PROCESSING,
                 celery_task_id=self.request.id,
+                created_by=created_by,
             )
 
         # Only analyze if this is an original language chapter
@@ -153,3 +174,117 @@ def analyze_chapter_entities(self, chapter_id):
                 job.status = ProcessingStatus.FAILED
                 job.save()
             return {'chapter_id': chapter_id, 'status': 'failed', 'error': str(e)}
+
+
+@shared_task(bind=True)
+def process_analysis_jobs(self, max_jobs=None):
+    """
+    Process pending analysis jobs in batch with concurrency protection.
+
+    Uses both individual (analysis=3) and global limits to control concurrency.
+    Analysis jobs can run in parallel up to the configured limit.
+
+    Args:
+        max_jobs: Maximum number of jobs to process in this batch.
+                 If None, uses available slots from concurrency manager.
+
+    Returns:
+        int: Number of jobs processed
+    """
+    from books.models import AnalysisJob
+    from books.choices import ProcessingStatus
+    from books.utils import JobConcurrencyManager
+
+    concurrency_manager = JobConcurrencyManager()
+    processed_count = 0
+    failed_count = 0
+
+    # Determine how many jobs to process
+    # If max_jobs is None, process all pending jobs (respecting concurrency limits per job)
+    # If max_jobs is specified, stop after processing that many
+    process_all = max_jobs is None
+    if process_all:
+        max_jobs = float('inf')  # Process until queue is empty
+
+    logger.info(
+        f"Processing {'all pending' if process_all else f'up to {max_jobs}'} analysis jobs"
+    )
+
+    while processed_count < max_jobs:
+        # Check if we can acquire a slot before claiming a job
+        if not concurrency_manager.can_acquire_slot('analysis'):
+            logger.info(
+                "No analysis slots available (global or type limit reached). "
+                f"Processed {processed_count} jobs so far."
+            )
+            break
+        # Claim a job atomically
+        with transaction.atomic():
+            # Get the oldest pending job
+            pending_job = (
+                AnalysisJob.objects.filter(status=ProcessingStatus.PENDING)
+                .select_related('chapter', 'chapter__book')
+                .order_by("created_at")
+                .first()
+            )
+
+            if not pending_job:
+                logger.info("No pending analysis jobs found")
+                break
+
+            # Try to claim this specific job atomically
+            updated_count = AnalysisJob.objects.filter(
+                id=pending_job.id,
+                status=ProcessingStatus.PENDING,
+            ).update(status=ProcessingStatus.PROCESSING)
+
+            if updated_count == 0:
+                # Job was claimed by another process, try next iteration
+                logger.info("Job was claimed by another process, retrying")
+                continue
+
+            job = pending_job
+            job.status = ProcessingStatus.PROCESSING
+            job.celery_task_id = self.request.id
+            job.save(update_fields=["status", "celery_task_id"])
+
+        # Process the job outside the transaction with concurrency tracking
+        try:
+            with concurrency_manager.acquire_slot('analysis'):
+                logger.info(f"Starting analysis of chapter {job.chapter.id}: {job.chapter.title}")
+
+                # Call the actual analysis task logic synchronously
+                result = analyze_chapter_entities(job.chapter.id, job.created_by_id)
+
+                if result.get('status') == 'completed':
+                    print(f"✓ Analyzed chapter '{job.chapter.title}'")
+                    processed_count += 1
+                elif result.get('status') == 'failed':
+                    print(f"✗ Analysis failed for '{job.chapter.title}': {result.get('error')}")
+                    failed_count += 1
+                    processed_count += 1
+                else:
+                    # Skipped or already completed
+                    processed_count += 1
+
+        except ValueError as e:
+            # Slot acquisition failed - shouldn't happen due to pre-check
+            logger.error(f"Failed to acquire analysis slot: {e}")
+            job.status = ProcessingStatus.PENDING
+            job.save()
+            break
+
+        except Exception as e:
+            logger.error(f"Unexpected error processing analysis job {job.id}: {e}", exc_info=True)
+            job.status = ProcessingStatus.FAILED
+            job.error_message = f"Unexpected error: {str(e)}"
+            job.save()
+            failed_count += 1
+            processed_count += 1
+
+    if processed_count == 0:
+        print("No analysis jobs were processed")
+    else:
+        print(f"Processed {processed_count} analysis jobs ({failed_count} failed)")
+
+    return processed_count

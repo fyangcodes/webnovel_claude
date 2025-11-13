@@ -23,10 +23,11 @@ from .models import (
 class LanguageAdmin(admin.ModelAdmin):
     list_display = ["name", "code", "local_name", "count_units", "wpm"]
     search_fields = ["name", "code", "local_name"]
+    readonly_fields = ["pk"]
     ordering = ["name"]
 
     fieldsets = (
-        (None, {"fields": ("code", "name", "local_name", "count_units", "wpm")}),
+        (None, {"fields": ("pk", "code", "name", "local_name", "count_units", "wpm")}),
         (
             "Count Formatting",
             {
@@ -43,10 +44,11 @@ class GenreAdmin(admin.ModelAdmin):
     list_display = ["name", "slug", "created_at"]
     search_fields = ["name", "slug"]
     prepopulated_fields = {"slug": ("name",)}
+    readonly_fields = ["pk"]
     ordering = ["name"]
 
     fieldsets = (
-        (None, {"fields": ("name", "slug", "description")}),
+        (None, {"fields": ("pk", "name", "slug", "description")}),
         (
             "Translations",
             {
@@ -115,11 +117,12 @@ class BookMasterAdmin(admin.ModelAdmin):
     ]
     list_filter = ["original_language", "created_at"]
     search_fields = ["canonical_title"]
+    readonly_fields = ["pk"]
     ordering = ["canonical_title"]
     inlines = [BookGenreInline]
 
     fieldsets = (
-        (None, {"fields": ("canonical_title", "owner", "original_language")}),
+        (None, {"fields": ("pk", "canonical_title", "owner", "original_language")}),
         (
             "Images",
             {
@@ -151,7 +154,7 @@ class BookAdmin(admin.ModelAdmin):
     list_filter = ["is_public", "progress", "language", "created_at"]
     search_fields = ["title", "bookmaster__canonical_title", "author"]
     prepopulated_fields = {"slug": ("title",)}
-    readonly_fields = ["total_chapters", "total_words", "total_characters"]
+    readonly_fields = ["pk", "total_chapters", "total_words", "total_characters"]
     ordering = ["-created_at"]
     inlines = [BookStatsInline]
 
@@ -161,6 +164,7 @@ class ChapterMasterAdmin(admin.ModelAdmin):
     list_display = ["canonical_title", "bookmaster", "chapter_number", "created_at"]
     list_filter = ["bookmaster", "created_at"]
     search_fields = ["canonical_title", "bookmaster__canonical_title"]
+    readonly_fields = ["pk"]
     ordering = ["bookmaster", "chapter_number"]
 
 
@@ -186,7 +190,7 @@ class ChapterAdmin(admin.ModelAdmin):
     ]
     search_fields = ["title", "chaptermaster__canonical_title", "book__title"]
     prepopulated_fields = {"slug": ("title",)}
-    readonly_fields = ["word_count", "character_count"]
+    readonly_fields = ["pk", "word_count", "character_count"]
     ordering = ["book", "chaptermaster__chapter_number"]
     inlines = [ChapterStatsInline]
 
@@ -203,7 +207,7 @@ class TranslationJobAdmin(admin.ModelAdmin):
     ]
     list_filter = ["status", "target_language", "created_at"]
     search_fields = ["chapter__title", "target_language__name", "created_by__username"]
-    readonly_fields = ["created_at", "updated_at"]
+    readonly_fields = ["pk", "created_at", "updated_at"]
     ordering = ["-created_at"]
     actions = ["process_selected_jobs", "process_all_pending_jobs"]
 
@@ -268,6 +272,7 @@ class AnalysisJobAdmin(admin.ModelAdmin):
     list_filter = ["status", "created_at"]
     search_fields = ["chapter__title", "chapter__book__title"]
     readonly_fields = [
+        "pk",
         "created_at",
         "updated_at",
         "characters_found",
@@ -320,6 +325,7 @@ class FileUploadJobAdmin(admin.ModelAdmin):
     list_filter = ["status", "auto_create_chapters", "created_at"]
     search_fields = ["book__title", "created_by__username"]
     readonly_fields = [
+        "pk",
         "created_at",
         "updated_at",
         "word_count",
@@ -372,13 +378,13 @@ class BookEntityAdmin(admin.ModelAdmin):
         "bookmaster__canonical_title",
         "first_chapter__title",
     ]
-    readonly_fields = ["created_at", "updated_at"]
+    readonly_fields = ["pk", "created_at", "updated_at"]
     ordering = ["bookmaster", "entity_type", "source_name"]
 
     fieldsets = (
         (
             None,
-            {"fields": ("bookmaster", "entity_type", "source_name", "first_chapter")},
+            {"fields": ("pk", "bookmaster", "entity_type", "source_name", "first_chapter")},
         ),
         (
             "Translations",
@@ -410,12 +416,12 @@ class ChapterContextAdmin(admin.ModelAdmin):
     ]
     list_filter = ["created_at", "updated_at", "chapter__book"]
     search_fields = ["chapter__title", "chapter__book__title", "summary"]
-    readonly_fields = ["created_at", "updated_at", "entity_count"]
+    readonly_fields = ["pk", "created_at", "updated_at", "entity_count"]
     ordering = ["-updated_at"]
     actions = ["extract_entities_for_selected", "clear_analysis"]
 
     fieldsets = (
-        (None, {"fields": ("chapter",)}),
+        (None, {"fields": ("pk", "chapter")}),
         (
             "Analysis Results",
             {

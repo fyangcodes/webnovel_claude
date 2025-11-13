@@ -3,6 +3,7 @@ from django.shortcuts import redirect
 from django.http import HttpRequest
 from . import views
 from books.models import Language
+from books.views import update_reading_progress
 
 
 class UnicodeSlugConverter:
@@ -98,7 +99,7 @@ urlpatterns = [
     # API endpoint for reading progress tracking
     path(
         "api/stats/reading-progress/",
-        views.update_reading_progress,
+        update_reading_progress,
         name="reading_progress_api",
     ),
 ]

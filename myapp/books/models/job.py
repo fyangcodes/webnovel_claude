@@ -66,6 +66,12 @@ class AnalysisJob(TimeStampedModel):
         choices=ProcessingStatus.choices,
         default=ProcessingStatus.PENDING,
     )
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        help_text="User who created the chapter or initiated the analysis",
+    )
     error_message = models.TextField(blank=True)
     retry_count = models.PositiveIntegerField(default=0)
 
