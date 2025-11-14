@@ -6,7 +6,8 @@ import json
 import logging
 from django.conf import settings
 from django.core.exceptions import ValidationError
-from openai import OpenAI
+
+from .base_ai_service import BaseAIService
 
 logger = logging.getLogger(__name__)
 
@@ -21,16 +22,20 @@ class APIError(AnalysisError):
     pass
 
 
-class ChapterAnalysisService:
+class ChapterAnalysisService(BaseAIService):
     """AI-based entity extraction service for chapter analysis"""
+
+    # Settings configuration
+    MODEL_SETTING_NAME = 'ANALYSIS_MODEL'
+    MAX_TOKENS_SETTING_NAME = 'ANALYSIS_MAX_TOKENS'
+    TEMPERATURE_SETTING_NAME = 'ANALYSIS_TEMPERATURE'
 
     def __init__(self):
         """Initialize the chapter analysis service"""
-        if not settings.OPENAI_API_KEY:
-            raise APIError("OpenAI API key is not configured")
-
-        self.client = OpenAI(api_key=settings.OPENAI_API_KEY)
-        self.max_content_length = 5000  # Limit for extraction to control costs
+        try:
+            super().__init__()
+        except ValueError as e:
+            raise APIError(str(e))
 
     def extract_entities_and_summary(self, content, language_code="zh"):
         """
@@ -48,19 +53,13 @@ class ChapterAnalysisService:
                 - summary: brief chapter summary
         """
         try:
-            # Truncate content if too long (cost control)
-            truncated_content = content[: self.max_content_length]
-            if len(content) > self.max_content_length:
-                logger.info(
-                    f"Content truncated from {len(content)} to {self.max_content_length} chars for extraction"
-                )
-
-            prompt = self._build_extraction_prompt(truncated_content, language_code)
+            prompt = self._build_extraction_prompt(content, language_code)
 
             response = self.client.chat.completions.create(
-                model="gpt-4o-mini",
+                model=self.model,
                 messages=[{"role": "user", "content": prompt}],
-                temperature=0.1,  # Low temperature for consistent JSON output
+                max_tokens=self.max_tokens,
+                temperature=self.temperature,
                 response_format={"type": "json_object"},  # Force JSON response
             )
 
@@ -73,6 +72,10 @@ class ChapterAnalysisService:
                 cleaned_response = self._clean_json_response(response_text)
                 result = json.loads(cleaned_response)
                 self._validate_extraction_result(result)
+
+                # Clean entity names (safety net to remove decorative punctuation)
+                result = self._clean_entity_names(result)
+
                 logger.info(
                     f"Successfully extracted entities: {len(result.get('characters', []))} chars, "
                     f"{len(result.get('places', []))} places, {len(result.get('terms', []))} terms"
@@ -115,6 +118,15 @@ class ChapterAnalysisService:
                 "- Focus on entities central to the plot that need consistent translation.",
                 "- Limit each category to the top 10 most important entities (or fewer if not applicable).",
                 "- Prioritize entities mentioned multiple times.",
+                "",
+                "IMPORTANT - Clean Entity Names:",
+                "- Remove ALL decorative punctuation and wrapper characters from entity names",
+                "- Chinese book/document titles: Extract WITHOUT 《》 markers (e.g., extract '朱阳策' NOT '《朱阳策》')",
+                "- Quotation marks: Extract WITHOUT \" or ' marks",
+                "- Brackets/parentheses: Extract WITHOUT ( ), [ ], { }, 「」, 『』",
+                "- Extract only the core entity name itself",
+                "- Example: If text contains '《沧海拾遗》', extract as '沧海拾遗'",
+                "- Example: If text contains '\"John Smith\"', extract as 'John Smith'",
                 "",
                 "You must respond with valid JSON only. No additional text or explanations.",
                 "",
@@ -171,6 +183,38 @@ class ChapterAnalysisService:
         # Ensure summary is string
         if not isinstance(result["summary"], str):
             raise ValidationError("summary must be a string")
+
+    def _clean_entity_names(self, result):
+        """Clean entity names by removing decorative punctuation (safety net)"""
+        # Decorative characters to remove
+        decorative_chars = {
+            '《': '', '》': '',  # Chinese book title markers
+            '「': '', '」': '',  # Japanese quotes
+            '『': '', '』': '',  # Japanese double quotes
+            '"': '', '"': '',    # Smart quotes
+            '"': '', "'": '',    # Regular quotes
+        }
+
+        for category in ["characters", "places", "terms"]:
+            if category in result and isinstance(result[category], list):
+                cleaned = []
+                for entity in result[category]:
+                    if isinstance(entity, str):
+                        # Remove decorative characters
+                        cleaned_entity = entity
+                        for old, new in decorative_chars.items():
+                            cleaned_entity = cleaned_entity.replace(old, new)
+
+                        # Strip whitespace
+                        cleaned_entity = cleaned_entity.strip()
+
+                        # Only add if non-empty after cleaning
+                        if cleaned_entity:
+                            cleaned.append(cleaned_entity)
+
+                result[category] = cleaned
+
+        return result
 
     def _get_fallback_result(self, content):
         """Return fallback result when AI extraction fails"""

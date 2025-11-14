@@ -3,6 +3,12 @@
 
 {% block title %}Background Tasks{% endblock %}
 
+{% block breadcrumb_items %}
+<li class="breadcrumb-item active">
+    <i class="fas fa-tasks"></i> Tasks
+</li>
+{% endblock breadcrumb_items %}
+
 {% block books_content %}
 <div class="container-fluid">
     <div class="d-flex justify-content-between align-items-center mb-3">
@@ -20,8 +26,7 @@
         <div class="card-body">
             <form method="get" class="row g-3">
                 <div class="col-md-3">
-                    <label for="task_type" class="form-label">Task Type</label>
-                    <select name="task_type" id="task_type" class="form-select form-select-sm" onchange="this.form.submit()">
+                    <select name="task_type" id="task_type" class="form-select form-select-sm" aria-label="Task Type" onchange="this.form.submit()">
                         {% for value, label in task_type_options %}
                         <option value="{{ value }}" {% if value == current_task_type %}selected{% endif %}>
                             {{ label }}
@@ -30,8 +35,7 @@
                     </select>
                 </div>
                 <div class="col-md-3">
-                    <label for="status" class="form-label">Status</label>
-                    <select name="status" id="status" class="form-select form-select-sm" onchange="this.form.submit()">
+                    <select name="status" id="status" class="form-select form-select-sm" aria-label="Status" onchange="this.form.submit()">
                         {% for value, label in status_options %}
                         <option value="{{ value }}" {% if value == current_status %}selected{% endif %}>
                             {{ label }}

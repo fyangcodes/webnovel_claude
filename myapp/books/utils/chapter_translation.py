@@ -8,8 +8,8 @@ import time
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import transaction
-from openai import OpenAI
 
+from .base_ai_service import BaseAIService
 from books.models import Chapter, Language, TranslationJob
 from books.choices import ProcessingStatus
 
@@ -36,8 +36,13 @@ class RateLimitError(TranslationError):
     pass
 
 
-class ChapterTranslationService:
+class ChapterTranslationService(BaseAIService):
     """AI-powered translation service with validation and error handling"""
+
+    # Settings configuration
+    MODEL_SETTING_NAME = 'TRANSLATION_MODEL'
+    MAX_TOKENS_SETTING_NAME = 'TRANSLATION_MAX_TOKENS'
+    TEMPERATURE_SETTING_NAME = 'TRANSLATION_TEMPERATURE'
 
     # Content validation limits
     MAX_CONTENT_LENGTH = 8000  # Conservative limit for token estimation
@@ -46,32 +51,24 @@ class ChapterTranslationService:
     RETRY_DELAY = 1  # seconds
 
     def __init__(self):
-        self._validate_settings()
-        self.client = OpenAI(api_key=settings.OPENAI_API_KEY)
-        self.model = settings.TRANSLATION_MODEL
-        self.max_tokens = settings.TRANSLATION_MAX_TOKENS
-        self.temperature = settings.TRANSLATION_TEMPERATURE
+        """Initialize the translation service"""
+        try:
+            super().__init__()
+        except ValueError as e:
+            raise TranslationValidationError(str(e))
+
+        # Validate additional required settings
+        self._validate_settings(
+            required_settings=[
+                "OPENAI_API_KEY",
+                "TRANSLATION_MODEL",
+                "TRANSLATION_MAX_TOKENS",
+                "TRANSLATION_TEMPERATURE",
+            ]
+        )
+
         self._last_request_time = 0
         self._min_request_interval = 1  # Minimum 1 second between requests
-
-    def _validate_settings(self):
-        """Validate required settings are present"""
-        required_settings = [
-            "OPENAI_API_KEY",
-            "TRANSLATION_MODEL",
-            "TRANSLATION_MAX_TOKENS",
-            "TRANSLATION_TEMPERATURE",
-        ]
-
-        missing_settings = []
-        for setting in required_settings:
-            if not hasattr(settings, setting) or not getattr(settings, setting):
-                missing_settings.append(setting)
-
-        if missing_settings:
-            raise TranslationValidationError(
-                f"Missing required settings: {', '.join(missing_settings)}"
-            )
 
     def translate_chapter(
         self, source_chapter: Chapter, target_language_code: str
@@ -169,7 +166,7 @@ class ChapterTranslationService:
         self._last_request_time = time.time()
 
     def _call_openai_with_retry(self, prompt: str) -> str:
-        """Call OpenAI API with retry logic"""
+        """Call OpenAI API with retry logic and JSON mode"""
         last_exception = None
 
         for attempt in range(self.MAX_RETRIES):
@@ -179,6 +176,7 @@ class ChapterTranslationService:
                     messages=[{"role": "user", "content": prompt}],
                     max_tokens=self.max_tokens,
                     temperature=self.temperature,
+                    response_format={"type": "json_object"},  # Force JSON response
                 )
 
                 if not response.choices:
@@ -357,23 +355,25 @@ class ChapterTranslationService:
         prompt_parts.extend(
             [
                 "### RESPONSE FORMAT",
-                "**CRITICAL: You MUST include ALL four sections below in your response, even if some are empty.**",
+                "**CRITICAL: You MUST respond with valid JSON only. No additional text, explanations, or markdown formatting.**",
                 "",
-                "Format your response EXACTLY as follows (do not omit any section):",
-                "",
-                "TITLE: [translated title here]",
-                "",
-                "CONTENT: [translated content here]",
-                "",
-                "ENTITY_MAPPINGS: {\"source_entity\": \"translated_entity\", \"another_entity\": \"another_translation\"}",
-                "",
-                "TRANSLATOR_NOTES: [Any assumptions, clarifications, or issues encountered]",
+                "Required JSON structure:",
+                "{",
+                '  "title": "Translated chapter title",',
+                '  "content": "Full translated chapter content with preserved paragraph breaks",',
+                '  "entity_mappings": {',
+                '    "source_entity1": "translated_entity1",',
+                '    "source_entity2": "translated_entity2"',
+                "  },",
+                '  "translator_notes": "Any assumptions, clarifications, or issues encountered"',
+                "}",
                 "",
                 "Important:",
-                "- ENTITY_MAPPINGS must be a valid JSON object on the same line as the marker",
-                "- If there are no entity mappings, use: ENTITY_MAPPINGS: {}",
-                "- Do NOT omit the ENTITY_MAPPINGS or TRANSLATOR_NOTES lines",
-                "- For Chinese names in ENTITY_MAPPINGS, use simple Pinyin WITHOUT tone marks (e.g., \"鲲邪\": \"Kun Xie\", NOT \"Kūn Xié\")",
+                "- Start your response with '{' and end with '}'",
+                "- entity_mappings must be a JSON object (use {} if no mappings)",
+                "- For Chinese names in entity_mappings, use simple Pinyin WITHOUT tone marks (e.g., \"鲲邪\": \"Kun Xie\", NOT \"Kūn Xié\")",
+                "- translator_notes should be a string (use empty string \"\" if no notes)",
+                "- Preserve paragraph breaks in content using \\n\\n",
                 "",
             ]
         )
@@ -562,144 +562,56 @@ class ChapterTranslationService:
     def _parse_translation_result(
         self, translation_result: str
     ) -> tuple[str, str, dict, str]:
-        """Parse the translation result to extract title, content, entity mappings, and translator notes"""
+        """Parse the JSON translation result to extract title, content, entity mappings, and translator notes"""
         try:
-            lines = translation_result.strip().split("\n")
-            title_line = None
-            content_start = None
-            content_end = None
-            mappings_start = None
-            notes_start = None
-            entity_mappings = {}
-            translator_notes = ""
+            # Parse JSON response
+            result = json.loads(translation_result)
 
-            # Find TITLE, CONTENT, ENTITY_MAPPINGS, and TRANSLATOR_NOTES markers
-            for i, line in enumerate(lines):
-                line_stripped = line.strip()
-                if line_stripped.startswith("TITLE:"):
-                    title_line = line_stripped[6:].strip()
-                elif line_stripped.startswith("CONTENT:"):
-                    content_start = i
-                elif line_stripped.startswith("ENTITY_MAPPINGS:"):
-                    content_end = i
-                    mappings_start = i
-                elif line_stripped.startswith("TRANSLATOR_NOTES:"):
-                    notes_start = i
-                    break
+            # Validate required keys
+            required_keys = ["title", "content"]
+            missing_keys = [key for key in required_keys if key not in result]
+            if missing_keys:
+                raise APIError(f"Missing required keys in JSON response: {', '.join(missing_keys)}")
 
-            # Parse title
-            if title_line is None:
-                logger.warning("Could not find TITLE marker in translation result")
-                # Fallback: use first non-empty line as title
-                for line in lines:
-                    if line.strip():
-                        title_line = line.strip()
-                        break
-                else:
-                    title_line = "Untitled"
+            # Extract values
+            title = result["title"]
+            content = result["content"]
+            entity_mappings = result.get("entity_mappings", {})
+            translator_notes = result.get("translator_notes", "")
 
-            # Parse content
-            if content_start is None:
-                logger.warning("Could not find CONTENT marker in translation result")
-                # Fallback: use everything after the first line as content
-                # Stop at ENTITY_MAPPINGS or TRANSLATOR_NOTES
-                end_index = (
-                    content_end
-                    if content_end
-                    else (notes_start if notes_start else len(lines))
-                )
-                content_lines = lines[1:end_index]
-            else:
-                # Get content between CONTENT: and ENTITY_MAPPINGS/TRANSLATOR_NOTES (or end)
-                end_index = (
-                    content_end
-                    if content_end
-                    else (notes_start if notes_start else len(lines))
-                )
-                content_lines = lines[content_start:end_index]
+            # Validate types
+            if not isinstance(title, str):
+                raise APIError(f"Title must be a string, got {type(title).__name__}")
+            if not isinstance(content, str):
+                raise APIError(f"Content must be a string, got {type(content).__name__}")
+            if not isinstance(entity_mappings, dict):
+                logger.warning(f"Entity mappings must be a dict, got {type(entity_mappings).__name__}. Using empty dict.")
+                entity_mappings = {}
+            if not isinstance(translator_notes, str):
+                logger.warning(f"Translator notes must be a string, got {type(translator_notes).__name__}. Converting to string.")
+                translator_notes = str(translator_notes)
 
-                if content_lines and content_lines[0].strip().startswith("CONTENT:"):
-                    # Remove the CONTENT: part from first line
-                    first_line = content_lines[0].strip()[8:].strip()
-                    if first_line:
-                        content_lines[0] = first_line
-                    else:
-                        content_lines = content_lines[1:]
-
-            translated_content = "\n".join(content_lines).strip()
-
-            # Parse entity mappings
-            if mappings_start is not None:
-                try:
-                    mappings_line = lines[mappings_start].strip()
-                    logger.debug(f"Entity mappings line found: {mappings_line}")
-
-                    if mappings_line.startswith("ENTITY_MAPPINGS:"):
-                        mappings_json = mappings_line[16:].strip()
-                        logger.debug(f"Extracted JSON string: {mappings_json}")
-
-                        if (
-                            mappings_json
-                            and mappings_json
-                            not in ["", "[entity mappings in JSON format if requested above]", "[]", "null", "None"]
-                        ):
-                            import json
-
-                            entity_mappings = json.loads(mappings_json)
-                            logger.info(f"Successfully parsed entity mappings: {entity_mappings}")
-                        else:
-                            logger.warning(f"Entity mappings JSON is empty or placeholder: '{mappings_json}'")
-                            entity_mappings = {}
-                except (json.JSONDecodeError, ValueError) as e:
-                    logger.warning(f"Failed to parse entity mappings JSON: {e}. Raw line: {mappings_line}")
-                    entity_mappings = {}
-            else:
-                logger.warning("No ENTITY_MAPPINGS marker found in AI response. The AI did not follow the required response format.")
-
-            # Parse translator notes
-            if notes_start is not None:
-                try:
-                    notes_line = lines[notes_start].strip()
-                    if notes_line.startswith("TRANSLATOR_NOTES:"):
-                        translator_notes = notes_line[17:].strip()
-                        # Also check if notes continue on next lines
-                        if notes_start + 1 < len(lines):
-                            remaining_notes = []
-                            for line in lines[notes_start + 1 :]:
-                                line_stripped = line.strip()
-                                # Stop at next section marker or empty lines at end
-                                if line_stripped.startswith(
-                                    (
-                                        "TITLE:",
-                                        "CONTENT:",
-                                        "ENTITY_MAPPINGS:",
-                                        "TRANSLATOR_NOTES:",
-                                    )
-                                ):
-                                    break
-                                remaining_notes.append(line)
-                            if remaining_notes:
-                                if translator_notes:
-                                    translator_notes += (
-                                        " " + "\n".join(remaining_notes).strip()
-                                    )
-                                else:
-                                    translator_notes = "\n".join(
-                                        remaining_notes
-                                    ).strip()
-                except Exception as e:
-                    logger.warning(f"Failed to parse translator notes: {e}")
-                    translator_notes = ""
-
-            if not translated_content:
+            # Validate non-empty content
+            if not content.strip():
                 raise APIError("Empty content in translation result")
 
-            return title_line, translated_content, entity_mappings, translator_notes
+            # Log successful parsing
+            logger.info(
+                f"Successfully parsed JSON translation: title='{title}', "
+                f"content_length={len(content)}, entity_mappings_count={len(entity_mappings)}"
+            )
+            logger.debug(f"Entity mappings: {entity_mappings}")
+
+            return title, content, entity_mappings, translator_notes
+
+        except json.JSONDecodeError as e:
+            logger.error(f"Failed to parse translation JSON: {e}")
+            logger.error(f"Raw response: {translation_result[:500]}...")
+            raise APIError(f"Invalid JSON response from AI: {e}")
 
         except Exception as e:
             logger.error(f"Failed to parse translation result: {e}")
-            # Fallback: treat entire result as content, generate simple title
-            return "Translated Chapter", translation_result.strip(), {}, ""
+            raise APIError(f"Failed to parse translation result: {e}")
 
     @transaction.atomic
     def _create_translated_chapter(

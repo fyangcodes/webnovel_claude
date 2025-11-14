@@ -195,11 +195,22 @@ else:
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-# OpenAI settings / Simple translation settings
+# OpenAI settings
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
-TRANSLATION_MODEL = "gpt-3.5-turbo"
-TRANSLATION_MAX_TOKENS = 4000
-TRANSLATION_TEMPERATURE = 0.3
+
+# AI Model Configuration (using GPT-4o-mini for both analysis and translation)
+# GPT-4o-mini provides: 128K context window, 16K max output tokens, better performance, lower cost
+AI_MODEL = "gpt-4o-mini"
+
+# Analysis Service Settings
+ANALYSIS_MODEL = AI_MODEL
+ANALYSIS_MAX_TOKENS = 2000  # Sufficient for entity extraction JSON
+ANALYSIS_TEMPERATURE = 0.1  # Low temperature for consistent structured output
+
+# Translation Service Settings
+TRANSLATION_MODEL = AI_MODEL
+TRANSLATION_MAX_TOKENS = 16000  # Increased from 4000 - GPT-4o-mini supports up to 16K output
+TRANSLATION_TEMPERATURE = 0.3  # Slightly higher for more natural translations
 
 # Login/Logout
 LOGIN_URL = "/accounts/login/"

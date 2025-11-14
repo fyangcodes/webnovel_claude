@@ -4,6 +4,19 @@
 
 {% block title %}Entities - {{ bookmaster.canonical_title }}{% endblock %}
 
+{% block breadcrumb_items %}
+{% if bookmaster %}
+    <li class="breadcrumb-item">
+        <a href="{% url 'books:bookmaster_detail' bookmaster.id %}">
+            <i class="fas fa-layer-group"></i> {{ bookmaster.canonical_title }}
+        </a>
+    </li>
+    <li class="breadcrumb-item active">
+        <i class="fas fa-list-alt"></i> Entities
+    </li>
+{% endif %}
+{% endblock breadcrumb_items %}
+
 {% block books_content %}
 <div class="mb-4">
     <div class="d-flex justify-content-between align-items-start mb-3">

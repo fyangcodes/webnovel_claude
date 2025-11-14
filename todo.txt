@@ -1,7 +1,3 @@
-test the book file upload and further process
-
-taks overview for extraction, analysis and translation on staff
-
 improve reader views design
 - i18n
 
