@@ -94,9 +94,11 @@ def invalidate_language_caches(sender, instance, **kwargs):
     This is rare (admin-only operation) but important for language switcher.
 
     Affected caches:
-    1. All languages list (language switcher dropdown)
+    1. All languages list (language switcher dropdown - staff view)
+    2. Public languages list (language switcher dropdown - reader view)
     """
     cache.delete('languages:all')
+    cache.delete('languages:public')
 
 
 # ==============================================================================

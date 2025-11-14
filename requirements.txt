@@ -45,3 +45,7 @@ django-celery-beat>=2.6.0
 flower>=2.0.0
 hiredis>=2.2.0
 tabulate>=0.9.0
+# Development and debugging tools
+django-debug-toolbar>=4.4.0
+# Internationalization management
+django-rosetta>=0.10.0

@@ -30,6 +30,18 @@ urlpatterns = [
     path("", include("reader.urls")),
 ]
 
-# Serve media files during development
+# Development tools and media files
 if settings.DEBUG:
+    import debug_toolbar
+
+    urlpatterns = [
+        path("__debug__/", include(debug_toolbar.urls)),
+    ] + urlpatterns
+
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+
+# i18n management tool (available in both DEBUG and production, but should be secured)
+if settings.DEBUG:
+    urlpatterns += [
+        path("rosetta/", include("rosetta.urls")),
+    ]

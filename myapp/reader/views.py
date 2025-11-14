@@ -3,6 +3,8 @@ from django.urls import reverse
 from django.views.generic import ListView, DetailView, TemplateView
 from django.core.paginator import Paginator
 from django.conf import settings
+from django.core.exceptions import PermissionDenied
+from django.http import Http404
 
 from books.models import Book, Chapter, Language, Genre, BookGenre, BookMaster
 from reader import cache
@@ -15,9 +17,27 @@ class BaseBookListView(ListView):
     paginate_by = 12
 
     def get_language(self):
-        """Get language from URL kwargs"""
+        """
+        Get language from URL kwargs and check visibility permissions.
+
+        Non-staff users can only access public languages.
+        Staff users can access all languages (including private ones).
+
+        Raises:
+            Http404: If language doesn't exist or user doesn't have permission
+        """
         language_code = self.kwargs.get("language_code")
-        return get_object_or_404(Language, code=language_code)
+        language = get_object_or_404(Language, code=language_code)
+
+        # Check if user can access this language
+        user = self.request.user
+        is_staff = user.is_authenticated and user.is_staff
+
+        if not language.is_public and not is_staff:
+            # Non-staff users cannot access private languages
+            raise Http404("Language not found")
+
+        return language
 
     def add_localized_genre_names(self, genres, language_code):
         """Add localized names to genre objects"""
@@ -50,7 +70,8 @@ class BaseBookListView(ListView):
         context["current_language"] = self.get_language()
 
         # Use cached languages (eliminates 1 query per request)
-        context["languages"] = cache.get_cached_languages()
+        # Staff sees all languages, readers see only public languages
+        context["languages"] = cache.get_cached_languages(user=self.request.user)
 
         # Add localized genre names for navigation (cached)
         genres = cache.get_cached_genres()
@@ -74,10 +95,17 @@ class WelcomeView(TemplateView):
         language_code = self.kwargs.get("language_code")
         language = get_object_or_404(Language, code=language_code)
 
+        # Check if user can access this language
+        user = self.request.user
+        is_staff = user.is_authenticated and user.is_staff
+        if not language.is_public and not is_staff:
+            raise Http404("Language not found")
+
         context["current_language"] = language
 
         # Use cached languages (eliminates 1 query per request)
-        context["languages"] = cache.get_cached_languages()
+        # Staff sees all languages, readers see only public languages
+        context["languages"] = cache.get_cached_languages(user=self.request.user)
 
         # Use cached genres (eliminates 1 query per request)
         all_genres = cache.get_cached_genres()
@@ -206,6 +234,12 @@ class BookDetailView(DetailView):
         language_code = self.kwargs.get("language_code")
         language = get_object_or_404(Language, code=language_code)
 
+        # Check if user can access this language
+        user = self.request.user
+        is_staff = user.is_authenticated and user.is_staff
+        if not language.is_public and not is_staff:
+            raise Http404("Language not found")
+
         return (
             Book.objects.filter(language=language, is_public=True)
             .select_related("bookmaster", "language")
@@ -218,7 +252,8 @@ class BookDetailView(DetailView):
         context["current_language"] = get_object_or_404(Language, code=language_code)
 
         # Use cached languages for language switcher
-        context["languages"] = cache.get_cached_languages()
+        # Staff sees all languages, readers see only public languages
+        context["languages"] = cache.get_cached_languages(user=self.request.user)
 
         # Get all published chapters
         all_chapters = (
@@ -272,6 +307,13 @@ class ChapterDetailView(DetailView):
 
         # Ensure the language matches the URL
         language = get_object_or_404(Language, code=language_code)
+
+        # Check if user can access this language
+        user = self.request.user
+        is_staff = user.is_authenticated and user.is_staff
+        if not language.is_public and not is_staff:
+            raise Http404("Language not found")
+
         book = get_object_or_404(
             Book, slug=book_slug, language=language, is_public=True
         )
@@ -287,7 +329,8 @@ class ChapterDetailView(DetailView):
         context["book"] = self.object.book
 
         # Use cached languages for language switcher
-        context["languages"] = cache.get_cached_languages()
+        # Staff sees all languages, readers see only public languages
+        context["languages"] = cache.get_cached_languages(user=self.request.user)
 
         # Get cached navigation data (eliminates 4 queries: previous, next, position, total)
         current_chapter_number = self.object.chaptermaster.chapter_number

@@ -2,3 +2,7 @@ improve reader views design
 - i18n
 
 SEO
+
+container flower
+
+deployment

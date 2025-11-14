@@ -34,8 +34,13 @@ def language_redirect(request: HttpRequest):
             lang_code = lang_item.split(";")[0].strip().lower()
             preferred_languages.append(lang_code)
 
-    # Get available language codes from database
-    available_languages = set(Language.objects.values_list("code", flat=True))
+    # Get available language codes from database (only public for non-staff)
+    user = request.user
+    is_staff = user.is_authenticated and user.is_staff
+    if is_staff:
+        available_languages = set(Language.objects.values_list("code", flat=True))
+    else:
+        available_languages = set(Language.objects.filter(is_public=True).values_list("code", flat=True))
 
     # Try to find a match with browser languages
     for lang_code in preferred_languages:

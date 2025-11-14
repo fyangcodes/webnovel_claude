@@ -35,22 +35,39 @@ TIMEOUT_NAVIGATION = getattr(settings, "CACHE_TIMEOUT_NAVIGATION", 1800)
 # ==============================================================================
 
 
-def get_cached_languages():
+def get_cached_languages(user=None):
     """
-    Get all languages from cache or database.
+    Get languages from cache or database, filtered by visibility.
 
-    Cache key: languages:all
+    Cache keys:
+    - languages:public (for non-staff users)
+    - languages:all (for staff users)
+
     TTL: 1 hour (rarely changes, admin-only)
     Invalidated by: Language model save/delete signals
 
+    Args:
+        user: Django User object or None. If staff, returns all languages.
+              Otherwise, returns only public languages.
+
     Returns:
-        QuerySet: All Language objects ordered by name
+        list: Language objects ordered by code (de, en, fr, ja, zh)
     """
-    cache_key = "languages:all"
+    # Determine if user is staff
+    is_staff = user and user.is_authenticated and user.is_staff
+
+    # Use different cache keys for staff vs non-staff
+    cache_key = "languages:all" if is_staff else "languages:public"
     languages = cache.get(cache_key)
 
     if languages is None:
-        languages = list(Language.objects.all().order_by("name"))
+        if is_staff:
+            # Staff sees all languages ordered by code (de, en, fr, ja, zh)
+            languages = list(Language.objects.all().order_by("code"))
+        else:
+            # Non-staff sees only public languages ordered by code
+            languages = list(Language.objects.filter(is_public=True).order_by("code"))
+
         cache.set(cache_key, languages, timeout=TIMEOUT_STATIC)
 
     return languages

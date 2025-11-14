@@ -21,13 +21,21 @@ from .models import (
 
 @admin.register(Language)
 class LanguageAdmin(admin.ModelAdmin):
-    list_display = ["name", "code", "local_name", "count_units", "wpm"]
+    list_display = ["code", "name", "local_name", "is_public"]
+    list_filter = ["is_public"]
     search_fields = ["name", "code", "local_name"]
     readonly_fields = ["pk"]
-    ordering = ["name"]
+    ordering = ["code"]  # Order by language code alphabetically (de, en, fr, ja, zh)
 
     fieldsets = (
         (None, {"fields": ("pk", "code", "name", "local_name", "count_units", "wpm")}),
+        (
+            "Visibility",
+            {
+                "fields": ("is_public",),
+                "description": "Controls whether this language is visible to readers in the reader app. Staff users can always access private languages.",
+            },
+        ),
         (
             "Count Formatting",
             {

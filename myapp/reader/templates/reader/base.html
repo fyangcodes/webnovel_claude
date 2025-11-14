@@ -73,12 +73,15 @@
                         </button>
                     </li>
                     <!-- Language Switcher -->
-                    <li>                        
+                    <li>
                         {% if languages %}
                             <button class="dropdown-item" type="button" data-bs-toggle="modal" data-bs-target="#languageModal">
-                                <i class="fas fa-globe"></i> 
-                                <span class="px-2 fw-bold"> {{ current_language.code|upper }} </span> 
-                            </button>                            
+                                <i class="fas fa-globe"></i>
+                                <span class="px-2 fw-bold"> {{ current_language.code|upper }} </span>
+                                {% if user.is_staff and not current_language.is_public %}
+                                    <span class="badge bg-warning text-dark ms-1" title="Private language - only visible to staff">Private</span>
+                                {% endif %}
+                            </button>
                         {% endif %}
                     </li>
                 </ul>
@@ -131,8 +134,11 @@
                         <div class="modal-body">
                             <div class="d-flex flex-wrap gap-2">
                                 {% for lang in languages %}
-                                    <a class="btn btn-sm {% if lang == current_language %}btn-primary-custom{% else %}btn-outline-primary-custom{% endif %}" href="{% url 'reader:welcome' lang.code %}">
+                                    <a class="btn btn-sm {% if lang == current_language %}btn-primary-custom{% else %}btn-outline-primary-custom{% endif %} position-relative" href="{% url 'reader:welcome' lang.code %}">
                                         {{ lang.local_name }}
+                                        {% if user.is_staff and not lang.is_public %}
+                                            <span class="badge bg-warning text-dark ms-1" style="font-size: 0.65rem;" title="Private language - only visible to staff">Private</span>
+                                        {% endif %}
                                     </a>
                                 {% endfor %}
                             </div>

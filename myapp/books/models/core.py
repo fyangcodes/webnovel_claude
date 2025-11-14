@@ -61,6 +61,17 @@ class Language(TimeStampedModel):
     # Key: power of 10 (6 = million, 3 = thousand, 4 = 10k, 8 = 100M)
     # Value: suffix string ('M', 'K', '万', '亿')
     # Rules are applied in descending order of power
+    is_public = models.BooleanField(
+        default=True,
+        help_text="Whether this language is visible to readers in the reader app"
+    )
+
+    class Meta:
+        ordering = ["code"]  # Alphabetical order by language code (de, en, fr, ja, zh)
+        indexes = [
+            models.Index(fields=["is_public"]),
+            models.Index(fields=["code"]),
+        ]
 
     def __str__(self):
         return self.name
