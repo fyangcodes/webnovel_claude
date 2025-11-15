@@ -33,6 +33,8 @@ class BookEntity(TimeStampedModel):
 
     class Meta:
         unique_together = ["bookmaster", "source_name"]
+        verbose_name = "Book Entity"
+        verbose_name_plural = "Context - Book Entities"
         indexes = [
             models.Index(fields=["bookmaster", "entity_type"]),
         ]
@@ -59,6 +61,8 @@ class ChapterContext(TimeStampedModel):
     summary = models.TextField(blank=True)
 
     class Meta:
+        verbose_name = "Chapter Context"
+        verbose_name_plural = "Context - Chapter Contexts"
         indexes = [
             models.Index(fields=["chapter"]),
         ]

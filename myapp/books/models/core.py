@@ -68,6 +68,8 @@ class Language(TimeStampedModel):
 
     class Meta:
         ordering = ["code"]  # Alphabetical order by language code (de, en, fr, ja, zh)
+        verbose_name = "Language"
+        verbose_name_plural = "Core - Languages"
         indexes = [
             models.Index(fields=["is_public"]),
             models.Index(fields=["code"]),
@@ -75,64 +77,6 @@ class Language(TimeStampedModel):
 
     def __str__(self):
         return self.name
-
-
-class Genre(TimeStampedModel):
-    """Genre/category for books"""
-
-    name = models.CharField(max_length=50, unique=True)
-    slug = models.SlugField(max_length=50, unique=True)
-    description = models.TextField(blank=True)
-    translations = models.JSONField(default=dict, blank=True)
-    # translations = {
-    #     "zh": {"name": "修仙", "description": "修仙小说..."},
-    #     "en": {"name": "Xianxia", "description": "Cultivation novels..."}
-    # }
-
-    def __str__(self):
-        return f"{self.name}"
-
-    def save(self, *args, **kwargs):
-        self.slug = slugify(self.name)
-        super().save(*args, **kwargs)
-
-    def get_localized_name(self, language_code):
-        if language_code in self.translations:
-            return self.translations[language_code].get("name", self.name)
-        return self.name
-
-    def get_localized_description(self, language_code):
-        if language_code in self.translations:
-            return self.translations[language_code].get("description", self.description)
-        return self.description
-
-
-class BookGenre(TimeStampedModel):
-    """Through model for ordered book-genre relationship"""
-
-    bookmaster = models.ForeignKey(
-        "BookMaster",
-        on_delete=models.CASCADE,
-        related_name="book_genres",
-    )
-    genre = models.ForeignKey(
-        "Genre",
-        on_delete=models.CASCADE,
-        related_name="book_genres",
-    )
-    order = models.PositiveSmallIntegerField(
-        default=0, help_text="Display order for this genre (lower = first)"
-    )
-
-    class Meta:
-        ordering = ["order", "id"]
-        unique_together = ["bookmaster", "genre"]
-        indexes = [
-            models.Index(fields=["bookmaster", "order"]),
-        ]
-
-    def __str__(self):
-        return f"{self.bookmaster.canonical_title} - {self.genre.name} (order: {self.order})"
 
 
 class BookMaster(TimeStampedModel):
@@ -165,16 +109,33 @@ class BookMaster(TimeStampedModel):
         blank=True,
         related_name="original_books",
     )
+    section = models.ForeignKey(
+        'Section',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='bookmasters',
+        help_text="Content section (Fiction, BL, GL, etc.)"
+    )
     genres = models.ManyToManyField(
-        "Genre",
-        through="BookGenre",
+        'Genre',
+        through='BookGenre',
         related_name="bookmasters",
         blank=True,
         help_text="Book genres/categories",
     )
+    tags = models.ManyToManyField(
+        'Tag',
+        through='BookTag',
+        related_name='bookmasters',
+        blank=True,
+        help_text="Book tags (protagonist type, tropes, themes, etc.)"
+    )
 
     class Meta:
         ordering = ["-created_at"]
+        verbose_name = "Book Master"
+        verbose_name_plural = "Core - Book Masters"
         indexes = [
             models.Index(fields=["canonical_title"]),
             models.Index(fields=["owner"]),
@@ -188,6 +149,20 @@ class BookMaster(TimeStampedModel):
         if not self.original_language:
             self.original_language = Language.objects.get(code="zh")
         super().save(*args, **kwargs)
+
+    def clean(self):
+        """Validate taxonomy consistency"""
+        from django.core.exceptions import ValidationError
+        super().clean()
+
+        # Validate that all assigned genres belong to the same section
+        if self.pk and self.section:
+            mismatched_genres = self.book_genres.exclude(genre__section=self.section)
+            if mismatched_genres.exists():
+                raise ValidationError({
+                    'section': f"Cannot change section while genres from other sections are assigned. "
+                               f"Remove genres first or choose the correct section."
+                })
 
     @property
     def effective_cover_image(self):
@@ -256,6 +231,8 @@ class Book(TimeStampedModel, SlugGeneratorMixin):
 
     class Meta:
         ordering = ["-created_at"]
+        verbose_name = "Book"
+        verbose_name_plural = "Core - Books"
         indexes = [
             models.Index(fields=["created_at"]),
             models.Index(fields=["language", "is_public"]),
@@ -318,6 +295,8 @@ class ChapterMaster(TimeStampedModel):
 
     class Meta:
         ordering = ["chapter_number"]
+        verbose_name = "Chapter Master"
+        verbose_name_plural = "Core - Chapter Masters"
         indexes = [
             models.Index(fields=["canonical_title"]),
             models.Index(fields=["bookmaster"]),
@@ -380,6 +359,8 @@ class Chapter(TimeStampedModel, SlugGeneratorMixin):
 
     class Meta:
         unique_together = [["book", "slug"]]
+        verbose_name = "Chapter"
+        verbose_name_plural = "Core - Chapters"
         indexes = [
             models.Index(fields=["book", "is_public"]),
             models.Index(fields=["is_public", "progress"]),

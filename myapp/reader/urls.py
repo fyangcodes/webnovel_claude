@@ -83,6 +83,18 @@ urlpatterns = [
         views.GenreBookListView.as_view(),
         name="genre_book_list",
     ),
+    # Specific tag's books
+    path(
+        "<str:language_code>/tag/<slug:tag_slug>/",
+        views.TagBookListView.as_view(),
+        name="tag_book_list",
+    ),
+    # Search books
+    path(
+        "<str:language_code>/search/",
+        views.BookSearchView.as_view(),
+        name="search",
+    ),
     # All books page
     path(
         "<str:language_code>/books/",

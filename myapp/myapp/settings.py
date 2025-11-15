@@ -57,7 +57,6 @@ INSTALLED_APPS = [
     "crispy_forms",
     "crispy_bootstrap5",
     "storages",
-    "background_task",
     "django_celery_beat",
     # Development tools
     "debug_toolbar",

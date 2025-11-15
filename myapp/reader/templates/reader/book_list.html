@@ -1,43 +1,125 @@
 {% extends "reader/base.html" %}
 {% load books_extras %}
+{% load reader_extras %}
 {% load static %}
 
 {% block title %}All Books{% endblock %}
+
+{% block breadcrumb_check %}
+    <!-- Breadcrumb Navigation -->
+    {% if current_section or current_genre or current_tag %}
+    <nav aria-label="breadcrumb" class="d-none d-md-block ms-2">
+        <ol class="breadcrumb mb-0">
+            <li class="breadcrumb-item">
+                <a href="{% url 'reader:book_list' current_language.code %}">All Books</a>
+            </li>
+            {% if current_section %}
+            <li class="breadcrumb-item {% if not current_genre and not current_tag %}active{% endif %}" {% if not current_genre and not current_tag %}aria-current="page"{% endif %}>
+                {% if current_genre or current_tag %}
+                    <a href="?{% query_transform request section=current_section.slug genre=None tag=None page=None %}">{{ current_section.localized_name }}</a>
+                {% else %}
+                    {{ current_section.localized_name }}
+                {% endif %}
+            </li>
+            {% endif %}
+            {% if current_genre %}
+            <li class="breadcrumb-item {% if not current_tag %}active{% endif %}" {% if not current_tag %}aria-current="page"{% endif %}>
+                {% if current_tag %}
+                    <a href="?{% query_transform request genre=current_genre.slug tag=None page=None %}">{{ current_genre.localized_name }}</a>
+                {% else %}
+                    {{ current_genre.localized_name }}
+                {% endif %}
+            </li>
+            {% endif %}
+            {% if current_tag %}
+            <li class="breadcrumb-item active" aria-current="page">
+                {{ current_tag.localized_name }}
+            </li>
+            {% endif %}
+        </ol>
+    </nav>
+    {% endif %}
+{% endblock %}
 
 {% block content %}
 <!-- Query Section -->
 <section class="m-2 col-lg-9">
     <div class="card">
         <div class="card-body">
-            <!-- Genre Filter -->
-            <div class="mb-4">
+            <!-- Section Filter -->
+            {% if sections %}
+            <div class="mb-3">
+                <h6 class="text-muted mb-2">Section</h6>
                 <div class="d-flex flex-wrap gap-2">
-                    <a href="{% url 'reader:book_list' current_language.code %}{% if selected_status %}?status={{ selected_status }}{% endif %}"
-                       class="btn btn-sm btn-min-width {% if not selected_genre %}btn-primary-custom{% else %}btn-outline-primary-custom{% endif %}">
+                    <a href="?{% query_transform request section=None page=None %}"
+                       class="btn btn-sm btn-min-width {% if not request.GET.section %}btn-primary-custom{% else %}btn-outline-primary-custom{% endif %}">
+                        All Sections
+                    </a>
+                    {% for section in sections %}
+                        <a href="?{% query_transform request section=section.slug page=None %}"
+                           class="btn btn-sm btn-min-width {% if request.GET.section == section.slug %}btn-primary-custom{% else %}btn-outline-primary-custom{% endif %}">
+                            {{ section.localized_name }}
+                        </a>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Genre Filter with Hierarchy -->
+            <div class="mb-3">
+                <h6 class="text-muted mb-2">Genre</h6>
+                <div class="d-flex flex-wrap gap-2">
+                    <a href="?{% query_transform request genre=None page=None %}"
+                       class="btn btn-sm btn-min-width {% if not request.GET.genre %}btn-primary-custom{% else %}btn-outline-primary-custom{% endif %}">
                         All Genres
                     </a>
                     {% for genre in genres %}
-                        <a href="{% url 'reader:book_list' current_language.code %}?genre={{ genre.slug }}{% if selected_status %}&status={{ selected_status }}{% endif %}"
-                           class="btn btn-sm btn-min-width {% if selected_genre == genre.slug %}btn-primary-custom{% else %}btn-outline-primary-custom{% endif %}">
+                        <a href="?{% query_transform request genre=genre.slug page=None %}"
+                           class="btn btn-sm btn-min-width {% if request.GET.genre == genre.slug %}btn-primary-custom{% else %}btn-outline-primary-custom{% endif %}">
+                            {% if genre.parent_localized_name %}
+                                <small class="text-muted">{{ genre.parent_localized_name }} &rsaquo;</small>
+                            {% endif %}
                             {{ genre.localized_name }}
                         </a>
                     {% endfor %}
                 </div>
             </div>
 
+            <!-- Tag Filter (if applicable) -->
+            {% if tags_by_category %}
+            <div class="mb-3">
+                <h6 class="text-muted mb-2">Tags</h6>
+                {% for category, tags in tags_by_category.items %}
+                    <div class="mb-2">
+                        <small class="text-muted d-block mb-1">{{ category }}</small>
+                        <div class="d-flex flex-wrap gap-1">
+                            {% for tag in tags %}
+                            <a href="?{% query_transform request tag=tag.slug page=None %}"
+                               class="btn btn-sm btn-outline-primary-custom {% if request.GET.tag == tag.slug %}active{% endif %}"
+                               style="font-size: 0.8rem;">
+                                {{ tag.localized_name }}
+                            </a>
+                            {% endfor %}
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
             <!-- Status Filter -->
             <div>
+                <h6 class="text-muted mb-2">Status</h6>
                 <div class="d-flex flex-wrap gap-2">
-                    <a href="{% url 'reader:book_list' current_language.code %}{% if selected_genre %}?genre={{ selected_genre }}{% endif %}"
-                       class="btn btn-sm btn-min-width {% if not selected_status %}btn-primary-custom{% else %}btn-outline-primary-custom{% endif %}">
+                    <a href="?{% query_transform request status=None page=None %}"
+                       class="btn btn-sm btn-min-width {% if not request.GET.status %}btn-primary-custom{% else %}btn-outline-primary-custom{% endif %}">
                         All Status
                     </a>
-                    <a href="{% url 'reader:book_list' current_language.code %}?status=ongoing{% if selected_genre %}&genre={{ selected_genre }}{% endif %}"
-                       class="btn btn-sm btn-min-width {% if selected_status == 'ongoing' %}btn-primary-custom{% else %}btn-outline-primary-custom{% endif %}">
+                    <a href="?{% query_transform request status='ongoing' page=None %}"
+                       class="btn btn-sm btn-min-width {% if request.GET.status == 'ongoing' %}btn-primary-custom{% else %}btn-outline-primary-custom{% endif %}">
                         Ongoing
                     </a>
-                    <a href="{% url 'reader:book_list' current_language.code %}?status=completed{% if selected_genre %}&genre={{ selected_genre }}{% endif %}"
-                       class="btn btn-sm btn-min-width {% if selected_status == 'completed' %}btn-primary-custom{% else %}btn-outline-primary-custom{% endif %}">
+                    <a href="?{% query_transform request status='completed' page=None %}"
+                       class="btn btn-sm btn-min-width {% if request.GET.status == 'completed' %}btn-primary-custom{% else %}btn-outline-primary-custom{% endif %}">
                         Completed
                     </a>
                 </div>

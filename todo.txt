@@ -1,3 +1,5 @@
+section genre tag search
+
 improve reader views design
 - i18n
 
@@ -6,3 +8,304 @@ SEO
 container flower
 
 deployment
+
+
+Key Design Decisions
+Section separate from Genre for clarity and different content policies
+Genre.is_primary distinguishes primary genres from sub-genres
+unique_together = ['section', 'slug'] allows "Romance" in both Fiction and BL sections
+BookGenre.order controls display order
+Tags with categories for better organization
+BookKeyword denormalized search table for fast multi-language keyword search
+Phase 1: Core Taxonomy Models
+1.1 Create Section Model
+File: myapp/books/models/core.py Add new Section model:
+Fields: name, slug, description, icon, order, is_mature, translations (JSONField)
+Meta: ordering by order, unique name and slug
+Methods: get_localized_name(), get_localized_description()
+str: return name
+1.2 Enhance Genre Model
+File: myapp/books/models/core.py Add to existing Genre model:
+section: ForeignKey to Section (CASCADE)
+parent: ForeignKey to self (CASCADE, null=True)
+is_primary: BooleanField(default=True) to distinguish primary from sub-genres
+icon: CharField for FontAwesome icons (optional)
+color: CharField for UI color codes (optional)
+Update Meta:
+unique_together: ['section', 'slug'] (replace global unique slug)
+ordering: ['section', '-is_primary', 'name']
+indexes: Add ['section', 'is_primary']
+constraints: CheckConstraint to enforce parent belongs to same section
+Add validation in clean():
+Primary genres cannot have parents
+Sub-genres must have primary genre parent in same section
+Parent must belong to same section
+1.3 Create Tag Models
+File: myapp/books/models/core.py or new myapp/books/models/taxonomy.py Create Tag model:
+Fields: name, slug, category (choices: TagCategory), description, translations
+Meta: unique name/slug, ordering by category/name
+Methods: get_localized_name()
+Create TagCategory choices:
+PROTAGONIST, NARRATIVE, THEME, TROPE, CONTENT_WARNING, AUDIENCE, SETTING
+Create BookTag through model:
+Fields: bookmaster, tag, confidence (for AI suggestions), source (choices: TagSource)
+TagSource choices: MANUAL, AI_SUGGESTED, AI_AUTO, COMMUNITY
+Meta: unique_together ['bookmaster', 'tag']
+1.4 Add Section to BookMaster
+File: myapp/books/models/core.py Update BookMaster model:
+Add section: ForeignKey to Section (SET_NULL, null=True)
+Add tags: ManyToManyField through BookTag
+Add validation in clean():
+All assigned genres must belong to bookmaster.section
+At least one primary genre required
+Phase 2: Search Infrastructure
+2.1 Create BookKeyword Model
+File: myapp/books/models/core.py or myapp/books/models/search.py Create denormalized search table:
+Fields: bookmaster, keyword, keyword_type (choices: KeywordType), language_code, weight
+KeywordType choices: SECTION, GENRE, TAG, ENTITY_CHARACTER, ENTITY_PLACE, ENTITY_TERM
+Meta: indexes on ['keyword', 'keyword_type'], ['bookmaster', 'keyword_type']
+2.2 Create Signals for Auto-Update
+File: myapp/books/signals.py Add signals to auto-populate BookKeyword:
+post_save on BookMaster: Update section keywords
+m2m_changed on BookGenre: Update genre keywords
+m2m_changed on BookTag: Update tag keywords
+post_save on BookEntity: Update entity keywords
+Create helper function: update_book_keywords(bookmaster) to rebuild all keywords
+Phase 3: Migration Strategy
+3.1 Create Migration Files
+Migration 1: Create Section, Tag, BookTag models
+Create Section model
+Create Tag model with TagCategory choices
+Create BookTag through model
+Create TagSource choices
+Migration 2: Enhance Genre model
+Add section FK to Genre (nullable initially)
+Add parent FK to Genre
+Add is_primary field (default=True)
+Add icon, color fields
+Update Meta (drop unique slug, add unique_together)
+Migration 3: Backfill existing data
+Create default "Fiction" section
+Assign all existing genres to Fiction section
+Set all existing genres as is_primary=True
+Migration 4: Add section to BookMaster
+Add section FK to BookMaster (nullable)
+Backfill: Set all existing BookMasters to Fiction section
+Add tags M2M relationship
+Migration 5: Create BookKeyword and indexes
+Create BookKeyword model
+Add indexes
+Populate initial keywords from existing data
+Migration 6: Make section non-nullable
+Alter Genre.section to NOT NULL
+Alter BookMaster.section to NOT NULL
+3.2 Data Migration Considerations
+Preserve existing Genre.slug values
+Maintain existing BookGenre relationships and order
+No data loss during migration
+Rollback plan: Keep migrations reversible
+Phase 4: Admin Updates
+4.1 Section Admin
+File: myapp/books/admin.py Create SectionAdmin:
+List display: name, slug, order, is_mature
+List editable: order, is_mature
+Prepopulated: slug from name
+Ordering: order
+Search: name, slug
+4.2 Enhanced Genre Admin
+File: myapp/books/admin.py Update GenreAdmin:
+List display: name, section, parent, is_primary, slug
+List filter: section, is_primary, parent
+Search: name, slug
+Ordering: section, -is_primary, name
+Custom formfield_for_foreignkey: Filter parent by same section + is_primary=True
+4.3 Tag Admin
+File: myapp/books/admin.py Create TagAdmin:
+List display: name, category, slug
+List filter: category
+Search: name, slug
+Prepopulated: slug from name
+Create BookTagInline for BookMasterAdmin:
+Fields: tag, confidence, source
+Filter tags by category in dropdown
+4.4 BookMaster Admin Updates
+File: myapp/books/admin.py Update BookMasterAdmin:
+Add section to list_display and list_filter
+Update BookGenreInline: Filter genre choices by selected section
+Add BookTagInline
+Add validation: Ensure genres belong to selected section
+Phase 5: View and Template Updates
+5.1 Update Cache Layer
+File: myapp/reader/cache.py Update cache functions:
+get_cached_genres(): Group by section, include hierarchy
+Add get_cached_sections()
+Add get_cached_tags()
+5.2 Update Reader Views
+File: myapp/reader/views.py Update views:
+WelcomeView: Add section navigation
+BookListView: Filter by section, then genre
+Add TagBookListView for tag filtering
+Update genre enrichment to include parent/section
+5.3 Update Templates
+reader/base.html:
+Add section navigation in header
+Update genre dropdown to show hierarchy
+reader/welcome.html:
+Group featured genres by section
+Add section-specific featured lists
+reader/book_list.html:
+Add breadcrumb: Section > Genre > Sub-genre
+Add tag filters
+Shared partials:
+Update genre badges to show hierarchy
+Add tag display components
+5.4 Update Books App Views
+File: myapp/books/views/*.py Update BookMasterListView and BookDetailView:
+Prefetch section, parent genres
+Enrich with full taxonomy path
+Add tag context
+Phase 6: Search Implementation
+6.1 Create Search Service
+File: myapp/books/utils/search.py Create BookSearchService:
+Method: search(query, language_code, filters)
+Use BookKeyword for fast lookups
+Support multi-language search
+Return weighted results
+6.2 Add Search View
+File: myapp/reader/views.py Create BookSearchView:
+Accept query parameter
+Filter by section, genre, tags
+Display results with highlights
+6.3 Add Search Template
+File: myapp/reader/templates/reader/search.html
+Search input
+Filter sidebar (section, genre, tags)
+Results with keyword highlighting
+Phase 7: Validation and Constraints
+7.1 Model Validation
+Add clean() methods to enforce:
+BookMaster: All genres belong to same section
+BookMaster: At least one primary genre
+Genre: Parent hierarchy rules
+Genre: Section consistency
+7.2 Admin Validation
+Add form validation in admin:
+Dynamic genre filtering by section
+Warning when changing section (clears genres)
+Tag category hints
+Phase 8: Testing and Documentation
+8.1 Create Test Data
+Seed sections: Fiction, BL, GL, Non-fiction
+Seed primary genres per section
+Seed sub-genres with parent relationships
+Seed common tags
+Assign to test books
+8.2 Test Cases
+Genre hierarchy validation
+Section-genre consistency
+Keyword search across languages
+Admin workflow (create book with taxonomy)
+Migration rollback
+8.3 Documentation
+Update CLAUDE.md:
+Document new taxonomy structure
+Admin usage guide
+Search functionality
+Migration notes
+Implementation Order
+Phase 1 (Models): Foundation - can be done independently
+Phase 3 (Migrations): Must run before using new models
+Phase 4 (Admin): Quick wins, enables content management
+Phase 2 (Search): Can be deferred if needed
+Phase 5 (Views/Templates): User-facing updates
+Phase 6 (Search UI): Enhancement feature
+Phase 7 (Validation): Polish and safety
+Phase 8 (Testing/Docs): Final step
+
+
+Phase 5 Implementation Plan Summary
+📊 Overall Scope
+Total Estimated Time: 15-22 hours 8 Major Tasks organized in 3 sequential phases
+🎯 Task Breakdown
+Phase A: Backend Foundation (2-3 hours)
+TASK 1: Update Cache Layer
+Add get_cached_sections() - section navigation
+Enhance get_cached_genres() - hierarchical structure grouped by section
+Add get_cached_genres_flat() - backward compatibility
+Add get_cached_tags() - tag filtering support
+Update cache invalidation functions
+Phase B: View Updates (6-9 hours)
+TASK 2: Update Reader Views (3-4 hours)
+Add section context to BaseBookListView and WelcomeView
+Update BookListView filtering for section + genre combinations
+Enhance enrichment methods to include section/parent hierarchy
+Group featured genres by section in WelcomeView
+TASK 3: Create TagBookListView (1-2 hours)
+New view for tag-based filtering
+Combine with section/genre filters
+Add URL pattern
+TASK 4: Update Books App Views (2-3 hours)
+Add section/tag prefetching to BookMasterListView
+Add hierarchy context to BookDetailView
+Include tags in both views
+Phase C: Frontend Updates (7-10 hours)
+TASK 5: Update base.html (2-3 hours)
+Add section navigation bar to header
+Update genre offcanvas to show hierarchy grouped by section
+Create custom template filters
+TASK 6: Update welcome.html (1 hour)
+Group featured genres by section
+Add section-specific "All" links
+TASK 7: Update book_list.html (2-3 hours)
+Add breadcrumb navigation (Section > Genre > Sub-genre)
+Add section filter buttons
+Update genre/status filters to preserve parameters
+Show genre hierarchy in filter buttons
+TASK 8: Update Templates - Detail Views (2-3 hours)
+Update book_detail.html breadcrumb and add genre/tag display
+Update book_card.html to show section + multiple genres
+Enhance modal to show complete taxonomy
+🔄 Implementation Order (Critical Path)
+TASK 1 (Cache) → TASK 2 (Views) → TASK 5 (base.html) → TASK 7 (book_list.html)
+This is the minimum viable implementation (10-13 hours). Nice-to-have additions:
+TASK 3 (Tags) - 1-2 hours
+TASK 4 (Books app) - 2-3 hours
+TASK 6 (welcome.html) - 1 hour
+TASK 8 (Detail views) - 2-3 hours
+📝 Key Implementation Details
+Files to Create:
+/myapp/reader/templatetags/reader_extras.py - Custom filters for genre grouping
+Files to Modify:
+/myapp/reader/cache.py - 4 new functions + invalidation
+/myapp/reader/views.py - Update 3 views, create 1 new view
+/myapp/books/views/bookmaster.py - Update prefetching
+/myapp/books/views/book.py - Update prefetching + context
+/myapp/reader/urls.py - Add tag URL pattern
+/myapp/reader/templates/reader/base.html - Section nav + hierarchical genre menu
+/myapp/reader/templates/reader/welcome.html - Section-grouped featured genres
+/myapp/reader/templates/reader/book_list.html - Breadcrumbs + filters
+/myapp/reader/templates/reader/book_detail.html - Breadcrumb + taxonomy display
+/myapp/reader/templates/reader/partials/book_card.html - Section + multi-genre display
+URL Patterns to Add:
+path('<str:language_code>/tag/<slug:tag_slug>/', views.TagBookListView.as_view(), name='tag_book_list')
+✅ Comprehensive Testing Checklist
+Each task includes detailed testing criteria covering:
+Cache functionality and key uniqueness
+View filtering combinations
+Template rendering with/without data
+Backward compatibility
+N+1 query prevention
+Localization
+🛡️ Safety & Rollback
+All changes are backward-compatible
+Old functionality preserved as fallback
+Can revert task-by-task without breaking dependencies
+Cache changes use new function names (old functions remain)
+The plan includes:
+✅ Exact file paths and line numbers
+✅ Complete function signatures with docstrings
+✅ Code patterns matching existing codebase style
+✅ Dependencies clearly mapped
+✅ Testing criteria for each task
+✅ Rollback procedures
+Would you like me to start implementing Phase 5? I recommend starting with TASK 1 (Cache Layer) as it's the foundation for everything else. Or would you prefer to review/adjust the plan first?

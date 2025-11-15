@@ -1,5 +1,6 @@
 {% load static %}
 {% load books_extras %}
+{% load reader_extras %}
 
 <!DOCTYPE html>
 <html lang="{{ current_language.code|default:'en' }}">
@@ -51,7 +52,21 @@
                 {% endif %}
             </div>
 
-            
+            <!-- Search Box (Desktop) -->
+            {% if current_language %}
+            <div class="flex-grow-1 mx-3 d-none d-md-block" style="max-width: 400px;">
+                <form method="get" action="{% url 'reader:search' current_language.code %}" class="d-flex">
+                    <input type="text"
+                           name="q"
+                           class="form-control form-control-sm"
+                           placeholder="Search books..."
+                           value="{% if request.resolver_match.url_name == 'search' %}{{ request.GET.q }}{% endif %}">
+                    <button class="btn btn-sm btn-outline-secondary ms-1" type="submit">
+                        <i class="fas fa-search"></i>
+                    </button>
+                </form>
+            </div>
+            {% endif %}
 
             <!-- Dropdown configuration -->
             <div class="dropdown">
@@ -89,32 +104,93 @@
         </div>
     </nav>
 
+    <!-- Section Navigation Bar -->
+    {% if sections and current_language %}
+    <div class="section-nav py-2 border-bottom">
+        <div class="container">
+            <div class="d-flex gap-2 flex-wrap align-items-center">
+                <!-- All Sections Link -->
+                <a href="{% url 'reader:book_list' current_language.code %}"
+                   class="btn btn-sm {% if not request.GET.section %}btn-primary-custom{% else %}btn-outline-primary-custom{% endif %}">
+                    All
+                </a>
+
+                <!-- Section Filter Buttons -->
+                {% for section in sections %}
+                <a href="?{% query_transform request section=section.slug page=None %}"
+                   class="btn btn-sm {% if request.GET.section == section.slug %}btn-primary-custom{% else %}btn-outline-primary-custom{% endif %}">
+                    {{ section.localized_name }}
+                </a>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
 
     <!-- Main Content -->
     <main class="container">
-        <!-- Offcanvas for genres -->
-        {% if genres %}        
+        <!-- Offcanvas for sections and genres -->
+        {% if genres_hierarchical or genres %}
         <div class="offcanvas offcanvas-start" tabindex="-1" id="genreOffcanvas">
             <div class="offcanvas-header">
-                <h5 class="offcanvas-title" >
-                    Genres
-                </h5>
+                <h5 class="offcanvas-title">Browse</h5>
                 <button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas" aria-label="Close"></button>
             </div>
             <div class="offcanvas-body">
-                <ul  class="list-unstyled">
-                    <li>
-                        <a class="btn btn-outline-primary-custom btn-min-width m-1 fw-bold" href="{% url 'reader:book_list' current_language.code %}">
-                            All genres
-                        </a>    
-                    </li>
+                <!-- All Books Link -->
+                <div class="mb-3">
+                    <a class="btn btn-outline-primary-custom w-100 fw-bold" href="{% url 'reader:book_list' current_language.code %}">
+                        <i class="fas fa-th"></i> All Books
+                    </a>
+                </div>
+
+                {% if genres_hierarchical %}
+                    <!-- Hierarchical Sections and Genres -->
+                    {% for section_id, section_data in genres_hierarchical.items %}
+                    <div class="mb-4">
+                        <!-- Section Header -->
+                        <h6 class="text-uppercase text-muted mb-2" style="font-size: 0.75rem;">
+                            {{ section_data.section.localized_name }}
+                        </h6>
+
+                        <!-- Primary Genres in this Section -->
+                        {% for genre in section_data.primary_genres %}
+                        <div class="mb-2">
+                            <!-- Primary Genre -->
+                            <a class="btn btn-outline-primary-custom btn-sm w-100 text-start"
+                               href="{% url 'reader:genre_book_list' current_language.code genre.slug %}">
+                                {{ genre.localized_name }}
+                            </a>
+
+                            <!-- Sub-genres (if any) -->
+                            {% with sub_genres=section_data.sub_genres|get_sub_genres:genre.id %}
+                            {% if sub_genres %}
+                            <div class="ms-3 mt-1">
+                                {% for sub_genre in sub_genres %}
+                                <a class="btn btn-link btn-sm text-decoration-none text-start p-1"
+                                   href="{% url 'reader:genre_book_list' current_language.code sub_genre.slug %}"
+                                   style="font-size: 0.85rem;">
+                                    <i class="fas fa-angle-right fa-xs"></i> {{ sub_genre.localized_name }}
+                                </a>
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                            {% endwith %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <!-- Fallback: Flat genre list -->
                     {% for genre in genres %}
-                    <li>
-                        <a class="btn btn-outline-primary-custom btn-min-width m-1" href="{% url 'reader:genre_book_list' current_language.code genre.slug %}">
+                    <div class="mb-1">
+                        <a class="btn btn-outline-primary-custom btn-sm w-100 text-start"
+                           href="{% url 'reader:genre_book_list' current_language.code genre.slug %}">
                             {{ genre.localized_name }}
                         </a>
-                    </li>
+                    </div>
                     {% endfor %}
+                {% endif %}
             </div>
         </div>
         {% endif %}

@@ -1,0 +1,243 @@
+{% extends "reader/base.html" %}
+{% load books_extras %}
+{% load reader_extras %}
+{% load static %}
+
+{% block title %}Search{% if search_query %}: {{ search_query }}{% endif %}{% endblock %}
+
+{% block breadcrumb_check %}
+    <!-- Breadcrumb Navigation -->
+    <nav aria-label="breadcrumb" class="d-none d-md-block ms-2">
+        <ol class="breadcrumb mb-0">
+            <li class="breadcrumb-item">
+                <a href="{% url 'reader:book_list' current_language.code %}">All Books</a>
+            </li>
+            <li class="breadcrumb-item active" aria-current="page">
+                Search{% if search_query %}: {{ search_query }}{% endif %}
+            </li>
+        </ol>
+    </nav>
+{% endblock %}
+
+{% block content %}
+<!-- Search Section -->
+<section class="m-2 col-lg-9">
+    <!-- Search Box -->
+    <div class="card mb-3">
+        <div class="card-body">
+            <form method="get" action="{% url 'reader:search' current_language.code %}">
+                <div class="input-group">
+                    <input type="text"
+                           name="q"
+                           class="form-control"
+                           placeholder="Search by section, genre, tag, or character..."
+                           value="{{ search_query }}"
+                           autofocus>
+                    <button class="btn btn-primary-custom" type="submit">
+                        <i class="fas fa-search"></i> Search
+                    </button>
+                </div>
+
+                <!-- Preserve filters in search form -->
+                {% if selected_section %}
+                    <input type="hidden" name="section" value="{{ selected_section }}">
+                {% endif %}
+                {% if selected_genre %}
+                    <input type="hidden" name="genre" value="{{ selected_genre }}">
+                {% endif %}
+                {% if selected_tag %}
+                    <input type="hidden" name="tag" value="{{ selected_tag }}">
+                {% endif %}
+                {% if selected_status %}
+                    <input type="hidden" name="status" value="{{ selected_status }}">
+                {% endif %}
+            </form>
+        </div>
+    </div>
+
+    <!-- Search Metadata -->
+    {% if search_query %}
+    <div class="mb-3">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <p class="mb-1">
+                    <strong>{{ total_results }} result{{ total_results|pluralize }}</strong>
+                    {% if matched_keywords %}
+                        matching:
+                        {% for keyword in matched_keywords|slice:":5" %}
+                            <span class="badge bg-light text-dark border">{{ keyword }}</span>
+                        {% endfor %}
+                        {% if matched_keywords|length > 5 %}
+                            <span class="text-muted">+{{ matched_keywords|length|add:"-5" }} more</span>
+                        {% endif %}
+                    {% endif %}
+                </p>
+                <small class="text-muted">Search completed in {{ search_time_ms }}ms</small>
+            </div>
+            {% if search_query %}
+            <a href="{% url 'reader:search' current_language.code %}" class="btn btn-sm btn-outline-secondary">
+                <i class="fas fa-times"></i> Clear Search
+            </a>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Filters Card -->
+    <div class="card">
+        <div class="card-body">
+            <!-- Section Filter -->
+            {% if sections %}
+            <div class="mb-3">
+                <h6 class="text-muted mb-2">Section</h6>
+                <div class="d-flex flex-wrap gap-2">
+                    <a href="?{% query_transform request section=None page=None %}"
+                       class="btn btn-sm btn-min-width {% if not request.GET.section %}btn-primary-custom{% else %}btn-outline-primary-custom{% endif %}">
+                        All Sections
+                    </a>
+                    {% for section in sections %}
+                        <a href="?{% query_transform request section=section.slug page=None %}"
+                           class="btn btn-sm btn-min-width {% if request.GET.section == section.slug %}btn-primary-custom{% else %}btn-outline-primary-custom{% endif %}">
+                            {{ section.localized_name }}
+                        </a>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Genre Filter -->
+            <div class="mb-3">
+                <h6 class="text-muted mb-2">Genre</h6>
+                <div class="d-flex flex-wrap gap-2">
+                    <a href="?{% query_transform request genre=None page=None %}"
+                       class="btn btn-sm btn-min-width {% if not request.GET.genre %}btn-primary-custom{% else %}btn-outline-primary-custom{% endif %}">
+                        All Genres
+                    </a>
+                    {% for genre in genres %}
+                        <a href="?{% query_transform request genre=genre.slug page=None %}"
+                           class="btn btn-sm btn-min-width {% if request.GET.genre == genre.slug %}btn-primary-custom{% else %}btn-outline-primary-custom{% endif %}">
+                            {% if genre.parent_localized_name %}
+                                <small class="text-muted">{{ genre.parent_localized_name }} &rsaquo;</small>
+                            {% endif %}
+                            {{ genre.localized_name }}
+                        </a>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Tag Filter -->
+            {% if tags_by_category %}
+            <div class="mb-3">
+                <h6 class="text-muted mb-2">Tags</h6>
+                {% for category, tags in tags_by_category.items %}
+                    <div class="mb-2">
+                        <small class="text-muted d-block mb-1">{{ category }}</small>
+                        <div class="d-flex flex-wrap gap-1">
+                            {% for tag in tags %}
+                            <a href="?{% query_transform request tag=tag.slug page=None %}"
+                               class="btn btn-sm btn-outline-primary-custom {% if request.GET.tag == tag.slug %}active{% endif %}"
+                               style="font-size: 0.8rem;">
+                                {{ tag.localized_name }}
+                            </a>
+                            {% endfor %}
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <!-- Status Filter -->
+            <div>
+                <h6 class="text-muted mb-2">Status</h6>
+                <div class="d-flex flex-wrap gap-2">
+                    <a href="?{% query_transform request status=None page=None %}"
+                       class="btn btn-sm btn-min-width {% if not request.GET.status %}btn-primary-custom{% else %}btn-outline-primary-custom{% endif %}">
+                        All Status
+                    </a>
+                    <a href="?{% query_transform request status='ongoing' page=None %}"
+                       class="btn btn-sm btn-min-width {% if request.GET.status == 'ongoing' %}btn-primary-custom{% else %}btn-outline-primary-custom{% endif %}">
+                        Ongoing
+                    </a>
+                    <a href="?{% query_transform request status='completed' page=None %}"
+                       class="btn btn-sm btn-min-width {% if request.GET.status == 'completed' %}btn-primary-custom{% else %}btn-outline-primary-custom{% endif %}">
+                        Completed
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Results Section -->
+<section>
+    {% if search_query %}
+        {% if books %}
+            <!-- Results Grid -->
+            <div class="book-grid">
+            {% for book in books %}
+                {% include "reader/partials/book_card.html" with book=book current_language=current_language %}
+            {% endfor %}
+            </div>
+
+            <!-- Pagination -->
+            {% if is_paginated %}
+            <nav aria-label="Search results pagination" class="mt-4">
+                <div class="d-flex justify-content-center">
+                    <div class="btn-group" role="group">
+                        {% if page_obj.has_previous %}
+                            <a href="?{% query_transform request page=1 %}" class="btn btn-outline-secondary btn-sm">1</a>
+                            {% if page_obj.previous_page_number > 2 %}
+                                {% if page_obj.previous_page_number > 3 %}
+                                    <span class="btn btn-outline-secondary btn-sm disabled">...</span>
+                                {% endif %}
+                                <a href="?{% query_transform request page=page_obj.previous_page_number %}" class="btn btn-outline-secondary btn-sm">{{ page_obj.previous_page_number }}</a>
+                            {% endif %}
+                        {% endif %}
+
+                        <span class="btn btn-primary btn-sm">{{ page_obj.number }}</span>
+
+                        {% if page_obj.has_next %}
+                            {% if page_obj.next_page_number < page_obj.paginator.num_pages %}
+                                <a href="?{% query_transform request page=page_obj.next_page_number %}" class="btn btn-outline-secondary btn-sm">{{ page_obj.next_page_number }}</a>
+                                {% if page_obj.next_page_number < page_obj.paginator.num_pages|add:"-1" %}
+                                    <span class="btn btn-outline-secondary btn-sm disabled">...</span>
+                                {% endif %}
+                            {% endif %}
+                            <a href="?{% query_transform request page=page_obj.paginator.num_pages %}" class="btn btn-outline-secondary btn-sm">{{ page_obj.paginator.num_pages }}</a>
+                        {% endif %}
+                    </div>
+                </div>
+            </nav>
+            {% endif %}
+        {% else %}
+            <!-- No Results State -->
+            <div class="text-center py-5">
+                <div class="display-3 text-muted mb-3">🔍</div>
+                <h5 class="text-muted">No results found for "{{ search_query }}"</h5>
+                <p class="text-muted">Try different keywords or remove some filters</p>
+                <a href="{% url 'reader:search' current_language.code %}" class="btn btn-outline-primary-custom">
+                    Clear Search
+                </a>
+            </div>
+        {% endif %}
+    {% else %}
+        <!-- Empty Search State -->
+        <div class="text-center py-5">
+            <div class="display-1 mb-3">🔍</div>
+            <h3>Search for Books</h3>
+            <p class="text-muted">
+                Search by section, genre, tag, character name, or any keyword
+            </p>
+            <div class="mt-4">
+                <h6 class="text-muted">Try searching for:</h6>
+                <div class="d-flex justify-content-center gap-2 flex-wrap">
+                    <a href="?q=fantasy" class="btn btn-sm btn-outline-primary-custom">fantasy</a>
+                    <a href="?q=romance" class="btn btn-sm btn-outline-primary-custom">romance</a>
+                    <a href="?q=cultivation" class="btn btn-sm btn-outline-primary-custom">cultivation</a>
+                    <a href="?q=system" class="btn btn-sm btn-outline-primary-custom">system</a>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+</section>
+{% endblock %}

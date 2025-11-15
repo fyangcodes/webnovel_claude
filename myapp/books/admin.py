@@ -1,18 +1,26 @@
 from django.contrib import admin
-from background_task import background
 from .models import (
+    # Core
     Language,
-    Genre,
-    BookGenre,
     BookMaster,
     Book,
     ChapterMaster,
     Chapter,
+    # Taxonomy
+    Section,
+    Genre,
+    BookGenre,
+    Tag,
+    BookTag,
+    BookKeyword,
+    # Jobs
     TranslationJob,
     AnalysisJob,
     FileUploadJob,
+    # Context
     BookEntity,
     ChapterContext,
+    # Stats
     ChapterStats,
     BookStats,
     ViewEvent,
@@ -47,25 +55,184 @@ class LanguageAdmin(admin.ModelAdmin):
     )
 
 
-@admin.register(Genre)
-class GenreAdmin(admin.ModelAdmin):
-    list_display = ["name", "slug", "created_at"]
+# ============================================================================
+# TAXONOMY ADMINS
+# ============================================================================
+
+@admin.register(Section)
+class SectionAdmin(admin.ModelAdmin):
+    list_display = ["name", "slug", "order", "is_mature", "created_at"]
+    list_editable = ["order", "is_mature"]
+    list_filter = ["is_mature"]
     search_fields = ["name", "slug"]
     prepopulated_fields = {"slug": ("name",)}
-    readonly_fields = ["pk"]
-    ordering = ["name"]
+    readonly_fields = ["pk", "created_at", "updated_at"]
+    ordering = ["order", "name"]
 
     fieldsets = (
-        (None, {"fields": ("pk", "name", "slug", "description")}),
+        (None, {
+            "fields": ("pk", "name", "slug", "description", "icon", "order", "is_mature")
+        }),
         (
             "Translations",
             {
                 "fields": ("translations",),
-                "description": 'JSON field containing localized names and descriptions for different languages, {"zh":{"name":"名称","discription":"描述"}}',
+                "description": 'JSON field for localized names and descriptions. Format: {"zh": {"name": "小说", "description": "..."}, "en": {...}}',
+                "classes": ("collapse",),
+            },
+        ),
+        (
+            "Timestamps",
+            {
+                "fields": ("created_at", "updated_at"),
                 "classes": ("collapse",),
             },
         ),
     )
+
+
+@admin.register(Genre)
+class GenreAdmin(admin.ModelAdmin):
+    list_display = ["name", "section", "parent", "is_primary", "slug", "created_at"]
+    list_filter = ["section", "is_primary", "parent"]
+    search_fields = ["name", "slug"]
+    prepopulated_fields = {"slug": ("name",)}
+    readonly_fields = ["pk", "created_at", "updated_at"]
+    ordering = ["section", "-is_primary", "name"]
+
+    fieldsets = (
+        (None, {
+            "fields": ("pk", "section", "name", "slug", "description", "parent", "is_primary")
+        }),
+        (
+            "Display Options",
+            {
+                "fields": ("icon", "color"),
+                "description": "Visual customization for genre badges and navigation",
+            },
+        ),
+        (
+            "Translations",
+            {
+                "fields": ("translations",),
+                "description": 'JSON field for localized names and descriptions. Format: {"zh": {"name": "修仙", "description": "..."}, "en": {...}}',
+                "classes": ("collapse",),
+            },
+        ),
+        (
+            "Timestamps",
+            {
+                "fields": ("created_at", "updated_at"),
+                "classes": ("collapse",),
+            },
+        ),
+    )
+
+    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        """Filter parent choices to same section and primary genres only"""
+        if db_field.name == "parent":
+            # If editing existing genre, filter by its section
+            if request.resolver_match.kwargs.get('object_id'):
+                try:
+                    genre_id = request.resolver_match.kwargs['object_id']
+                    genre = Genre.objects.get(pk=genre_id)
+                    kwargs["queryset"] = Genre.objects.filter(
+                        section=genre.section,
+                        is_primary=True
+                    )
+                except Genre.DoesNotExist:
+                    pass
+            # For new genres, show all primary genres (will be filtered by section in JS)
+            else:
+                kwargs["queryset"] = Genre.objects.filter(is_primary=True)
+
+        if db_field.name == "section":
+            kwargs["queryset"] = Section.objects.order_by('order', 'name')
+
+        return super().formfield_for_foreignkey(db_field, request, **kwargs)
+
+
+@admin.register(Tag)
+class TagAdmin(admin.ModelAdmin):
+    list_display = ["name", "category", "slug", "created_at"]
+    list_filter = ["category"]
+    search_fields = ["name", "slug"]
+    prepopulated_fields = {"slug": ("name",)}
+    readonly_fields = ["pk", "created_at", "updated_at"]
+    ordering = ["category", "name"]
+
+    # Enable autocomplete in BookTagInline
+    def get_search_results(self, request, queryset, search_term):
+        """Improve autocomplete search"""
+        queryset, use_distinct = super().get_search_results(request, queryset, search_term)
+        return queryset, use_distinct
+
+    fieldsets = (
+        (None, {
+            "fields": ("pk", "name", "slug", "category", "description")
+        }),
+        (
+            "Translations",
+            {
+                "fields": ("translations",),
+                "description": 'JSON field for localized tag names and descriptions. Format: {"zh": {"name": "女主", "description": "..."}, "en": {...}}',
+                "classes": ("collapse",),
+            },
+        ),
+        (
+            "Timestamps",
+            {
+                "fields": ("created_at", "updated_at"),
+                "classes": ("collapse",),
+            },
+        ),
+    )
+
+
+class BookTagInline(admin.TabularInline):
+    """Inline for managing book tags"""
+    model = BookTag
+    extra = 1
+    fields = ["tag", "confidence", "source"]
+    autocomplete_fields = ["tag"]
+
+    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        """Order tags by category for better UX"""
+        if db_field.name == "tag":
+            kwargs["queryset"] = Tag.objects.order_by('category', 'name')
+        return super().formfield_for_foreignkey(db_field, request, **kwargs)
+
+
+@admin.register(BookKeyword)
+class BookKeywordAdmin(admin.ModelAdmin):
+    """Admin for search keyword index (mostly read-only)"""
+    list_display = ["keyword", "bookmaster", "keyword_type", "language_code", "weight"]
+    list_filter = ["keyword_type", "language_code"]
+    search_fields = ["keyword", "bookmaster__canonical_title"]
+    readonly_fields = ["pk", "created_at", "updated_at"]
+    ordering = ["keyword"]
+
+    fieldsets = (
+        (None, {
+            "fields": ("pk", "bookmaster", "keyword", "keyword_type", "language_code", "weight")
+        }),
+        (
+            "Timestamps",
+            {
+                "fields": ("created_at", "updated_at"),
+                "classes": ("collapse",),
+            },
+        ),
+    )
+
+    def has_add_permission(self, request):
+        """Keywords should be auto-generated, not manually added"""
+        return False
+
+
+# ============================================================================
+# CORE CONTENT ADMINS
+# ============================================================================
 
 
 class BookGenreInline(admin.TabularInline):
@@ -118,19 +285,23 @@ class BookStatsInline(admin.TabularInline):
 class BookMasterAdmin(admin.ModelAdmin):
     list_display = [
         "canonical_title",
+        "section",
         "owner",
         "original_language",
         "genre_list",
+        "tag_list",
         "created_at",
     ]
-    list_filter = ["original_language", "created_at"]
+    list_filter = ["section", "original_language", "created_at"]
     search_fields = ["canonical_title"]
     readonly_fields = ["pk"]
     ordering = ["canonical_title"]
-    inlines = [BookGenreInline]
+    inlines = [BookGenreInline, BookTagInline]
 
     fieldsets = (
-        (None, {"fields": ("pk", "canonical_title", "owner", "original_language")}),
+        (None, {
+            "fields": ("pk", "canonical_title", "section", "owner", "original_language")
+        }),
         (
             "Images",
             {
@@ -146,6 +317,16 @@ class BookMasterAdmin(admin.ModelAdmin):
         return ", ".join([bg.genre.name for bg in genres])
 
     genre_list.short_description = "Genres"
+
+    def tag_list(self, obj):
+        """Display tags"""
+        tags = obj.book_tags.select_related("tag").all()[:5]
+        tag_names = [bt.tag.name for bt in tags]
+        if obj.book_tags.count() > 5:
+            tag_names.append(f"... +{obj.book_tags.count() - 5} more")
+        return ", ".join(tag_names) if tag_names else "-"
+
+    tag_list.short_description = "Tags"
 
 
 @admin.register(Book)
@@ -203,6 +384,11 @@ class ChapterAdmin(admin.ModelAdmin):
     inlines = [ChapterStatsInline]
 
 
+# ============================================================================
+# JOB/TASK ADMINS
+# ============================================================================
+
+
 @admin.register(TranslationJob)
 class TranslationJobAdmin(admin.ModelAdmin):
     list_display = [
@@ -230,9 +416,9 @@ class TranslationJobAdmin(admin.ModelAdmin):
             self.message_user(request, "No pending jobs selected")
             return
 
-        # Queue each job for background processing
-        for job in pending_jobs:
-            process_single_job(job.id)
+        # Trigger Celery task to process translation jobs
+        from books.tasks.chapter_translation import process_translation_jobs
+        process_translation_jobs.delay(max_jobs=job_count)
 
         self.message_user(
             request,
@@ -254,9 +440,9 @@ class TranslationJobAdmin(admin.ModelAdmin):
             self.message_user(request, "No pending jobs found")
             return
 
-        # Queue jobs for background processing
-        for job in pending_jobs:
-            process_single_job(job.id)
+        # Trigger Celery task to process translation jobs
+        from books.tasks.chapter_translation import process_translation_jobs
+        process_translation_jobs.delay(max_jobs=job_count)
 
         self.message_user(
             request,
@@ -369,6 +555,11 @@ class FileUploadJobAdmin(admin.ModelAdmin):
             },
         ),
     )
+
+
+# ============================================================================
+# CONTEXT/ENTITY ADMINS
+# ============================================================================
 
 
 @admin.register(BookEntity)
@@ -499,6 +690,11 @@ class ChapterContextAdmin(admin.ModelAdmin):
         return super().get_queryset(request).select_related("chapter", "chapter__book")
 
 
+# ============================================================================
+# STATISTICS ADMINS
+# ============================================================================
+
+
 @admin.register(ViewEvent)
 class ViewEventAdmin(admin.ModelAdmin):
     """Admin interface for viewing statistics events"""
@@ -548,48 +744,3 @@ class ViewEventAdmin(admin.ModelAdmin):
     def has_add_permission(self, request):
         """Prevent manual creation of view events"""
         return False
-
-
-@background(schedule=0)  # Execute immediately
-def process_single_job(job_id):
-    """Background task to process a single translation job"""
-    from books.utils import ChapterTranslationService
-    from books.choices import ProcessingStatus
-    import logging
-
-    logger = logging.getLogger(__name__)
-
-    try:
-        job = TranslationJob.objects.get(id=job_id)
-
-        # Skip if job is no longer pending
-        if job.status != ProcessingStatus.PENDING:
-            logger.info(f"Job {job_id} is no longer pending, skipping")
-            return
-
-        # Mark as processing
-        job.status = ProcessingStatus.PROCESSING
-        job.save()
-
-        # Process the translation
-        service = ChapterTranslationService()
-        service.translate_chapter(job.chapter, job.target_language.code)
-
-        # Mark as completed
-        job.status = ProcessingStatus.COMPLETED
-        job.error_message = ""
-        job.save()
-
-        logger.info(f"Successfully processed translation job {job_id}")
-
-    except TranslationJob.DoesNotExist:
-        logger.error(f"Translation job {job_id} not found")
-    except Exception as e:
-        logger.error(f"Error processing translation job {job_id}: {str(e)}")
-        try:
-            job = TranslationJob.objects.get(id=job_id)
-            job.status = ProcessingStatus.FAILED
-            job.error_message = str(e)
-            job.save()
-        except TranslationJob.DoesNotExist:
-            pass

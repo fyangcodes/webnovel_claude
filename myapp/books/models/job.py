@@ -43,6 +43,8 @@ class TranslationJob(TimeStampedModel):
 
     class Meta:
         ordering = ["-created_at"]
+        verbose_name = "Translation Job"
+        verbose_name_plural = "Jobs - Translation Jobs"
         indexes = [
             models.Index(fields=["status"]),
             models.Index(fields=["created_at"]),
@@ -85,6 +87,8 @@ class AnalysisJob(TimeStampedModel):
 
     class Meta:
         ordering = ["-created_at"]
+        verbose_name = "Analysis Job"
+        verbose_name_plural = "Jobs - Analysis Jobs"
         indexes = [
             models.Index(fields=["status"]),
             models.Index(fields=["created_at"]),
@@ -127,6 +131,8 @@ class FileUploadJob(TimeStampedModel):
 
     class Meta:
         ordering = ["-created_at"]
+        verbose_name = "File Upload Job"
+        verbose_name_plural = "Jobs - File Upload Jobs"
         indexes = [
             models.Index(fields=["status"]),
             models.Index(fields=["created_at"]),

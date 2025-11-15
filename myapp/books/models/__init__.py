@@ -2,7 +2,8 @@
 Books models package.
 
 This package organizes models by concern:
-- core: Language, Genre, BookMaster, Book, ChapterMaster, Chapter
+- core: Language, BookMaster, Book, ChapterMaster, Chapter
+- taxonomy: Section, Genre, BookGenre, Tag, BookTag, BookKeyword
 - job: TranslationJob, AnalysisJob, FileUploadJob
 - context: BookEntity, ChapterContext
 - stat: ViewEvent, ChapterStats, BookStats
@@ -11,12 +12,18 @@ This package organizes models by concern:
 from .core import (
     SlugGeneratorMixin,
     Language,
-    Genre,
-    BookGenre,
     BookMaster,
     Book,
     ChapterMaster,
     Chapter,
+)
+from .taxonomy import (
+    Section,
+    Genre,
+    BookGenre,
+    Tag,
+    BookTag,
+    BookKeyword,
 )
 from .job import (
     TranslationJob,
@@ -38,12 +45,17 @@ __all__ = [
     "SlugGeneratorMixin",
     # Core - Content models
     "Language",
-    "Genre",
-    "BookGenre",
     "BookMaster",
     "Book",
     "ChapterMaster",
     "Chapter",
+    # Taxonomy - Classification models
+    "Section",
+    "Genre",
+    "BookGenre",
+    "Tag",
+    "BookTag",
+    "BookKeyword",
     # Jobs
     "TranslationJob",
     "AnalysisJob",

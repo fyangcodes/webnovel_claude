@@ -1,5 +1,6 @@
 {% extends "reader/base.html" %}
 {% load books_extras %}
+{% load reader_extras %}
 {% load static %}
 
 {% block title %}Welcome{% endblock %}
@@ -12,8 +13,33 @@
     </section>
     {% endif %}
 
-    <!-- Featured Genre Bar -->
-    {% if featured_genres %}
+    <!-- Featured Genres Grouped by Section -->
+    {% if featured_genres_by_section %}
+    <section class="mt-2 mb-4">
+        {% for section_id, section_data in featured_genres_by_section.items %}
+        <div class="mb-3">
+            <!-- Section Header with "All" Link -->
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <h3 class="h5 mb-0">{{ section_data.section.localized_name }}</h3>
+                <a href="?{% query_transform request section=section_data.section.slug %}"
+                   class="btn btn-sm btn-outline-primary-custom">
+                    All {{ section_data.section.localized_name }}
+                </a>
+            </div>
+
+            <!-- Genre Cards for this Section -->
+            <div class="genre-bar">
+                {% for genre in section_data.genres %}
+                <a href="{% url 'reader:genre_book_list' current_language.code genre.slug %}" class="genre-card">
+                    {{ genre.localized_name }}
+                </a>
+                {% endfor %}
+            </div>
+        </div>
+        {% endfor %}
+    </section>
+    {% elif featured_genres %}
+    <!-- Fallback: Flat genre list if section grouping not available -->
     <section class="mt-2 mb-4">
         <div class="genre-bar">
             <a href="{% url 'reader:book_list' current_language.code %}" class="genre-card">

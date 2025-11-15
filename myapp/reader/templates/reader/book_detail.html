@@ -1,15 +1,27 @@
 {% extends "reader/base.html" %}
 {% load humanize %}
 {% load books_extras %}
+{% load reader_extras %}
 
 {% block title %}{{ book.title }}{% endblock %}
 
 {% block breadcrumb_check %}
 <nav aria-label="breadcrumb" class="d-none d-md-flex align-items-center">
     <ol class="breadcrumb mb-0">
-        {% block breadcrumb_items %}
-        <li class="breadcrumb-item book-title active">{{ book.title }}</li>
-        {% endblock %}
+        <li class="breadcrumb-item">
+            <a href="{% url 'reader:book_list' current_language.code %}">All Books</a>
+        </li>
+        {% if book.section_localized_name %}
+        <li class="breadcrumb-item">
+            <a href="?{% query_transform request section=book.bookmaster.section.slug %}">{{ book.section_localized_name }}</a>
+        </li>
+        {% endif %}
+        {% if book.primary_genre %}
+        <li class="breadcrumb-item">
+            <a href="{% url 'reader:genre_book_list' current_language.code book.primary_genre.slug %}">{{ book.primary_genre.localized_name }}</a>
+        </li>
+        {% endif %}
+        <li class="breadcrumb-item book-title active" aria-current="page">{{ book.title }}</li>
     </ol>
 </nav>
 {% endblock %}
@@ -58,6 +70,61 @@
                 <p class="text-muted">{{ book.description|linebreaks }}</p>
             </div>
             {% endif %}
+
+            <!-- Taxonomy: Section, Genres, and Tags -->
+            <div class="mb-4">
+                <!-- Section Badge -->
+                {% if book.section_localized_name %}
+                <div class="mb-3">
+                    <h6 class="text-muted mb-2">Section</h6>
+                    <a href="?{% query_transform request section=book.bookmaster.section.slug %}"
+                       class="badge bg-primary-custom text-decoration-none"
+                       style="font-size: 0.9rem; padding: 0.5rem 1rem;">
+                        {{ book.section_localized_name }}
+                    </a>
+                </div>
+                {% endif %}
+
+                <!-- Genres -->
+                {% if book.bookmaster.genres.all %}
+                <div class="mb-3">
+                    <h6 class="text-muted mb-2">Genres</h6>
+                    <div class="d-flex flex-wrap gap-2">
+                        {% for genre in book.bookmaster.genres.all %}
+                        <a href="{% url 'reader:genre_book_list' current_language.code genre.slug %}"
+                           class="badge bg-secondary text-decoration-none"
+                           style="font-size: 0.85rem; padding: 0.4rem 0.8rem;">
+                            {% if genre.parent_localized_name %}
+                                {{ genre.parent_localized_name }} &rsaquo;
+                            {% endif %}
+                            {{ genre.localized_name }}
+                        </a>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Tags grouped by category -->
+                {% if tags_by_category %}
+                <div class="mb-3">
+                    <h6 class="text-muted mb-2">Tags</h6>
+                    {% for category, tags in tags_by_category.items %}
+                        <div class="mb-2">
+                            <small class="text-muted d-block mb-1">{{ category }}</small>
+                            <div class="d-flex flex-wrap gap-1">
+                                {% for tag in tags %}
+                                <a href="{% url 'reader:tag_book_list' current_language.code tag.slug %}"
+                                   class="badge bg-light text-dark text-decoration-none border"
+                                   style="font-size: 0.8rem; padding: 0.3rem 0.7rem;">
+                                    {{ tag.localized_name }}
+                                </a>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
         </div>
     </div>
     

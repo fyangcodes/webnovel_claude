@@ -7,6 +7,7 @@ This package provides service classes for:
 - ChapterAnalysisService: AI-powered entity extraction and chapter summarization
 - ChapterTranslationService: AI-powered chapter translation with entity consistency
 - JobConcurrencyManager: Manage concurrent job processing limits
+- update_book_keywords: Extract and populate search keywords from taxonomy and entities
 """
 
 from .base_ai_service import BaseAIService
@@ -20,6 +21,7 @@ from .chapter_translation import (
     RateLimitError,
 )
 from .job_concurrency import JobConcurrencyManager
+from .keywords import update_book_keywords
 
 __all__ = [
     # Base AI service
@@ -39,4 +41,6 @@ __all__ = [
     "RateLimitError",
     # Job concurrency
     "JobConcurrencyManager",
+    # Keywords
+    "update_book_keywords",
 ]

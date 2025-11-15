@@ -36,3 +36,32 @@ class EntityType(models.TextChoices):
     CHARACTER = "character", "Character"
     PLACE = "place", "Place"
     TERM = "term", "Term"
+
+
+class TagCategory(models.TextChoices):
+    """Categories for organizing tags"""
+    PROTAGONIST = "protagonist", "Protagonist Type"
+    NARRATIVE = "narrative", "Narrative Style"
+    THEME = "theme", "Theme"
+    TROPE = "trope", "Trope"
+    CONTENT_WARNING = "content_warning", "Content Warning"
+    AUDIENCE = "audience", "Target Audience"
+    SETTING = "setting", "Setting"
+
+
+class TagSource(models.TextChoices):
+    """Source of tag assignment"""
+    MANUAL = "manual", "Manual"
+    AI_SUGGESTED = "ai_suggested", "AI Suggested"
+    AI_AUTO = "ai_auto", "AI Automatic"
+    COMMUNITY = "community", "Community"
+
+
+class KeywordType(models.TextChoices):
+    """Types of keywords for search indexing"""
+    SECTION = "section", "Section"
+    GENRE = "genre", "Genre"
+    TAG = "tag", "Tag"
+    ENTITY_CHARACTER = "entity_character", "Character"
+    ENTITY_PLACE = "entity_place", "Place"
+    ENTITY_TERM = "entity_term", "Term"

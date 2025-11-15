@@ -15,7 +15,7 @@ from django.db.models.signals import post_save, post_delete, m2m_changed
 from django.dispatch import receiver
 from django.core.cache import cache
 
-from books.models import Book, Chapter, Language, Genre, BookGenre, ChapterStats
+from books.models import Book, Chapter, Language, Genre, BookGenre, ChapterStats, Section, Tag
 
 
 # ==============================================================================
@@ -115,9 +115,22 @@ def invalidate_genre_caches(sender, instance, **kwargs):
     Affected caches:
     1. All genres list (genre dropdown navigation)
     2. Featured genres list (homepage)
+    3. Hierarchical genre structures (NEW)
+    4. Flat genre lists (NEW)
+    5. Section-specific genre lists (NEW)
     """
+    # Delete old cache keys
     cache.delete('genres:all')
     cache.delete('genres:featured')
+
+    # Delete new hierarchical cache keys
+    cache.delete('genres:hierarchical:all')
+    cache.delete('genres:flat:all')
+
+    # Delete section-specific caches if genre has section
+    if instance.section:
+        cache.delete(f'genres:hierarchical:section:{instance.section.id}')
+        cache.delete(f'genres:flat:section:{instance.section.id}')
 
 
 @receiver(m2m_changed, sender=BookGenre)
@@ -160,3 +173,49 @@ def invalidate_chapter_stats_caches(sender, instance, **kwargs):
 
     book = instance.chapter.book
     invalidate_total_chapter_views(book.id)
+
+
+# ==============================================================================
+# SECTION SIGNALS (NEW)
+# ==============================================================================
+
+@receiver([post_save, post_delete], sender=Section)
+def invalidate_section_caches(sender, instance, **kwargs):
+    """
+    Invalidate section caches when a section is created, updated, or deleted.
+
+    This is rare (admin-only operation) but important for navigation.
+
+    Affected caches:
+    1. All sections list (section navigation)
+    2. Public sections list (reader view)
+    3. Genre caches (genres are grouped by section)
+    """
+    cache.delete('sections:all')
+    cache.delete('sections:public')
+
+    # Also invalidate genre caches since they're grouped by section
+    cache.delete('genres:hierarchical:all')
+    cache.delete('genres:flat:all')
+
+
+# ==============================================================================
+# TAG SIGNALS (NEW)
+# ==============================================================================
+
+@receiver([post_save, post_delete], sender=Tag)
+def invalidate_tag_caches(sender, instance, **kwargs):
+    """
+    Invalidate tag caches when a tag is created, updated, or deleted.
+
+    This is rare (admin-only operation) but important for tag filtering.
+
+    Affected caches:
+    1. All tags list (tag navigation)
+    2. Category-specific tag lists
+    """
+    cache.delete('tags:all')
+
+    # Delete category-specific cache if tag has category
+    if instance.category:
+        cache.delete(f'tags:category:{instance.category}')

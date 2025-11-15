@@ -65,6 +65,8 @@ class ViewEvent(TimeStampedModel):
 
     class Meta:
         ordering = ["-viewed_at"]
+        verbose_name = "View Event"
+        verbose_name_plural = "Statistics - View Events"
         indexes = [
             # For queries like "all views of Chapter 123 in last 7 days"
             models.Index(fields=["content_type", "object_id", "viewed_at"]),
@@ -136,7 +138,8 @@ class ChapterStats(TimeStampedModel):
     )
 
     class Meta:
-        verbose_name_plural = "Chapter stats"
+        verbose_name = "Chapter Stats"
+        verbose_name_plural = "Statistics - Chapter Stats"
         indexes = [
             models.Index(fields=["total_views"]),
             models.Index(fields=["unique_views_7d"]),
@@ -207,7 +210,8 @@ class BookStats(TimeStampedModel):
     )
 
     class Meta:
-        verbose_name_plural = "Book stats"
+        verbose_name = "Book Stats"
+        verbose_name_plural = "Statistics - Book Stats"
         indexes = [
             models.Index(fields=["total_views"]),
             models.Index(fields=["unique_readers_7d"]),

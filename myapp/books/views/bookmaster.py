@@ -34,10 +34,16 @@ class BookMasterListView(LoginRequiredMixin, ListView):
     context_object_name = "bookmasters"
 
     def get_queryset(self):
-        return BookMaster.objects.filter(owner=self.request.user).prefetch_related(
+        return BookMaster.objects.filter(owner=self.request.user).select_related(
+            "section",
+            "original_language"
+        ).prefetch_related(
             "chaptermasters",
             "books__language",
-            "book_genres__genre"
+            "book_genres__genre",
+            "book_genres__genre__parent",
+            "book_genres__genre__section",
+            "book_tags__tag"
         )
 
     def get_context_data(self, **kwargs):
@@ -51,10 +57,21 @@ class BookMasterListView(LoginRequiredMixin, ListView):
                 bookmaster.books.values_list("language__name", flat=True).distinct()
             )
             language_count = len(languages)
-            # Get genres in order
+
+            # Get genres in order with hierarchy info
             genres = [
                 bg.genre for bg in bookmaster.book_genres.all()
             ]
+
+            # Get tags grouped by category
+            tags = list(bookmaster.book_tags.select_related('tag').all())
+            tags_by_category = {}
+            for book_tag in tags:
+                tag = book_tag.tag
+                category = tag.get_category_display()
+                if category not in tags_by_category:
+                    tags_by_category[category] = []
+                tags_by_category[category].append(tag)
 
             bookmasters_with_info.append(
                 {
@@ -63,6 +80,8 @@ class BookMasterListView(LoginRequiredMixin, ListView):
                     "language_count": language_count,
                     "languages": languages,
                     "genres": genres,
+                    "section": bookmaster.section,
+                    "tags_by_category": tags_by_category,
                 }
             )
 
@@ -75,9 +94,56 @@ class BookMasterDetailView(LoginRequiredMixin, DetailView):
     template_name = "books/bookmaster/detail.html"
     context_object_name = "bookmaster"
 
+    def get_queryset(self):
+        return BookMaster.objects.select_related(
+            "section",
+            "original_language",
+            "owner"
+        ).prefetch_related(
+            "book_genres__genre",
+            "book_genres__genre__parent",
+            "book_genres__genre__section",
+            "book_tags__tag",
+            "entities"
+        )
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context["books"] = self.object.books.all().order_by("language__name")
+
+        # Add taxonomy hierarchy
+        context["section"] = self.object.section
+
+        # Get genres with hierarchy info
+        genres = []
+        for book_genre in self.object.book_genres.select_related('genre', 'genre__parent', 'genre__section').all():
+            genre = book_genre.genre
+            genres.append({
+                'genre': genre,
+                'parent': genre.parent,
+                'section': genre.section,
+                'order': book_genre.order
+            })
+        context["genres"] = genres
+
+        # Get tags grouped by category
+        tags_by_category = {}
+        for book_tag in self.object.book_tags.select_related('tag').all():
+            tag = book_tag.tag
+            category = tag.get_category_display()
+            if category not in tags_by_category:
+                tags_by_category[category] = []
+            tags_by_category[category].append(tag)
+        context["tags_by_category"] = tags_by_category
+
+        # Get entities grouped by type
+        entities_by_type = {}
+        for entity in self.object.entities.all():
+            entity_type = entity.get_entity_type_display()
+            if entity_type not in entities_by_type:
+                entities_by_type[entity_type] = []
+            entities_by_type[entity_type].append(entity)
+        context["entities_by_type"] = entities_by_type
 
         # Get all chaptermasters ordered by chapter number
         chaptermasters_queryset = self.object.chaptermasters.all().order_by(
