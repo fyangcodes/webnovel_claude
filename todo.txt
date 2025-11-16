@@ -2,7 +2,7 @@ section genre tag search
 section url and reader UI htmx for genres?
 remove tags in filter
 
-
+add author model
 
 improve reader views design
 - i18n

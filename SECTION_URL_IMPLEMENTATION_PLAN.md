@@ -111,6 +111,68 @@
 
 ## Implementation Steps
 
+**IMPORTANT:** Before implementing section URLs, we need to refactor the view architecture to eliminate code duplication. See [VIEW_ARCHITECTURE_REFACTOR.md](VIEW_ARCHITECTURE_REFACTOR.md) for detailed analysis.
+
+### Phase 0: Refactor View Architecture (PREREQUISITE)
+
+**Why:** Current views have 24% code duplication. Refactoring eliminates duplication and makes section implementation easier.
+
+**Read First:** [VIEW_ARCHITECTURE_REFACTOR.md](VIEW_ARCHITECTURE_REFACTOR.md)
+
+#### 0.1 Create BaseReaderView
+
+**File:** `myapp/reader/views.py` (refactor existing code)
+
+**Tasks:**
+- [ ] Create `BaseReaderView` class with universal reader functionality
+- [ ] Move `get_language()` from BaseBookListView to BaseReaderView
+- [ ] Add `get_section()` method (returns None if not in URL)
+- [ ] Add localization helpers: `get_localized_genres()`, `get_localized_sections()`, `get_localized_tags()`
+- [ ] Add `localize_hierarchical_genres()` helper
+- [ ] Add `get_context_data()` with global navigation context (languages, sections, genres, tags)
+
+**Code Consolidation:**
+- Eliminates language validation duplication (4 places → 1)
+- Eliminates localization helper duplication (2 places → 1)
+- Eliminates context data duplication (5 places → 1)
+
+---
+
+#### 0.2 Create BaseBookDetailView
+
+**File:** `myapp/reader/views.py` (new class)
+
+**Tasks:**
+- [ ] Create `BaseBookDetailView(BaseReaderView, DetailView)`
+- [ ] Add common book detail queryset logic
+- [ ] Add book localization in `get_context_data()`
+- [ ] Consolidate genre/tag/section localization
+
+**Benefits:**
+- Eliminates detail view duplication
+- Provides base for `BookDetailView` and future `SectionBookDetailView`
+
+---
+
+#### 0.3 Refactor Existing Views
+
+**File:** `myapp/reader/views.py`
+
+**Tasks:**
+- [ ] Change `BaseBookListView` to inherit from `BaseReaderView` instead of `ListView`
+- [ ] Change `WelcomeView` to inherit from `BaseBookListView` instead of `TemplateView`
+- [ ] Change `BookDetailView` to inherit from `BaseBookDetailView`
+- [ ] Change `ChapterDetailView` to inherit from `BaseReaderView`
+- [ ] Remove all duplicated code (language validation, localization helpers, context data)
+- [ ] Test all views still work
+
+**Code Reduction:**
+- ~172 lines removed (29% reduction)
+- Zero duplication
+- Easier to maintain
+
+---
+
 ### Phase 1: Backend - URL & View Updates
 
 #### 1.1 Update URL Patterns
@@ -183,68 +245,49 @@ path(
 
 ---
 
-#### 1.2 Create SectionMixin
+#### 1.2 Section Validation in BaseReaderView
 
-**File:** `myapp/reader/mixins.py` (NEW)
+**File:** `myapp/reader/views.py` (update from Phase 0)
 
-**Purpose:**
-- Validate section from URL kwargs
-- Add section to context
-- Handle 404 for invalid sections
-- Permission checks (staff-only sections if needed)
+**Note:** Section validation is already added in Phase 0 via `get_section()` method in `BaseReaderView`. No separate mixin needed.
 
-**Implementation:**
-
+**Section validation logic:**
 ```python
-from django.shortcuts import get_object_or_404
-from django.http import Http404
-from books.models import Section
-
-class SectionMixin:
+# Already in BaseReaderView from Phase 0
+def get_section(self):
     """
-    Mixin for views that require a section from the URL.
+    Get section from URL kwargs and validate.
 
-    Validates section exists and adds it to context.
+    Returns None if no section in URL (for views that don't require section).
+
+    Raises:
+        Http404: If section doesn't exist
     """
+    section_slug = self.kwargs.get("section_slug")
+    if not section_slug:
+        return None
 
-    def get_section(self):
-        """
-        Get section from URL kwargs and validate.
+    section = get_object_or_404(Section, slug=section_slug)
 
-        Returns:
-            Section object
+    # TODO: Add permission checks if needed
+    # e.g., if section.is_mature and not user.is_authenticated:
+    #     raise PermissionDenied("Must be logged in to view mature content")
 
-        Raises:
-            Http404: If section doesn't exist
-        """
-        section_slug = self.kwargs.get("section_slug")
-        section = get_object_or_404(Section, slug=section_slug)
-
-        # TODO: Add permission checks if needed
-        # e.g., if section.is_mature and not user.is_authenticated:
-        #     raise PermissionDenied("Must be logged in to view mature content")
-
-        return section
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context["current_section"] = self.get_section()
-        return context
+    return section
 ```
 
 **Tasks:**
-- [ ] Create `myapp/reader/mixins.py`
-- [ ] Implement `SectionMixin` class
-- [ ] Add section validation logic
-- [ ] Add permission checks (if needed for mature content)
+- [x] Section validation already implemented in Phase 0
+- [ ] Add mature content permission checks (if needed)
+- [ ] Test section validation works
 
 ---
 
-#### 1.3 Update View Classes
+#### 1.3 Create Section-Scoped View Classes
 
 **File:** `myapp/reader/views.py`
 
-**New View Classes:**
+**New View Classes (all inherit from Phase 0 base classes):**
 
 1. **SectionHomeView** - Section landing page
 2. **SectionBookListView** - Books filtered by section
@@ -257,30 +300,48 @@ class SectionMixin:
 **Implementation Structure:**
 
 ```python
-from reader.mixins import SectionMixin
+# All inherit from refactored base classes (Phase 0)
 
-class SectionHomeView(SectionMixin, TemplateView):
+class SectionHomeView(BaseBookListView):
     """Section landing page with featured content"""
     template_name = "reader/section_home.html"
+
+    def get_queryset(self):
+        language = self.get_language()
+        section = self.get_section()  # From BaseReaderView
+
+        if not section:
+            raise Http404("Section required")
+
+        # Return featured/recent books from this section
+        queryset = Book.objects.filter(
+            language=language,
+            is_public=True,
+            bookmaster__section=section
+        )
+        return queryset.order_by("-published_at")[:12]
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         section = self.get_section()
         language_code = self.kwargs.get("language_code")
 
-        # Featured books from this section
-        # Recent updates in this section
-        # Top genres in this section
+        # Add section-specific featured content
+        # (genres, recent updates, etc.)
 
         return context
 
-class SectionBookListView(SectionMixin, BaseBookListView):
+
+class SectionBookListView(BaseBookListView):
     """Books filtered by section"""
     template_name = "reader/book_list.html"
 
     def get_queryset(self):
-        language = self.get_language()
-        section = self.get_section()
+        language = self.get_language()  # From BaseReaderView
+        section = self.get_section()    # From BaseReaderView
+
+        if not section:
+            raise Http404("Section required")
 
         queryset = Book.objects.filter(
             language=language,
@@ -289,23 +350,76 @@ class SectionBookListView(SectionMixin, BaseBookListView):
         )
 
         # Apply additional filters (genre, tag, status)
-        # ... existing filter logic ...
+        # ... copy existing filter logic from BookListView ...
 
-        return queryset
+        return queryset.select_related(...).prefetch_related(...)
 
-# ... similar implementations for other views
+
+class SectionBookDetailView(BaseBookDetailView):
+    """Book detail with section validation"""
+    template_name = "reader/book_detail.html"
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        section = self.get_section()
+
+        if not section:
+            raise Http404("Section required")
+
+        # Ensure book belongs to this section
+        return queryset.filter(bookmaster__section=section)
+
+
+class SectionChapterDetailView(BaseReaderView, DetailView):
+    """Chapter reading with section validation"""
+    model = Chapter
+    template_name = "reader/chapter_detail.html"
+    context_object_name = "chapter"
+    slug_field = "slug"
+    slug_url_kwarg = "chapter_slug"
+
+    def get_queryset(self):
+        language = self.get_language()
+        section = self.get_section()
+        book_slug = self.kwargs.get("book_slug")
+
+        if not section:
+            raise Http404("Section required")
+
+        # Get book and validate section
+        book = get_object_or_404(
+            Book,
+            slug=book_slug,
+            language=language,
+            is_public=True,
+            bookmaster__section=section  # Validate section
+        )
+
+        return Chapter.objects.filter(book=book, is_public=True).select_related(
+            "book__bookmaster", "book__language", "chaptermaster"
+        )
+
+# ... similar for SectionSearchView, redirect views ...
 ```
 
+**Benefits of inheriting from refactored base classes:**
+- ✅ Automatic language validation (from BaseReaderView)
+- ✅ Automatic section validation (from BaseReaderView)
+- ✅ Automatic global context (from BaseReaderView)
+- ✅ Automatic book enrichment for list views (from BaseBookListView)
+- ✅ Automatic book localization for detail views (from BaseBookDetailView)
+- ✅ **No code duplication!**
+
 **Tasks:**
-- [ ] Create `SectionHomeView`
-- [ ] Create `SectionBookListView` (inherits from `SectionMixin` + `BaseBookListView`)
+- [ ] Create `SectionHomeView(BaseBookListView)`
+- [ ] Create `SectionBookListView(BaseBookListView)`
 - [ ] Create `SectionGenreBookListView` (redirect view)
 - [ ] Create `SectionTagBookListView` (redirect view)
-- [ ] Create `SectionSearchView` (inherits from `SectionMixin` + `BookSearchView`)
-- [ ] Create `SectionBookDetailView` (inherits from `SectionMixin` + `DetailView`)
-- [ ] Create `SectionChapterDetailView` (inherits from `SectionMixin` + `DetailView`)
-- [ ] Update querysets to filter by section
-- [ ] Update context data methods
+- [ ] Create `SectionSearchView(BaseBookListView)`
+- [ ] Create `SectionBookDetailView(BaseBookDetailView)`
+- [ ] Create `SectionChapterDetailView(BaseReaderView, DetailView)`
+- [ ] Add section validation in each queryset
+- [ ] Test all section-scoped views
 
 ---
 
@@ -1136,12 +1250,13 @@ urlpatterns = [
 
 | File | Purpose |
 |------|---------|
-| `myapp/reader/mixins.py` | SectionMixin for view classes |
 | `myapp/reader/templates/reader/section_home.html` | Section landing page template |
 | `myapp/reader/static/reader/js/url-helper.js` | URL building helpers (optional) |
 | `myapp/reader/middleware.py` | Redirect middleware (optional) |
 | `myapp/reader/sitemaps.py` | Section-aware sitemaps |
 | `myapp/reader/templatetags/reader_extras.py` | Template tags (if doesn't exist) |
+
+**Note:** `mixins.py` is NOT needed - we use Base View pattern instead!
 
 ### Files to Modify
 

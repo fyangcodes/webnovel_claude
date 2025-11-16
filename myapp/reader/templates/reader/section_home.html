@@ -1,0 +1,106 @@
+{% extends "reader/base.html" %}
+{% load static %}
+{% load reader_extras %}
+
+{% block title %}{{ section_localized_name }} - {{ current_language.local_name }}{% endblock %}
+
+{% block extra_css %}
+<!-- Section-specific meta tags for JavaScript -->
+<meta name="section-slug" content="{{ section.slug }}">
+<meta name="language-code" content="{{ current_language.code }}">
+
+<!-- SEO Meta Tags -->
+{% seo_meta_tags 'section' section=section language=current_language %}
+
+<!-- Canonical URL -->
+<link rel="canonical" href="{% canonical_url request %}">
+
+<!-- Structured Data -->
+{% structured_data 'organization' site_name='wereadly' url=request.build_absolute_uri %}
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <!-- Section Header -->
+    <div class="text-center mb-5">
+        <h1 class="display-4 fw-bold mb-3">
+            {% if section.icon %}
+            <i class="{{ section.icon }} me-2"></i>
+            {% endif %}
+            {{ section_localized_name }}
+        </h1>
+        {% if section.description %}
+        <p class="lead text-muted">{{ section.description }}</p>
+        {% endif %}
+    </div>
+
+    <!-- Section Genres -->
+    {% if section_genres %}
+    <div class="mb-5">
+        <h2 class="h4 mb-3">Browse by Genre</h2>
+        <div class="d-flex flex-wrap gap-2">
+            {% for genre in section_genres %}
+                {% if genre.is_primary %}
+                <a href="{% url 'reader:section_book_list' current_language.code section.slug %}?genre={{ genre.slug }}"
+                   class="btn btn-outline-primary">
+                    {% if genre.icon %}<i class="{{ genre.icon }} me-1"></i>{% endif %}
+                    {{ genre.localized_name }}
+                </a>
+                {% endif %}
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Recent Books -->
+    {% if books %}
+    <div class="mb-5">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h2 class="h4 mb-0">Recent Updates</h2>
+            <a href="{% url 'reader:section_book_list' current_language.code section.slug %}"
+               class="btn btn-sm btn-outline-primary">
+                View All Books
+            </a>
+        </div>
+
+        <div class="row g-4">
+            {% for book in books %}
+            <div class="col-lg-2 col-md-3 col-sm-4 col-6">
+                {% include "reader/partials/book_card.html" with book=book %}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% else %}
+    <div class="alert alert-info">
+        <i class="fas fa-info-circle me-2"></i>
+        No books available in this section yet.
+    </div>
+    {% endif %}
+
+    <!-- Featured Books (if configured) -->
+    {% if featured_books %}
+    <div class="mb-5">
+        <h2 class="h4 mb-3">Featured</h2>
+        <div class="row g-4">
+            {% for book in featured_books %}
+            <div class="col-lg-2 col-md-3 col-sm-4 col-6">
+                {% include "reader/partials/book_card.html" with book=book %}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<!-- Section Navigation JavaScript -->
+<script src="{% static 'reader/js/section-navigation.js' %}"></script>
+<script>
+    // Enable debug mode for development
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+        window.SectionNavigation.config.debugMode = true;
+    }
+</script>
+{% endblock %}

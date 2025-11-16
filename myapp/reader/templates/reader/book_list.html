@@ -3,7 +3,15 @@
 {% load reader_extras %}
 {% load static %}
 
-{% block title %}All Books{% endblock %}
+{% block title %}{% if section %}{{ section_localized_name }} - {% endif %}All Books{% endblock %}
+
+{% block extra_css %}
+<!-- Section-specific meta tags for JavaScript -->
+{% if section %}
+<meta name="section-slug" content="{{ section.slug }}">
+{% endif %}
+<meta name="language-code" content="{{ current_language.code }}">
+{% endblock %}
 
 {% block breadcrumb_check %}
     <!-- Breadcrumb Navigation -->
@@ -139,7 +147,7 @@
 <!-- Book List Section -->
 <section>
     {% if books %}
-        <div class="book-grid">
+        <div class="book-grid" data-infinite-scroll="true">
         {% for book in books %}
             {% include "reader/partials/book_card.html" with book=book current_language=current_language %}
         {% endfor %}
@@ -158,4 +166,15 @@
         </div>
     {% endif %}
 </section>
+{% endblock %}
+
+{% block extra_js %}
+<!-- Section Navigation JavaScript -->
+<script src="{% static 'reader/js/section-navigation.js' %}"></script>
+<script>
+    // Enable debug mode for development
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+        window.SectionNavigation.config.debugMode = true;
+    }
+</script>
 {% endblock %}

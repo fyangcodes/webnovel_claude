@@ -53,6 +53,7 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "django.contrib.humanize",
+    "django.contrib.sitemaps",  # For SEO sitemaps
     # Third party - minimal
     "crispy_forms",
     "crispy_bootstrap5",

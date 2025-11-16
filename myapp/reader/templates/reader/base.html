@@ -55,12 +55,12 @@
             <!-- Search Box (Desktop) -->
             {% if current_language %}
             <div class="flex-grow-1 mx-3 d-none d-md-block" style="max-width: 400px;">
-                <form method="get" action="{% url 'reader:search' current_language.code %}" class="d-flex">
+                <form method="get" action="{% if section %}{% url 'reader:section_search' current_language.code section.slug %}{% else %}{% url 'reader:search' current_language.code %}{% endif %}" class="d-flex">
                     <input type="text"
                            name="q"
                            class="form-control form-control-sm"
-                           placeholder="Search books..."
-                           value="{% if request.resolver_match.url_name == 'search' %}{{ request.GET.q }}{% endif %}">
+                           placeholder="Search{% if section %} in {{ section_localized_name }}{% else %} books{% endif %}..."
+                           value="{% if request.resolver_match.url_name == 'search' or request.resolver_match.url_name == 'section_search' %}{{ request.GET.q }}{% endif %}">
                     <button class="btn btn-sm btn-outline-secondary ms-1" type="submit">
                         <i class="fas fa-search"></i>
                     </button>
@@ -109,17 +109,20 @@
     <div class="section-nav py-2 border-bottom">
         <div class="container">
             <div class="d-flex gap-2 flex-wrap align-items-center">
-                <!-- All Sections Link -->
-                <a href="{% url 'reader:book_list' current_language.code %}"
-                   class="btn btn-sm {% if not request.GET.section %}btn-primary-custom{% else %}btn-outline-primary-custom{% endif %}">
+                <!-- All Sections Link (Homepage) -->
+                <a href="{% url 'reader:welcome' current_language.code %}"
+                   class="btn btn-sm {% if not section %}btn-primary-custom{% else %}btn-outline-primary-custom{% endif %}">
                     All
                 </a>
 
-                <!-- Section Filter Buttons -->
-                {% for section in sections %}
-                <a href="?{% query_transform request section=section.slug page=None %}"
-                   class="btn btn-sm {% if request.GET.section == section.slug %}btn-primary-custom{% else %}btn-outline-primary-custom{% endif %}">
-                    {{ section.localized_name }}
+                <!-- Section Home Links -->
+                {% for nav_section in sections %}
+                <a href="{% url 'reader:section_home' current_language.code nav_section.slug %}"
+                   class="btn btn-sm {% if section and section.slug == nav_section.slug %}btn-primary-custom{% else %}btn-outline-primary-custom{% endif %}"
+                   data-ajax-nav="section"
+                   data-section-slug="{{ nav_section.slug }}">
+                    {% if nav_section.icon %}<i class="{{ nav_section.icon }} me-1"></i>{% endif %}
+                    {{ nav_section.localized_name }}
                 </a>
                 {% endfor %}
             </div>
@@ -148,17 +151,21 @@
                     <!-- Hierarchical Sections and Genres -->
                     {% for section_id, section_data in genres_hierarchical.items %}
                     <div class="mb-4">
-                        <!-- Section Header -->
-                        <h6 class="text-uppercase text-muted mb-2" style="font-size: 0.75rem;">
-                            {{ section_data.section.localized_name }}
-                        </h6>
+                        <!-- Section Header (clickable - goes to section home) -->
+                        <a href="{% url 'reader:section_home' current_language.code section_data.section.slug %}"
+                           class="text-decoration-none">
+                            <h6 class="text-uppercase text-muted mb-2" style="font-size: 0.75rem;">
+                                {% if section_data.section.icon %}<i class="{{ section_data.section.icon }} me-1"></i>{% endif %}
+                                {{ section_data.section.localized_name }}
+                            </h6>
+                        </a>
 
                         <!-- Primary Genres in this Section -->
                         {% for genre in section_data.primary_genres %}
                         <div class="mb-2">
-                            <!-- Primary Genre -->
+                            <!-- Primary Genre (section-scoped) -->
                             <a class="btn btn-outline-primary-custom btn-sm w-100 text-start"
-                               href="{% url 'reader:genre_book_list' current_language.code genre.slug %}">
+                               href="{% url 'reader:section_genre_book_list' current_language.code section_data.section.slug genre.slug %}">
                                 {{ genre.localized_name }}
                             </a>
 
@@ -168,7 +175,7 @@
                             <div class="ms-3 mt-1">
                                 {% for sub_genre in sub_genres %}
                                 <a class="btn btn-link btn-sm text-decoration-none text-start p-1"
-                                   href="{% url 'reader:genre_book_list' current_language.code sub_genre.slug %}"
+                                   href="{% url 'reader:section_genre_book_list' current_language.code section_data.section.slug sub_genre.slug %}"
                                    style="font-size: 0.85rem;">
                                     <i class="fas fa-angle-right fa-xs"></i> {{ sub_genre.localized_name }}
                                 </a>

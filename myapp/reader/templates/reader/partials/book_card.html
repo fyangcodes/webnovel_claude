@@ -3,10 +3,15 @@ Book Card Partial
 Parameters:
 - book: Book object to display
 - current_language: Current language object for URL generation
+- current_section: (Optional) Current section for context-aware URLs
 {% endcomment %}
 
 <div class="book-card">
-    <a href="{% url 'reader:book_detail' current_language.code book.slug %}" class="book-card-link">
+    {% if book.bookmaster.section %}
+        <a href="{% url 'reader:section_book_detail' current_language.code book.bookmaster.section.slug book.slug %}" class="book-card-link">
+    {% else %}
+        <a href="{% url 'reader:book_detail' current_language.code book.slug %}" class="book-card-link">
+    {% endif %}
         <div class="book-card-image-wrapper">
             <img src="{{ book.effective_cover_image }}" alt="{{ book.title }}" class="book-card-image">
 
@@ -132,9 +137,15 @@ Parameters:
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-outline-primary-custom" data-bs-dismiss="modal">Close</button>
-                <a href="{% url 'reader:book_detail' current_language.code book.slug %}" class="btn btn-primary-custom">
-                    Read Now
-                </a>
+                {% if book.bookmaster.section %}
+                    <a href="{% url 'reader:section_book_detail' current_language.code book.bookmaster.section.slug book.slug %}" class="btn btn-primary-custom">
+                        Read Now
+                    </a>
+                {% else %}
+                    <a href="{% url 'reader:book_detail' current_language.code book.slug %}" class="btn btn-primary-custom">
+                        Read Now
+                    </a>
+                {% endif %}
             </div>
         </div>
     </div>
