@@ -1,4 +1,6 @@
 from django.contrib import admin
+from django import forms
+from django.contrib import messages
 from .models import (
     # Core
     Language,
@@ -25,6 +27,132 @@ from .models import (
     BookStats,
     ViewEvent,
 )
+
+
+# ============================================================================
+# CUSTOM ADMIN FORMS
+# ============================================================================
+
+
+class GenreAdminForm(forms.ModelForm):
+    """Custom form for Genre with dynamic parent filtering and validation"""
+
+    class Meta:
+        model = Genre
+        fields = '__all__'
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        # Dynamic parent filtering: only show primary genres from same section
+        if self.instance and self.instance.pk and self.instance.section:
+            # Editing existing genre - filter by its section
+            self.fields['parent'].queryset = Genre.objects.filter(
+                section=self.instance.section,
+                is_primary=True
+            ).exclude(pk=self.instance.pk)  # Exclude self
+        elif 'section' in self.data:
+            # Form submission - filter by selected section
+            section_id = self.data.get('section')
+            if section_id:
+                self.fields['parent'].queryset = Genre.objects.filter(
+                    section_id=section_id,
+                    is_primary=True
+                )
+        else:
+            # New genre - show all primary genres initially
+            self.fields['parent'].queryset = Genre.objects.filter(is_primary=True)
+
+        # Add helpful text
+        self.fields['parent'].help_text = (
+            "Parent genre must belong to the same section and be a primary genre. "
+            "Only primary genres from the selected section are shown."
+        )
+
+    def clean(self):
+        """Additional validation for section-parent consistency"""
+        cleaned_data = super().clean()
+        section = cleaned_data.get('section')
+        parent = cleaned_data.get('parent')
+
+        # Validate parent-section consistency
+        if parent and section and parent.section != section:
+            raise forms.ValidationError(
+                f"Parent genre '{parent.name}' belongs to section '{parent.section.name}', "
+                f"but this genre is in section '{section.name}'. "
+                f"Both must be in the same section."
+            )
+
+        return cleaned_data
+
+
+class BookMasterAdminForm(forms.ModelForm):
+    """Custom form for BookMaster with section validation warnings"""
+
+    class Meta:
+        model = BookMaster
+        fields = '__all__'
+
+    def clean_section(self):
+        """Validate section change and warn about genre conflicts"""
+        section = self.cleaned_data.get('section')
+
+        # If instance exists and section changed, check for genre conflicts
+        if self.instance and self.instance.pk:
+            old_section = self.instance.section
+
+            if old_section and section and section != old_section:
+                # Check if BookMaster has genres from old section
+                genre_count = self.instance.book_genres.filter(
+                    genre__section=old_section
+                ).count()
+
+                if genre_count > 0:
+                    # Get genre names for error message
+                    genre_names = ', '.join(
+                        bg.genre.name for bg in
+                        self.instance.book_genres.select_related('genre').filter(
+                            genre__section=old_section
+                        )[:3]
+                    )
+                    if genre_count > 3:
+                        genre_names += f" and {genre_count - 3} more"
+
+                    raise forms.ValidationError(
+                        f"Cannot change section from '{old_section.name}' to '{section.name}' "
+                        f"because {genre_count} genre(s) belong to '{old_section.name}': {genre_names}. "
+                        f"Remove these genres first, or keep the section as '{old_section.name}'."
+                    )
+
+        return section
+
+
+class BookGenreInlineForm(forms.ModelForm):
+    """Custom inline form for BookGenre with section-based genre filtering"""
+
+    class Meta:
+        model = BookGenre
+        fields = '__all__'
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        # Filter genres by BookMaster's section
+        if self.instance and self.instance.bookmaster and self.instance.bookmaster.section:
+            bookmaster = self.instance.bookmaster
+            self.fields['genre'].queryset = Genre.objects.filter(
+                section=bookmaster.section
+            ).select_related('parent', 'section').order_by('section', '-is_primary', 'name')
+
+            self.fields['genre'].help_text = (
+                f"Only genres from section '{bookmaster.section.name}' are shown. "
+                f"To add genres from another section, change the BookMaster's section first."
+            )
+
+
+# ============================================================================
+# ADMIN CLASSES
+# ============================================================================
 
 
 @admin.register(Language)
@@ -93,6 +221,7 @@ class SectionAdmin(admin.ModelAdmin):
 
 @admin.register(Genre)
 class GenreAdmin(admin.ModelAdmin):
+    form = GenreAdminForm  # Use custom form with validation
     list_display = ["name", "section", "parent", "is_primary", "slug", "created_at"]
     list_filter = ["section", "is_primary", "parent"]
     search_fields = ["name", "slug"]
@@ -127,29 +256,6 @@ class GenreAdmin(admin.ModelAdmin):
             },
         ),
     )
-
-    def formfield_for_foreignkey(self, db_field, request, **kwargs):
-        """Filter parent choices to same section and primary genres only"""
-        if db_field.name == "parent":
-            # If editing existing genre, filter by its section
-            if request.resolver_match.kwargs.get('object_id'):
-                try:
-                    genre_id = request.resolver_match.kwargs['object_id']
-                    genre = Genre.objects.get(pk=genre_id)
-                    kwargs["queryset"] = Genre.objects.filter(
-                        section=genre.section,
-                        is_primary=True
-                    )
-                except Genre.DoesNotExist:
-                    pass
-            # For new genres, show all primary genres (will be filtered by section in JS)
-            else:
-                kwargs["queryset"] = Genre.objects.filter(is_primary=True)
-
-        if db_field.name == "section":
-            kwargs["queryset"] = Section.objects.order_by('order', 'name')
-
-        return super().formfield_for_foreignkey(db_field, request, **kwargs)
 
 
 @admin.register(Tag)
@@ -237,6 +343,7 @@ class BookKeywordAdmin(admin.ModelAdmin):
 
 class BookGenreInline(admin.TabularInline):
     model = BookGenre
+    form = BookGenreInlineForm  # Use custom form with filtering
     extra = 1
     fields = ["genre", "order"]
     ordering = ["order"]
@@ -283,6 +390,7 @@ class BookStatsInline(admin.TabularInline):
 
 @admin.register(BookMaster)
 class BookMasterAdmin(admin.ModelAdmin):
+    form = BookMasterAdminForm  # Use custom form with validation
     list_display = [
         "canonical_title",
         "section",
@@ -327,6 +435,15 @@ class BookMasterAdmin(admin.ModelAdmin):
         return ", ".join(tag_names) if tag_names else "-"
 
     tag_list.short_description = "Tags"
+
+    def save_model(self, request, obj, form, change):
+        """Show warnings after save"""
+        super().save_model(request, obj, form, change)
+
+        # Check for genre warnings
+        warnings = obj.validate_genres()
+        for warning in warnings:
+            messages.warning(request, warning)
 
 
 @admin.register(Book)

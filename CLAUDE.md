@@ -189,3 +189,209 @@ The system supports a master-translation architecture:
 3. **TranslationJob** - Async translation processing with OpenAI API
 4. **Language** - Configuration for different languages with reading speeds
 5. **Publishing** - Independent publishing control per language version
+
+## Hierarchical Taxonomy System
+
+### Overview
+
+The application uses a comprehensive hierarchical taxonomy system for organizing books:
+
+- **Sections**: Top-level categories (Fiction, BL, GL, Non-fiction)
+- **Genres**: Hierarchical genre system with primary and sub-genres
+- **Tags**: Flexible tagging for book attributes
+- **Keywords**: Denormalized search index for fast multi-language search
+
+### Database Models
+
+#### Section (`books.models.Section`)
+
+Top-level content category.
+
+**Fields**:
+- `name`: Section name (e.g., "Fiction", "BL")
+- `slug`: URL-friendly identifier
+- `description`: Section description
+- `icon`: FontAwesome icon class
+- `order`: Display order
+- `is_mature`: Whether section contains mature content
+- `translations`: JSON field for localized names
+
+**Usage**:
+```python
+from books.models import Section
+
+fiction = Section.objects.get(slug='fiction')
+print(fiction.get_localized_name('zh'))  # "小说"
+```
+
+#### Genre (`books.models.Genre`)
+
+Hierarchical genre classification.
+
+**Fields**:
+- `section`: ForeignKey to Section
+- `name`: Genre name
+- `slug`: URL-friendly identifier (unique within section)
+- `parent`: ForeignKey to self (for sub-genres)
+- `is_primary`: Whether genre is primary (True) or sub-genre (False)
+- `icon`: FontAwesome icon
+- `color`: Hex color code
+- `translations`: JSON field for localized names
+
+**Hierarchy Rules**:
+1. Primary genres (`is_primary=True`) cannot have parents
+2. Sub-genres (`is_primary=False`) must have a primary parent
+3. Parent and child must belong to same section
+4. No self-references or circular references
+
+**Usage**:
+```python
+from books.models import Genre
+
+# Get primary genre
+fantasy = Genre.objects.get(section__slug='fiction', slug='fantasy')
+
+# Get sub-genres
+sub_genres = fantasy.sub_genres.all()
+```
+
+#### BookGenre Through Model
+
+Ordered many-to-many relationship between BookMaster and Genre.
+
+**Fields**:
+- `bookmaster`: ForeignKey to BookMaster
+- `genre`: ForeignKey to Genre
+- `order`: Display order
+
+**Validation**:
+- All genres must belong to BookMaster's section
+- Cannot change BookMaster section if incompatible genres exist
+
+#### Tag (`books.models.Tag`)
+
+Flexible tagging system.
+
+**Categories**:
+- `protagonist`: Protagonist traits
+- `relationship`: Relationship dynamics
+- `plot`: Plot elements
+- `setting`: Setting/world-building
+- `tone`: Story tone
+
+**Usage**:
+```python
+from books.models import Tag
+
+# Get tags by category
+protagonist_tags = Tag.objects.filter(category='protagonist')
+```
+
+#### BookKeyword (`books.models.BookKeyword`)
+
+Denormalized search index for fast keyword lookups.
+
+**Auto-Generated**: Keywords are automatically generated from:
+- Section names (weight: 1.5)
+- Genre names (weight: 1.0)
+- Tag names (weight: 0.8)
+- Entity names (weight: 0.6)
+
+**Fields**:
+- `bookmaster`: ForeignKey to BookMaster
+- `keyword`: Searchable keyword
+- `keyword_type`: Type (section, genre, tag, entity_*)
+- `language_code`: Language of keyword
+- `weight`: Relevance weight for ranking
+
+### Search System
+
+The search system uses BookKeyword for fast, weighted keyword search:
+
+```python
+from books.utils.search import BookSearchService
+
+result = BookSearchService.search(
+    query='cultivation fantasy',
+    language_code='en',
+    section_slug='fiction',
+    limit=20
+)
+
+print(f"Found {result['total_results']} books in {result['search_time_ms']}ms")
+for book in result['books']:
+    print(book.title)
+```
+
+**Search Algorithm**:
+1. Normalize and tokenize query
+2. Find matching keywords
+3. Calculate relevance scores (keyword_weight × match_type_weight)
+4. Aggregate scores by BookMaster
+5. Apply filters (section, genre, tag, status)
+6. Return ranked results
+
+### Admin Usage
+
+#### Creating Genres
+
+1. Go to Django Admin → Taxonomy - Genres → Add Genre
+2. Select Section (required)
+3. Choose whether Primary or Sub-genre
+4. If sub-genre, select Parent (only shows same-section primary genres)
+5. Add translations for multi-language support
+
+**Validation**:
+- Parent dropdown automatically filters by selected section
+- Cannot set genre as its own parent
+- Clear error messages guide you to fix issues
+
+#### Creating Books with Taxonomy
+
+1. Go to Django Admin → Core - Book Masters → Add Book Master
+2. Set Section
+3. Add Genres inline (only shows genres from selected section)
+4. Add Tags inline
+5. Save
+
+**Validation**:
+- Cannot change section if incompatible genres exist
+- Warning shown if no genres assigned
+- Warning shown if only sub-genres assigned
+
+### Management Commands
+
+#### Seed Taxonomy Data
+
+```bash
+# Seed comprehensive taxonomy data
+python manage.py seed_taxonomy
+
+# Clear existing data and re-seed
+python manage.py seed_taxonomy --clear
+```
+
+Creates:
+- 4 Sections (Fiction, BL, GL, Non-fiction)
+- 20 Genres with hierarchies
+- 15 Tags across categories
+- 4 Sample books with complete taxonomy
+
+#### Run Tests
+
+```bash
+# Run all taxonomy tests
+python manage.py test books.tests.test_taxonomy
+
+# Run specific test class
+python manage.py test books.tests.test_taxonomy.GenreValidationTestCase
+
+# Run with verbose output
+python manage.py test books.tests.test_taxonomy -v 2
+```
+
+Test coverage includes:
+- Genre validation (hierarchy rules, self-references, circular references)
+- BookMaster validation (section changes, genre compatibility)
+- Search functionality (keyword matching, filtering)
+- Integration workflows (complete book setup, section changes)

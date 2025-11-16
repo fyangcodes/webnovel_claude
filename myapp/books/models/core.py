@@ -16,7 +16,7 @@ from django.db import models
 from django.utils import timezone
 from django.utils.text import slugify
 
-from common.models import TimeStampedModel
+from books.models.base import TimeStampedModel
 from books.choices import BookProgress, ChapterProgress, CountUnit
 from books.validators import unicode_slug_validator
 
@@ -148,6 +148,9 @@ class BookMaster(TimeStampedModel):
     def save(self, *args, **kwargs):
         if not self.original_language:
             self.original_language = Language.objects.get(code="zh")
+        # Call clean() to validate before saving (only for existing instances)
+        if self.pk:
+            self.full_clean()
         super().save(*args, **kwargs)
 
     def clean(self):
@@ -159,10 +162,46 @@ class BookMaster(TimeStampedModel):
         if self.pk and self.section:
             mismatched_genres = self.book_genres.exclude(genre__section=self.section)
             if mismatched_genres.exists():
+                # Get genre names for helpful error message
+                genre_names = ', '.join(
+                    bg.genre.name for bg in mismatched_genres.select_related('genre')[:3]
+                )
+                count = mismatched_genres.count()
+                if count > 3:
+                    genre_names += f" and {count - 3} more"
+
                 raise ValidationError({
-                    'section': f"Cannot change section while genres from other sections are assigned. "
-                               f"Remove genres first or choose the correct section."
+                    'section': f"Cannot change section to '{self.section.name}' because "
+                               f"the following genres belong to different sections: {genre_names}. "
+                               f"Remove incompatible genres first or keep the current section."
                 })
+
+    def validate_genres(self):
+        """
+        Validate genre assignments (called manually or in admin).
+
+        Returns warnings as a list of strings (non-blocking).
+        """
+        warnings = []
+
+        # Only validate if instance has been saved
+        if not self.pk:
+            return warnings
+
+        # Check if BookMaster has at least one genre
+        if not self.book_genres.exists():
+            warnings.append(
+                "Book has no genres assigned. Consider adding at least one genre for better discoverability."
+            )
+        else:
+            # Check if BookMaster has at least one primary genre
+            primary_genres = self.book_genres.filter(genre__is_primary=True)
+            if not primary_genres.exists():
+                warnings.append(
+                    "Book has no primary genres (only sub-genres). Consider adding a primary genre."
+                )
+
+        return warnings
 
     @property
     def effective_cover_image(self):

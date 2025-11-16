@@ -15,7 +15,7 @@ from django.db import models
 from django.core.exceptions import ValidationError
 from django.utils.text import slugify
 
-from common.models import TimeStampedModel
+from books.models.base import TimeStampedModel
 from books.choices import TagCategory, TagSource, KeywordType
 
 
@@ -172,6 +172,8 @@ class Genre(TimeStampedModel):
     def save(self, *args, **kwargs):
         if not self.slug:
             self.slug = slugify(self.name)
+        # Call clean() to validate before saving
+        self.full_clean()
         super().save(*args, **kwargs)
 
     def clean(self):
@@ -196,10 +198,24 @@ class Genre(TimeStampedModel):
                 })
 
         # Rule 3: Parent must be in the same section
-        if self.parent and self.parent.section != self.section:
+        if self.parent and self.section and self.parent.section != self.section:
             raise ValidationError({
                 'parent': f"Parent genre must belong to the same section ({self.section.name})."
             })
+
+        # Rule 4: Self-reference check (genre cannot be its own parent)
+        if self.parent and self.pk and self.parent.pk == self.pk:
+            raise ValidationError({
+                'parent': "A genre cannot be its own parent."
+            })
+
+        # Rule 5: Circular reference check (prevent A -> B -> A)
+        if self.parent and self.parent.parent and self.pk:
+            if self.parent.parent.pk == self.pk:
+                raise ValidationError({
+                    'parent': f"Circular reference detected: {self.name} -> {self.parent.name} -> "
+                              f"{self.parent.parent.name} creates a loop back to {self.name}."
+                })
 
     def get_localized_name(self, language_code):
         """Get localized genre name or fall back to default"""

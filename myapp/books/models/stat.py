@@ -9,7 +9,7 @@ This module contains models for tracking views and engagement:
 
 from django.db import models
 
-from common.models import TimeStampedModel
+from books.models.base import TimeStampedModel
 
 
 class ViewEvent(TimeStampedModel):

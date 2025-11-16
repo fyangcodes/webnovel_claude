@@ -63,7 +63,6 @@ INSTALLED_APPS = [
     # i18n management
     "rosetta",
     # Local apps - simplified
-    "common.apps.CommonConfig",
     "books.apps.BooksConfig",
     "reader.apps.ReaderConfig",
 ]
@@ -94,7 +93,7 @@ TEMPLATES = [
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
                 "books.context_processors.breadcrumb_context",
-                "common.context_processors.stats_context",
+                "books.context_processors.stats_context",
             ],
         },
     },
@@ -430,6 +429,7 @@ if DEBUG:
     # Debug Toolbar Config
     DEBUG_TOOLBAR_CONFIG = {
         'SHOW_TOOLBAR_CALLBACK': lambda request: DEBUG,
+        'IS_RUNNING_TESTS': False,
     }
 
 # ==============================================================================

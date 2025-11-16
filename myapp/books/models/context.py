@@ -8,7 +8,7 @@ This module contains models for storing AI-extracted metadata:
 
 from django.db import models
 
-from common.models import TimeStampedModel
+from books.models.base import TimeStampedModel
 from books.choices import EntityType
 
 

@@ -10,7 +10,7 @@ This module contains models for tracking async background jobs:
 from django.conf import settings
 from django.db import models
 
-from common.models import TimeStampedModel
+from books.models.base import TimeStampedModel
 from books.choices import ProcessingStatus
 
 
