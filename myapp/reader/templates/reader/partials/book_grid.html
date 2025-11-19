@@ -6,6 +6,7 @@ Parameters:
 - icon: FontAwesome icon class (e.g., "fa-sync", "fa-sparkles")
 - icon_color: Bootstrap color class for icon (e.g., "text-primary", "text-success")
 - current_language: Current language object for URL generation
+- section: (Optional) Section object for section-scoped "View All" link
 {% endcomment %}
 
 {% if books %}
@@ -14,9 +15,11 @@ Parameters:
         <h2 class="section-title">
             {{ title }}
         </h2>
-        <a href="{% url 'reader:book_list' current_language.code %}" class="view-all-link">
+        {% if section %}
+        <a href="{% url 'reader:section_book_list' current_language.code section.slug %}" class="view-all-link">
             View All <i class="fas fa-arrow-right ms-1"></i>
         </a>
+        {% endif %}
     </div>
     <div class="book-grid">
         {% for book in books %}

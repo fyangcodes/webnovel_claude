@@ -5,27 +5,13 @@
 
 {% block title %}Search{% if search_query %}: {{ search_query }}{% endif %}{% endblock %}
 
-{% block breadcrumb_check %}
-    <!-- Breadcrumb Navigation -->
-    <nav aria-label="breadcrumb" class="d-none d-md-block ms-2">
-        <ol class="breadcrumb mb-0">
-            <li class="breadcrumb-item">
-                <a href="{% url 'reader:book_list' current_language.code %}">All Books</a>
-            </li>
-            <li class="breadcrumb-item active" aria-current="page">
-                Search{% if search_query %}: {{ search_query }}{% endif %}
-            </li>
-        </ol>
-    </nav>
-{% endblock %}
-
 {% block content %}
 <!-- Search Section -->
 <section class="m-2 col-lg-9">
     <!-- Search Box -->
     <div class="card mb-3">
         <div class="card-body">
-            <form method="get" action="{% url 'reader:search' current_language.code %}">
+            <form method="get" action="{% if section %}{% url 'reader:section_search' current_language.code section.slug %}{% endif %}">
                 <div class="input-group">
                     <input type="text"
                            name="q"
@@ -39,9 +25,6 @@
                 </div>
 
                 <!-- Preserve filters in search form -->
-                {% if selected_section %}
-                    <input type="hidden" name="section" value="{{ selected_section }}">
-                {% endif %}
                 {% if selected_genre %}
                     <input type="hidden" name="genre" value="{{ selected_genre }}">
                 {% endif %}
@@ -74,8 +57,8 @@
                 </p>
                 <small class="text-muted">Search completed in {{ search_time_ms }}ms</small>
             </div>
-            {% if search_query %}
-            <a href="{% url 'reader:search' current_language.code %}" class="btn btn-sm btn-outline-secondary">
+            {% if search_query and section %}
+            <a href="{% url 'reader:section_search' current_language.code section.slug %}" class="btn btn-sm btn-outline-secondary">
                 <i class="fas fa-times"></i> Clear Search
             </a>
             {% endif %}
@@ -86,44 +69,43 @@
     <!-- Filters Card -->
     <div class="card">
         <div class="card-body">
-            <!-- Section Filter -->
-            {% if sections %}
-            <div class="mb-3">
-                <h6 class="text-muted mb-2">Section</h6>
-                <div class="d-flex flex-wrap gap-2">
-                    <a href="?{% query_transform request section=None page=None %}"
-                       class="btn btn-sm btn-min-width {% if not request.GET.section %}btn-primary-custom{% else %}btn-outline-primary-custom{% endif %}">
-                        All Sections
+            <!-- Genre Filter with Hierarchy -->
+            <div class="d-flex gap-2 mb-3">
+                <div class="flex-shrink-0">
+                    <a href="?{% query_transform request genre=None page=None %}"
+                       class="btn btn-sm btn-min-width-lg fw-bold {% if not request.GET.genre %}btn-primary-custom{% else %}btn-outline-primary-custom{% endif %}">
+                        All Genres
                     </a>
-                    {% for section in sections %}
-                        <a href="?{% query_transform request section=section.slug page=None %}"
-                           class="btn btn-sm btn-min-width {% if request.GET.section == section.slug %}btn-primary-custom{% else %}btn-outline-primary-custom{% endif %}">
-                            {{ section.localized_name }}
-                        </a>
+                </div>
+                <div class="d-flex flex-wrap gap-2 flex-grow-1">
+                    {% for genre in primary_genres %}
+                    <a href="?{% query_transform request genre=genre.slug page=None %}"
+                       class="btn btn-sm btn-min-width {% if primary_genre and primary_genre.id == genre.id %}btn-primary-custom{% else %}btn-outline-primary-custom{% endif %}">
+                        {{ genre.localized_name }}
+                    </a>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Sub-genres Section (only show when primary_genre is set) -->
+            {% if primary_genre %}
+            <div class="d-flex gap-2 mb-3">
+                <div class="flex-shrink-0">
+                    <a href="?{% query_transform request genre=primary_genre.slug page=None %}"
+                       class="btn btn-sm btn-min-width-lg fw-bold {% if primary_genre.is_active_selection %}btn-primary-custom{% else %}btn-outline-primary-custom{% endif %}">
+                        All {{ primary_genre.localized_name }}
+                    </a>
+                </div>
+                <div class="d-flex flex-wrap gap-2 flex-grow-1">
+                    {% for genre in secondary_genres %}
+                    <a href="?{% query_transform request genre=genre.slug page=None %}"
+                       class="btn btn-sm btn-min-width {% if genre.is_active_selection %}btn-primary-custom{% else %}btn-outline-primary-custom{% endif %}">
+                        {{ genre.localized_name }}
+                    </a>
                     {% endfor %}
                 </div>
             </div>
             {% endif %}
-
-            <!-- Genre Filter -->
-            <div class="mb-3">
-                <h6 class="text-muted mb-2">Genre</h6>
-                <div class="d-flex flex-wrap gap-2">
-                    <a href="?{% query_transform request genre=None page=None %}"
-                       class="btn btn-sm btn-min-width {% if not request.GET.genre %}btn-primary-custom{% else %}btn-outline-primary-custom{% endif %}">
-                        All Genres
-                    </a>
-                    {% for genre in genres %}
-                        <a href="?{% query_transform request genre=genre.slug page=None %}"
-                           class="btn btn-sm btn-min-width {% if request.GET.genre == genre.slug %}btn-primary-custom{% else %}btn-outline-primary-custom{% endif %}">
-                            {% if genre.parent_localized_name %}
-                                <small class="text-muted">{{ genre.parent_localized_name }} &rsaquo;</small>
-                            {% endif %}
-                            {{ genre.localized_name }}
-                        </a>
-                    {% endfor %}
-                </div>
-            </div>
 
             <!-- Tag Filter -->
             {% if tags_by_category %}
@@ -147,13 +129,14 @@
             {% endif %}
 
             <!-- Status Filter -->
-            <div>
-                <h6 class="text-muted mb-2">Status</h6>
-                <div class="d-flex flex-wrap gap-2">
+            <div class="d-flex gap-2">
+                <div class="flex-shrink-0">
                     <a href="?{% query_transform request status=None page=None %}"
-                       class="btn btn-sm btn-min-width {% if not request.GET.status %}btn-primary-custom{% else %}btn-outline-primary-custom{% endif %}">
+                       class="btn btn-sm btn-min-width-lg fw-bold {% if not request.GET.status %}btn-primary-custom{% else %}btn-outline-primary-custom{% endif %}">
                         All Status
                     </a>
+                </div>
+                <div class="d-flex flex-wrap gap-2 flex-grow-1">
                     <a href="?{% query_transform request status='ongoing' page=None %}"
                        class="btn btn-sm btn-min-width {% if request.GET.status == 'ongoing' %}btn-primary-custom{% else %}btn-outline-primary-custom{% endif %}">
                         Ongoing
@@ -162,6 +145,7 @@
                        class="btn btn-sm btn-min-width {% if request.GET.status == 'completed' %}btn-primary-custom{% else %}btn-outline-primary-custom{% endif %}">
                         Completed
                     </a>
+                </div>
                 </div>
             </div>
         </div>
@@ -215,9 +199,11 @@
                 <div class="display-3 text-muted mb-3">🔍</div>
                 <h5 class="text-muted">No results found for "{{ search_query }}"</h5>
                 <p class="text-muted">Try different keywords or remove some filters</p>
-                <a href="{% url 'reader:search' current_language.code %}" class="btn btn-outline-primary-custom">
+                {% if section %}
+                <a href="{% url 'reader:section_search' current_language.code section.slug %}" class="btn btn-outline-primary-custom">
                     Clear Search
                 </a>
+                {% endif %}
             </div>
         {% endif %}
     {% else %}

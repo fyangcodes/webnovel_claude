@@ -30,7 +30,7 @@
             <!-- Genre Cards for this Section -->
             <div class="genre-bar">
                 {% for genre in section_data.genres %}
-                <a href="{% url 'reader:genre_book_list' current_language.code genre.slug %}" class="genre-card">
+                <a href="{% url 'reader:section_genre_book_list' current_language.code section_data.section.slug genre.slug %}" class="genre-card">
                     {{ genre.localized_name }}
                 </a>
                 {% endfor %}
@@ -39,19 +39,10 @@
         {% endfor %}
     </section>
     {% elif featured_genres %}
-    <!-- Fallback: Flat genre list if section grouping not available -->
-    <section class="mt-2 mb-4">
-        <div class="genre-bar">
-            <a href="{% url 'reader:book_list' current_language.code %}" class="genre-card">
-                All Genres
-            </a>
-            {% for genre in featured_genres %}
-            <a href="{% url 'reader:genre_book_list' current_language.code genre.slug %}" class="genre-card">
-                {{ genre.localized_name }}
-            </a>
-            {% endfor %}
-        </div>
-    </section>
+    <!-- Fallback: Flat genre list (deprecated - not used in section-scoped architecture) -->
+    {% comment %}
+    This fallback is no longer functional as all genres require section context.
+    {% endcomment %}
     {% endif %}
 
     <!-- Continue Reading -->

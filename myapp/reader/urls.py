@@ -138,30 +138,30 @@ urlpatterns = [
         views.WelcomeView.as_view(),
         name="welcome",
     ),
-    # Specific genre's books (redirects to book_list with genre param)
-    path(
-        "<str:language_code>/genre/<slug:genre_slug>/",
-        views.GenreBookListView.as_view(),
-        name="genre_book_list",
-    ),
-    # Specific tag's books (redirects to book_list with tag param)
-    path(
-        "<str:language_code>/tag/<slug:tag_slug>/",
-        views.TagBookListView.as_view(),
-        name="tag_book_list",
-    ),
-    # Search books (cross-section search)
-    path(
-        "<str:language_code>/search/",
-        views.BookSearchView.as_view(),
-        name="search",
-    ),
-    # All books page (cross-section, will redirect to section if ?section= provided)
-    path(
-        "<str:language_code>/books/",
-        views.BookListView.as_view(),
-        name="book_list",
-    ),
+    # REMOVED: Cross-section routes (migrated to fully section-scoped architecture)
+    # These routes have been removed as part of navigation refactoring
+    # All browsing is now section-scoped: /<language>/<section>/books/
+    #
+    # path(
+    #     "<str:language_code>/genre/<slug:genre_slug>/",
+    #     views.GenreBookListView.as_view(),
+    #     name="genre_book_list",
+    # ),
+    # path(
+    #     "<str:language_code>/tag/<slug:tag_slug>/",
+    #     views.TagBookListView.as_view(),
+    #     name="tag_book_list",
+    # ),
+    # path(
+    #     "<str:language_code>/search/",
+    #     views.BookSearchView.as_view(),
+    #     name="search",
+    # ),
+    # path(
+    #     "<str:language_code>/books/",
+    #     views.BookListView.as_view(),
+    #     name="book_list",
+    # ),
     # Book detail page (legacy - redirects to section book detail)
     path(
         "<str:language_code>/book/<uslug:book_slug>/",

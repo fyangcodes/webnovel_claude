@@ -16,29 +16,6 @@
 {% structured_data 'book' book=book url=request.build_absolute_uri %}
 {% endblock %}
 
-{% block breadcrumb_check %}
-<nav aria-label="breadcrumb" class="d-none d-md-flex align-items-center">
-    <ol class="breadcrumb mb-0">
-        <li class="breadcrumb-item">
-            <a href="{% url 'reader:welcome' current_language.code %}">Home</a>
-        </li>
-        {% if book.bookmaster.section %}
-        <li class="breadcrumb-item">
-            <a href="{% url 'reader:section_home' current_language.code book.bookmaster.section.slug %}">{{ book.section_localized_name }}</a>
-        </li>
-        <li class="breadcrumb-item">
-            <a href="{% url 'reader:section_book_list' current_language.code book.bookmaster.section.slug %}">Books</a>
-        </li>
-        {% else %}
-        <li class="breadcrumb-item">
-            <a href="{% url 'reader:book_list' current_language.code %}">All Books</a>
-        </li>
-        {% endif %}
-        <li class="breadcrumb-item book-title active" aria-current="page">{{ book.title }}</li>
-    </ol>
-</nav>
-{% endblock %}
-
 {% block content %}
 <div class="row mt-2">
     <!-- Book Information -->
@@ -115,7 +92,7 @@
                                 {{ genre.localized_name }}
                             </a>
                         {% else %}
-                            <a href="{% url 'reader:genre_book_list' current_language.code genre.slug %}"
+                            <a href="{% url 'reader:section_genre_book_list' current_language.code book.bookmaster.section.slug genre.slug %}"
                                class="badge bg-secondary text-decoration-none"
                                style="font-size: 0.85rem; padding: 0.4rem 0.8rem;">
                                 {% if genre.parent_localized_name %}

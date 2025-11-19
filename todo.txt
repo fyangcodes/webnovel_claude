@@ -1,6 +1,7 @@
-section genre tag search
 section url and reader UI htmx for genres?
-remove tags in filter
+more styling for section nav button, color, fullrounded, font etc
+
+search bar with flag, all section or this section
 
 add author model
 

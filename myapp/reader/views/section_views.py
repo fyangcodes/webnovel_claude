@@ -71,6 +71,9 @@ class SectionHomeView(BaseBookListView):
         section = self.get_section()
         language_code = self.kwargs.get("language_code")
 
+        # Show section nav on section home (CRITICAL - primary section navigation)
+        context['show_section_nav'] = True
+
         # Add section to context with localized name
         context["section"] = section
         context["section_localized_name"] = section.get_localized_name(language_code)
@@ -154,6 +157,9 @@ class SectionBookListView(BaseBookListView):
         section = self.get_section()
         language_code = self.kwargs.get("language_code")
 
+        # Show section nav on section book list (CRITICAL - only way to switch sections)
+        context['show_section_nav'] = True
+
         # Add section to context
         context["section"] = section
         context["section_localized_name"] = section.get_localized_name(language_code)
@@ -163,57 +169,69 @@ class SectionBookListView(BaseBookListView):
         context["selected_tag"] = self.request.GET.get("tag", "")
         context["selected_status"] = self.request.GET.get("status", "")
 
-        # Add breadcrumb data
-        breadcrumbs = [{
-            'type': 'section',
-            'name': section.get_localized_name(language_code),
-            'slug': section.slug,
-            'url': reverse('reader:section_home', args=[language_code, section.slug])
-        }]
+        # Get all genres for this section
+        all_section_genres = cache.get_cached_genres_flat(section_id=section.id)
 
-        # Genre breadcrumb
+        # Separate primary genres with localized names
+        primary_genres = []
+        for g in all_section_genres:
+            if g.is_primary:
+                g.localized_name = g.get_localized_name(language_code)
+                primary_genres.append(g)
+
+        context["primary_genres"] = primary_genres
+
+        # Genre hierarchy for sub-genres section
         genre_slug = self.request.GET.get("genre")
+        primary_genre = None
+        secondary_genres = []
+
         if genre_slug:
             genre = Genre.objects.select_related('section', 'parent').filter(
                 slug=genre_slug, section=section
             ).first()
+
             if genre:
                 context["current_genre"] = genre
                 context["current_genre_localized_name"] = genre.get_localized_name(language_code)
 
-                # Add parent genre if exists
-                if genre.parent:
-                    breadcrumbs.append({
-                        'type': 'genre',
-                        'name': genre.parent.get_localized_name(language_code),
-                        'slug': genre.parent.slug,
-                        'url': f"?genre={genre.parent.slug}",
-                        'is_parent': True
-                    })
+                # Determine primary genre and get sub-genres
+                if genre.is_primary:
+                    # Primary genre selected
+                    primary_genre = genre
+                    primary_genre.localized_name = genre.get_localized_name(language_code)
+                    primary_genre.is_active_selection = (genre_slug == genre.slug)
 
-                breadcrumbs.append({
-                    'type': 'genre',
-                    'name': genre.get_localized_name(language_code),
-                    'slug': genre.slug,
-                    'url': f"?genre={genre.slug}"
-                })
+                    # Get all sub-genres for this primary
+                    for g in all_section_genres:
+                        if not g.is_primary and g.parent_id == genre.id:
+                            g.localized_name = g.get_localized_name(language_code)
+                            g.is_active_selection = False  # None selected yet
+                            secondary_genres.append(g)
+                else:
+                    # Sub-genre selected
+                    primary_genre = genre.parent
+                    if primary_genre:
+                        primary_genre.localized_name = primary_genre.get_localized_name(language_code)
+                        primary_genre.is_active_selection = False  # Parent not directly selected
 
-        # Tag breadcrumb
+                        # Get all sibling sub-genres
+                        for g in all_section_genres:
+                            if not g.is_primary and g.parent_id == primary_genre.id:
+                                g.localized_name = g.get_localized_name(language_code)
+                                g.is_active_selection = (genre_slug == g.slug)
+                                secondary_genres.append(g)
+
+        context["primary_genre"] = primary_genre
+        context["secondary_genres"] = secondary_genres
+
+        # Tag context
         tag_slug = self.request.GET.get("tag")
         if tag_slug:
             tag = Tag.objects.filter(slug=tag_slug).first()
             if tag:
                 context["current_tag"] = tag
                 context["current_tag_localized_name"] = tag.get_localized_name(language_code)
-                breadcrumbs.append({
-                    'type': 'tag',
-                    'name': tag.get_localized_name(language_code),
-                    'slug': tag.slug,
-                    'url': f"?tag={tag.slug}",
-                    'category': tag.get_category_display()
-                })
-
-        context["breadcrumbs"] = breadcrumbs
 
         return context
 
@@ -260,6 +278,9 @@ class SectionBookDetailView(BaseBookDetailView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         section = self.get_section()
+
+        # Show section nav on book detail (for discoverability)
+        context['show_section_nav'] = True
 
         # Get all published chapters
         all_chapters = (
@@ -341,6 +362,9 @@ class SectionChapterDetailView(BaseReaderView, DetailView):
         context = super().get_context_data(**kwargs)
         book = self.object.book
         context["book"] = book
+
+        # HIDE section nav on chapter reading (reading immersion priority)
+        context['show_section_nav'] = False
 
         # Add section localized name to book for template
         language_code = self.kwargs.get("language_code")
@@ -452,6 +476,9 @@ class SectionSearchView(BaseBookListView):
         section = self.get_section()
         language_code = self.kwargs.get("language_code")
 
+        # Show section nav on section search (CRITICAL - only way to switch sections)
+        context['show_section_nav'] = True
+
         # Add section to context
         context["section"] = section
         context["section_localized_name"] = section.get_localized_name(language_code)
@@ -473,6 +500,62 @@ class SectionSearchView(BaseBookListView):
         context["selected_genre"] = self.request.GET.get("genre", "")
         context["selected_tag"] = self.request.GET.get("tag", "")
         context["selected_status"] = self.request.GET.get("status", "")
+
+        # Get all genres for this section
+        all_section_genres = cache.get_cached_genres_flat(section_id=section.id)
+
+        # Separate primary genres with localized names
+        primary_genres = []
+        for g in all_section_genres:
+            if g.is_primary:
+                g.localized_name = g.get_localized_name(language_code)
+                primary_genres.append(g)
+
+        context["primary_genres"] = primary_genres
+
+        # Genre hierarchy for sub-genres section
+        genre_slug = self.request.GET.get("genre")
+        primary_genre = None
+        secondary_genres = []
+
+        if genre_slug:
+            genre = Genre.objects.select_related('section', 'parent').filter(
+                slug=genre_slug, section=section
+            ).first()
+
+            if genre:
+                context["current_genre"] = genre
+                context["current_genre_localized_name"] = genre.get_localized_name(language_code)
+
+                # Determine primary genre and get sub-genres
+                if genre.is_primary:
+                    # Primary genre selected
+                    primary_genre = genre
+                    primary_genre.localized_name = genre.get_localized_name(language_code)
+                    primary_genre.is_active_selection = (genre_slug == genre.slug)
+
+                    # Get all sub-genres for this primary
+                    for g in all_section_genres:
+                        if not g.is_primary and g.parent_id == genre.id:
+                            g.localized_name = g.get_localized_name(language_code)
+                            g.is_active_selection = False  # None selected yet
+                            secondary_genres.append(g)
+                else:
+                    # Sub-genre selected
+                    primary_genre = genre.parent
+                    if primary_genre:
+                        primary_genre.localized_name = primary_genre.get_localized_name(language_code)
+                        primary_genre.is_active_selection = False  # Parent not directly selected
+
+                        # Get all sibling sub-genres
+                        for g in all_section_genres:
+                            if not g.is_primary and g.parent_id == primary_genre.id:
+                                g.localized_name = g.get_localized_name(language_code)
+                                g.is_active_selection = (genre_slug == g.slug)
+                                secondary_genres.append(g)
+
+        context["primary_genre"] = primary_genre
+        context["secondary_genres"] = secondary_genres
 
         return context
 

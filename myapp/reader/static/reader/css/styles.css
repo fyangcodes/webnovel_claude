@@ -254,6 +254,11 @@ body {
     min-width: 100px;
 }
 
+/* Wider minimum width for "All" filter buttons */
+.btn-min-width-lg {
+    min-width: 150px;
+}
+
 /* ===========================
    Card Styles
    =========================== */

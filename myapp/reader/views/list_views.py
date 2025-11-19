@@ -40,6 +40,9 @@ class WelcomeView(BaseBookListView):
         context = super().get_context_data(**kwargs)
         language_code = self.kwargs.get("language_code")
 
+        # Show section nav on welcome page (primary cross-section navigation)
+        context['show_section_nav'] = True
+
         # Get featured genres from settings grouped by section
         featured_genre_ids = getattr(settings, "FEATURED_GENRES", [])
         if featured_genre_ids:
