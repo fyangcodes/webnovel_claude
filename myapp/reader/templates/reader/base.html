@@ -1,6 +1,7 @@
 {% load static %}
 {% load books_extras %}
 {% load reader_extras %}
+{% load reader_tags %}
 
 <!DOCTYPE html>
 <html lang="{{ current_language.code|default:'en' }}">
@@ -30,9 +31,9 @@
         <div class="container">
             <!-- Left side: Hamburger + Logo -->
             <div class="d-flex align-items-center gap-2">
-                {% if genres %}
-                <!-- Offcanvas genre-->
-                <button class="btn btn-nav" type="button" data-bs-toggle="offcanvas" data-bs-target="#genreOffcanvas">
+                {% if sections and current_language and show_section_nav %}
+                <!-- Offcanvas for section navigation (Mobile only) -->
+                <button class="btn btn-nav d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#genreOffcanvas">
                     <i class="fa fa-bars"></i>
                 </button>
                 {% endif %}
@@ -43,24 +44,49 @@
                 </a>
             </div>
 
-            <!-- Search Box (Desktop) -->
-            {% if current_language and section %}
-            <div class="flex-grow-1 mx-3 d-none d-md-block" style="max-width: 400px;">
-                <form method="get" action="{% url 'reader:section_search' current_language.code section.slug %}" class="d-flex">
-                    <input type="text"
-                           name="q"
-                           class="form-control form-control-sm"
-                           placeholder="Search{% if section %} in {{ section_localized_name }}{% else %} books{% endif %}..."
-                           value="{% if request.resolver_match.url_name == 'search' or request.resolver_match.url_name == 'section_search' %}{{ request.GET.q }}{% endif %}">
-                    <button class="btn btn-sm btn-outline-secondary ms-1" type="submit">
+            <!-- Right side: Search + Settings -->
+            <div class="d-flex align-items-center gap-2">
+                <!-- Search Box (Desktop) -->
+                {% if current_language %}
+                <div class="d-none d-md-block">
+                    <form method="get" action="{% if section %}{% url 'reader:section_search' current_language.code section.slug %}{% else %}{% url 'reader:search' current_language.code %}{% endif %}" class="d-flex">
+                        <input type="text"
+                               name="q"
+                               class="form-control form-control-sm"
+                               style="min-width: 250px;"
+                               placeholder="Search{% if section %} in {{ section_localized_name }}{% else %} all books{% endif %}..."
+                               value="{% if request.resolver_match.url_name == 'search' or request.resolver_match.url_name == 'section_search' %}{{ request.GET.q }}{% endif %}">
+                        <button class="btn btn-sm btn-outline-secondary ms-1" type="submit">
+                            <i class="fas fa-search"></i>
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Search Icon (Mobile) -->
+                <div class="dropdown d-md-none">
+                    <button class="btn btn-nav" type="button" id="mobileSearchDropdown" data-bs-toggle="dropdown" aria-expanded="false">
                         <i class="fas fa-search"></i>
                     </button>
-                </form>
-            </div>
-            {% endif %}
+                    <div class="dropdown-menu dropdown-menu-end p-3" aria-labelledby="mobileSearchDropdown" style="min-width: 280px;">
+                        <form method="get" action="{% if section %}{% url 'reader:section_search' current_language.code section.slug %}{% else %}{% url 'reader:search' current_language.code %}{% endif %}">
+                            <div class="d-flex">
+                                <input type="text"
+                                       name="q"
+                                       class="form-control form-control-sm"
+                                       placeholder="Search{% if section %} in {{ section_localized_name }}{% else %} all books{% endif %}..."
+                                       value="{% if request.resolver_match.url_name == 'search' or request.resolver_match.url_name == 'section_search' %}{{ request.GET.q }}{% endif %}"
+                                       autofocus>
+                                <button class="btn btn-sm btn-outline-secondary ms-1" type="submit">
+                                    <i class="fas fa-search"></i>
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+                {% endif %}
 
-            <!-- Dropdown configuration -->
-            <div class="dropdown">
+                <!-- Dropdown configuration -->
+                <div class="dropdown">
                 <a class="btn btn-nav dropdown-toggle" id="navbarDropdown" role="button" data-bs-toggle="dropdown">
                     <i class="fa fa-gear"></i>
                 </a>
@@ -91,6 +117,7 @@
                         {% endif %}
                     </li>
                 </ul>
+                </div>
             </div>
         </div>
     </nav>
@@ -102,17 +129,21 @@
             <div class="d-flex gap-2 flex-wrap align-items-center">
                 <!-- All Sections Link (Homepage) -->
                 <a href="{% url 'reader:welcome' current_language.code %}"
-                   class="btn btn-sm {% if not section %}btn-primary-custom{% else %}btn-outline-primary-custom{% endif %}">
+                   class="section-nav-btn rounded-pill {% if not section %}active{% endif %}"
+                   style="border-color: var(--color-primary); color: var(--color-primary);{% if not section %} background-color: var(--color-primary);{% endif %}"
+                   data-section-color="true">
+                    <i class="fas fa-home me-1"></i>
                     All
                 </a>
 
                 <!-- Section Home Links -->
                 {% for nav_section in sections %}
                 <a href="{% url 'reader:section_home' current_language.code nav_section.slug %}"
-                   class="btn btn-sm {% if section and section.slug == nav_section.slug %}btn-primary-custom{% else %}btn-outline-primary-custom{% endif %}"
+                   class="section-nav-btn rounded-pill {% if section and section.slug == nav_section.slug %}active{% endif %}"
+                   {% if nav_section|style_color %}style="border-color: {{ nav_section|style_color }}; color: {{ nav_section|style_color }};{% if section and section.slug == nav_section.slug %} background-color: {{ nav_section|style_color }};{% endif %}" data-section-color="true"{% endif %}
                    data-ajax-nav="section"
                    data-section-slug="{{ nav_section.slug }}">
-                    {% if nav_section.icon %}<i class="{{ nav_section.icon }} me-1"></i>{% endif %}
+                    {% if nav_section|style_icon %}<i class="{{ nav_section|style_icon }} me-1"></i>{% endif %}
                     {{ nav_section.localized_name }}
                 </a>
                 {% endfor %}
@@ -123,95 +154,35 @@
 
     <!-- Main Content -->
     <main class="container">
-        <!-- Offcanvas for sections and genres -->
-        {% if genres_hierarchical or genres %}
+        <!-- Offcanvas for sections and genres (Mobile) -->
+        {% if sections and current_language and show_section_nav %}
         <div class="offcanvas offcanvas-start" tabindex="-1" id="genreOffcanvas">
             <div class="offcanvas-header">
-                <h5 class="offcanvas-title">Browse</h5>
+                <h5 class="offcanvas-title">Sections</h5>
                 <button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas" aria-label="Close"></button>
             </div>
             <div class="offcanvas-body">
                 <!-- MOBILE: Section Navigation -->
-                {% if sections and current_language %}
-                <div class="mb-4">
-                    <h6 class="text-uppercase text-muted mb-2" style="font-size: 0.75rem;">
-                        <i class="fas fa-th-large me-1"></i> Sections
-                    </h6>
-                    <div class="d-grid gap-2">
-                        <!-- All Sections -->
-                        <a href="{% url 'reader:welcome' current_language.code %}"
-                           class="btn btn-sm {% if not section %}btn-primary-custom{% else %}btn-outline-primary-custom{% endif %}">
-                            All Sections
-                        </a>
-                        <!-- Individual Sections -->
-                        {% for nav_section in sections %}
-                        <a href="{% url 'reader:section_home' current_language.code nav_section.slug %}"
-                           class="btn btn-sm {% if section and section.slug == nav_section.slug %}btn-primary-custom{% else %}btn-outline-primary-custom{% endif %}">
-                            {% if nav_section.icon %}<i class="{{ nav_section.icon }} me-1"></i>{% endif %}
-                            {{ nav_section.localized_name }}
-                        </a>
-                        {% endfor %}
-                    </div>
-                    <hr class="my-3">
-                </div>
-                {% endif %}
-
-                <!-- All Books Link -->
-                {% if section %}
-                <div class="mb-3">
-                    <a class="btn btn-outline-primary-custom w-100 fw-bold" href="{% url 'reader:section_book_list' current_language.code section.slug %}">
-                        <i class="fas fa-th"></i> All Books in {{ section.localized_name }}
+                <div class="d-flex flex-column gap-2">
+                    <!-- All Sections Link (Homepage) -->
+                    <a href="{% url 'reader:welcome' current_language.code %}"
+                       class="section-nav-btn rounded-pill {% if not section %}active{% endif %}"
+                       style="border-color: var(--color-primary); color: var(--color-primary);{% if not section %} background-color: var(--color-primary);{% endif %}"
+                       data-section-color="true">
+                        <i class="fas fa-home me-1"></i>
+                        All
                     </a>
-                </div>
-                {% endif %}
 
-                {% if genres_hierarchical %}
-                    <!-- Hierarchical Sections and Genres -->
-                    {% for section_id, section_data in genres_hierarchical.items %}
-                    <div class="mb-4">
-                        <!-- Section Header (clickable - goes to section home) -->
-                        <a href="{% url 'reader:section_home' current_language.code section_data.section.slug %}"
-                           class="text-decoration-none">
-                            <h6 class="text-uppercase text-muted mb-2" style="font-size: 0.75rem;">
-                                {% if section_data.section.icon %}<i class="{{ section_data.section.icon }} me-1"></i>{% endif %}
-                                {{ section_data.section.localized_name }}
-                            </h6>
-                        </a>
-
-                        <!-- Primary Genres in this Section -->
-                        {% for genre in section_data.primary_genres %}
-                        <div class="mb-2">
-                            <!-- Primary Genre (section-scoped) -->
-                            <a class="btn btn-outline-primary-custom btn-sm w-100 text-start"
-                               href="{% url 'reader:section_genre_book_list' current_language.code section_data.section.slug genre.slug %}">
-                                {{ genre.localized_name }}
-                            </a>
-
-                            <!-- Sub-genres (if any) -->
-                            {% with sub_genres=section_data.sub_genres|get_sub_genres:genre.id %}
-                            {% if sub_genres %}
-                            <div class="ms-3 mt-1">
-                                {% for sub_genre in sub_genres %}
-                                <a class="btn btn-link btn-sm text-decoration-none text-start p-1"
-                                   href="{% url 'reader:section_genre_book_list' current_language.code section_data.section.slug sub_genre.slug %}"
-                                   style="font-size: 0.85rem;">
-                                    <i class="fas fa-angle-right fa-xs"></i> {{ sub_genre.localized_name }}
-                                </a>
-                                {% endfor %}
-                            </div>
-                            {% endif %}
-                            {% endwith %}
-                        </div>
-                        {% endfor %}
-                    </div>
+                    <!-- Section Home Links -->
+                    {% for nav_section in sections %}
+                    <a href="{% url 'reader:section_home' current_language.code nav_section.slug %}"
+                       class="section-nav-btn rounded-pill {% if section and section.slug == nav_section.slug %}active{% endif %}"
+                       {% if nav_section|style_color %}style="border-color: {{ nav_section|style_color }}; color: {{ nav_section|style_color }};{% if section and section.slug == nav_section.slug %} background-color: {{ nav_section|style_color }};{% endif %}" data-section-color="true"{% endif %}>
+                        {% if nav_section|style_icon %}<i class="{{ nav_section|style_icon }} me-1"></i>{% endif %}
+                        {{ nav_section.localized_name }}
+                    </a>
                     {% endfor %}
-                {% else %}
-                    <!-- Fallback: Flat genre list (deprecated - not used in section-scoped architecture) -->
-                    {% comment %}
-                    This fallback is no longer functional as all genres require section context.
-                    The hierarchical view above handles all cases.
-                    {% endcomment %}
-                {% endif %}
+                </div>
             </div>
         </div>
         {% endif %}
@@ -289,6 +260,49 @@
                     sunIcon.style.display = 'none';
                 }
             }
+        })();
+    </script>
+
+    <!-- Mobile Search Dropdown Script -->
+    <script>
+        (function() {
+            // Prevent dropdown from closing when clicking inside the search form
+            const mobileSearchDropdown = document.getElementById('mobileSearchDropdown');
+            if (mobileSearchDropdown) {
+                const dropdownMenu = mobileSearchDropdown.nextElementSibling;
+                if (dropdownMenu) {
+                    dropdownMenu.addEventListener('click', function(e) {
+                        e.stopPropagation();
+                    });
+                }
+            }
+        })();
+    </script>
+
+    <!-- Section Nav Button Hover Effect Script -->
+    <script>
+        (function() {
+            // Add hover effect to fill inactive section buttons with their border color
+            document.addEventListener('DOMContentLoaded', function() {
+                const sectionButtons = document.querySelectorAll('.section-nav-btn');
+
+                sectionButtons.forEach(button => {
+                    button.addEventListener('mouseenter', function() {
+                        if (!this.classList.contains('active') && this.hasAttribute('data-section-color')) {
+                            const borderColor = this.style.borderColor;
+                            if (borderColor) {
+                                this.style.backgroundColor = borderColor;
+                            }
+                        }
+                    });
+
+                    button.addEventListener('mouseleave', function() {
+                        if (!this.classList.contains('active')) {
+                            this.style.backgroundColor = '';
+                        }
+                    });
+                });
+            });
         })();
     </script>
 

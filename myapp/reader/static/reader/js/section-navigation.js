@@ -268,17 +268,62 @@
      * Update active state in section navigation
      */
     function updateSectionNav(activeSectionSlug) {
-        const sectionLinks = document.querySelectorAll('.section-nav a');
-        sectionLinks.forEach(link => {
-            const linkSection = link.getAttribute('href').match(/\/([a-z-]+)\/?$/)?.[1];
-            if (linkSection === activeSectionSlug) {
-                link.classList.add('btn-primary-custom');
-                link.classList.remove('btn-outline-primary-custom');
+        // Update section nav buttons
+        const sectionButtons = document.querySelectorAll('.section-nav-btn');
+        sectionButtons.forEach(button => {
+            const buttonSectionSlug = button.getAttribute('data-section-slug');
+
+            if (buttonSectionSlug === activeSectionSlug) {
+                // This is the active section button
+                button.classList.add('active');
+
+                // Update inline background-color if data-section-color exists
+                if (button.hasAttribute('data-section-color')) {
+                    const borderColor = button.style.borderColor;
+                    if (borderColor) {
+                        button.style.backgroundColor = borderColor;
+                    }
+                }
             } else {
-                link.classList.remove('btn-primary-custom');
-                link.classList.add('btn-outline-primary-custom');
+                // This is an inactive button
+                button.classList.remove('active');
+
+                // Remove background-color for inactive buttons (outline style)
+                if (button.hasAttribute('data-section-color')) {
+                    button.style.backgroundColor = '';
+                }
             }
         });
+
+        // Update search bar placeholder
+        updateSearchPlaceholder(activeSectionSlug);
+    }
+
+    /**
+     * Update search bar placeholder text and form action based on active section
+     */
+    function updateSearchPlaceholder(sectionSlug) {
+        const searchInput = document.querySelector('input[name="q"]');
+        const searchForm = searchInput ? searchInput.closest('form') : null;
+        if (!searchInput || !searchForm) return;
+
+        // Extract language code from current URL (e.g., /zh/ or /en/fiction/)
+        const languageMatch = window.location.pathname.match(/^\/([a-z]{2})\//);
+        const languageCode = languageMatch ? languageMatch[1] : 'en';
+
+        if (sectionSlug) {
+            // Section-specific search
+            const activeButton = document.querySelector(`.section-nav-btn[data-section-slug="${sectionSlug}"]`);
+            if (activeButton) {
+                const sectionName = activeButton.textContent.trim();
+                searchInput.placeholder = `Search in ${sectionName}...`;
+                searchForm.action = `/${languageCode}/${sectionSlug}/search/`;
+            }
+        } else {
+            // Welcome page - search all sections
+            searchInput.placeholder = 'Search all books...';
+            searchForm.action = `/${languageCode}/search/`;
+        }
     }
 
     /**

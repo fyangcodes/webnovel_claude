@@ -13,11 +13,13 @@ Options:
 
 from django.core.management.base import BaseCommand
 from django.db import transaction
+from django.contrib.contenttypes.models import ContentType
 from books.models import (
     Section, Genre, Tag, BookMaster, Book, BookGenre, BookTag,
     Language
 )
 from accounts.models import User
+from reader.models import StyleConfig
 
 
 class Command(BaseCommand):
@@ -63,7 +65,7 @@ class Command(BaseCommand):
         self.stdout.write(self.style.WARNING('Cleared all taxonomy data'))
 
     def seed_sections(self):
-        """Create sections"""
+        """Create sections and their styles"""
         sections_data = [
             {
                 'name': 'Fiction',
@@ -73,6 +75,10 @@ class Command(BaseCommand):
                     'zh': {'name': '小说'},
                     'es': {'name': 'Ficción'},
                     'fr': {'name': 'Fiction'},
+                },
+                'style': {
+                    'color': '#3498db',
+                    'icon': 'fas fa-book'
                 }
             },
             {
@@ -83,6 +89,10 @@ class Command(BaseCommand):
                     'zh': {'name': '耽美'},
                     'es': {'name': 'BL'},
                     'fr': {'name': 'BL'},
+                },
+                'style': {
+                    'color': '#e91e63',
+                    'icon': 'fas fa-heart'
                 }
             },
             {
@@ -93,6 +103,10 @@ class Command(BaseCommand):
                     'zh': {'name': '百合'},
                     'es': {'name': 'GL'},
                     'fr': {'name': 'GL'},
+                },
+                'style': {
+                    'color': '#9c27b0',
+                    'icon': 'fas fa-rainbow'
                 }
             },
             {
@@ -103,9 +117,15 @@ class Command(BaseCommand):
                     'zh': {'name': '非虚构'},
                     'es': {'name': 'No Ficción'},
                     'fr': {'name': 'Non-Fiction'},
+                },
+                'style': {
+                    'color': '#4caf50',
+                    'icon': 'fas fa-graduation-cap'
                 }
             },
         ]
+
+        section_ct = ContentType.objects.get_for_model(Section)
 
         for data in sections_data:
             section, created = Section.objects.get_or_create(
@@ -118,8 +138,35 @@ class Command(BaseCommand):
             )
             if created:
                 self.stdout.write(f'  Created section: {section.name}')
+
+                # Create StyleConfig for the section
+                if 'style' in data:
+                    StyleConfig.objects.create(
+                        content_type=section_ct,
+                        object_id=section.id,
+                        color=data['style'].get('color', ''),
+                        icon=data['style'].get('icon', ''),
+                        custom_styles={}
+                    )
+                    self.stdout.write(f'    Created style: {data["style"]["color"]} / {data["style"]["icon"]}')
             else:
                 self.stdout.write(f'  Section exists: {section.name}')
+
+                # Update or create StyleConfig for existing section
+                if 'style' in data:
+                    style, style_created = StyleConfig.objects.update_or_create(
+                        content_type=section_ct,
+                        object_id=section.id,
+                        defaults={
+                            'color': data['style'].get('color', ''),
+                            'icon': data['style'].get('icon', ''),
+                            'custom_styles': {}
+                        }
+                    )
+                    if style_created:
+                        self.stdout.write(f'    Created style: {data["style"]["color"]} / {data["style"]["icon"]}')
+                    else:
+                        self.stdout.write(f'    Updated style: {data["style"]["color"]} / {data["style"]["icon"]}')
 
     def seed_genres(self):
         """Create genres with hierarchical structure"""
@@ -321,6 +368,9 @@ class Command(BaseCommand):
             },
         ]
 
+        # Get ContentType for Genre
+        genre_ct = ContentType.objects.get_for_model(Genre)
+
         # Create primary genres first
         for data in genres_data:
             if data.get('is_primary', True):
@@ -330,15 +380,40 @@ class Command(BaseCommand):
                     defaults={
                         'name': data['name'],
                         'is_primary': data['is_primary'],
-                        'color': data.get('color', ''),
-                        'icon': data.get('icon', ''),
                         'translations': data.get('translations', {})
                     }
                 )
                 if created:
                     self.stdout.write(f'  Created primary genre: {genre.name}')
+
+                    # Create StyleConfig for genre if color/icon provided
+                    if data.get('color') or data.get('icon'):
+                        StyleConfig.objects.create(
+                            content_type=genre_ct,
+                            object_id=genre.id,
+                            color=data.get('color', ''),
+                            icon=data.get('icon', ''),
+                            custom_styles={}
+                        )
+                        self.stdout.write(f'    Created style: {data.get("color", "")} / {data.get("icon", "")}')
                 else:
                     self.stdout.write(f'  Genre exists: {genre.name}')
+
+                    # Update or create StyleConfig for existing genre
+                    if data.get('color') or data.get('icon'):
+                        style, style_created = StyleConfig.objects.update_or_create(
+                            content_type=genre_ct,
+                            object_id=genre.id,
+                            defaults={
+                                'color': data.get('color', ''),
+                                'icon': data.get('icon', ''),
+                                'custom_styles': {}
+                            }
+                        )
+                        if style_created:
+                            self.stdout.write(f'    Created style: {data.get("color", "")} / {data.get("icon", "")}')
+                        else:
+                            self.stdout.write(f'    Updated style: {data.get("color", "")} / {data.get("icon", "")}')
 
         # Create sub-genres (with parent references)
         for data in genres_data:

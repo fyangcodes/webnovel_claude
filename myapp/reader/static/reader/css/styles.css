@@ -372,6 +372,85 @@ footer.footer {
 }
 
 /* ===========================
+   Section Navigation Buttons
+   =========================== */
+
+/* Base styling for section nav buttons (outline style when not active) */
+.section-nav-btn {
+    padding: 0.6rem 1.5rem;
+    font-size: 1.1rem;
+    font-weight: 600;
+    border: 2px solid;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    text-decoration: none;
+}
+
+/* Non-active buttons have transparent background */
+.section-nav-btn:not(.active) {
+    background-color: transparent;
+}
+
+/* Active state - filled with solid color */
+.section-nav-btn.active {
+    color: white !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    transform: translateY(-1px);
+}
+
+/* Hover effect for inactive buttons - fill with border color */
+.section-nav-btn:not(.active):hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    text-decoration: none;
+}
+
+/* Make inactive buttons fill with their border color on hover */
+.section-nav-btn:not(.active)[data-section-color]:hover {
+    /* Background color is set via inline styles from border-color */
+    color: white !important;
+}
+
+/* Hover effect for active buttons - brighten */
+.section-nav-btn.active:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    filter: brightness(1.15);
+    text-decoration: none;
+}
+
+/* Fallback colors if section color is not set */
+.section-nav-btn:not([data-section-color]) {
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+}
+
+.section-nav-btn:not([data-section-color]).active {
+    background-color: var(--color-primary);
+    border-color: var(--color-primary);
+}
+
+/* Mobile offcanvas section navigation */
+.offcanvas .section-nav-btn {
+    width: 100%;
+    justify-content: center;
+    text-align: center;
+}
+
+/* Mobile search dropdown */
+#mobileSearchDropdown + .dropdown-menu {
+    /* Prevent dropdown from closing when clicking inside */
+    pointer-events: auto;
+}
+
+#mobileSearchDropdown + .dropdown-menu form {
+    /* Prevent form submission from being blocked */
+    pointer-events: auto;
+}
+
+/* ===========================
    Reading Content
    =========================== */
 /* Section Headers */

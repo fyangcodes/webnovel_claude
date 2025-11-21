@@ -138,6 +138,12 @@ urlpatterns = [
         views.WelcomeView.as_view(),
         name="welcome",
     ),
+    # Global search (cross-section search from welcome page)
+    path(
+        "<str:language_code>/search/",
+        views.BookSearchView.as_view(),
+        name="search",
+    ),
     # REMOVED: Cross-section routes (migrated to fully section-scoped architecture)
     # These routes have been removed as part of navigation refactoring
     # All browsing is now section-scoped: /<language>/<section>/books/
@@ -151,11 +157,6 @@ urlpatterns = [
     #     "<str:language_code>/tag/<slug:tag_slug>/",
     #     views.TagBookListView.as_view(),
     #     name="tag_book_list",
-    # ),
-    # path(
-    #     "<str:language_code>/search/",
-    #     views.BookSearchView.as_view(),
-    #     name="search",
     # ),
     # path(
     #     "<str:language_code>/books/",

@@ -42,11 +42,6 @@ class Section(TimeStampedModel):
         blank=True,
         help_text="Description of this section"
     )
-    icon = models.CharField(
-        max_length=50,
-        blank=True,
-        help_text="FontAwesome icon class (e.g., 'fa-book')"
-    )
     order = models.PositiveSmallIntegerField(
         default=0,
         help_text="Display order (lower = first)"
@@ -134,16 +129,6 @@ class Genre(TimeStampedModel):
     is_primary = models.BooleanField(
         default=True,
         help_text="Primary genres appear in main navigation; sub-genres are refinements"
-    )
-    icon = models.CharField(
-        max_length=50,
-        blank=True,
-        help_text="FontAwesome icon class (e.g., 'fa-heart')"
-    )
-    color = models.CharField(
-        max_length=7,
-        blank=True,
-        help_text="Hex color code for UI styling (e.g., '#FF5733')"
     )
     translations = models.JSONField(
         default=dict,

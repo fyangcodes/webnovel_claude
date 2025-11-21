@@ -1,9 +1,11 @@
-section url and reader UI htmx for genres?
-more styling for section nav button, color, fullrounded, font etc
-
-search bar with flag, all section or this section
 
 add author model
+
+search book title, author, section, genre, tag
+
+terms with frequency and weight for search
+
+cache for section styling
 
 improve reader views design
 - i18n
@@ -13,3 +15,5 @@ SEO
 container flower
 
 deployment
+
+section url and reader UI htmx for genres?
