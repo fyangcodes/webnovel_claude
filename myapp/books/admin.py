@@ -15,6 +15,7 @@ from .models import (
     Tag,
     BookTag,
     BookKeyword,
+    Author,
     # Jobs
     TranslationJob,
     AnalysisJob,
@@ -199,13 +200,43 @@ class SectionAdmin(admin.ModelAdmin):
 
     fieldsets = (
         (None, {
-            "fields": ("pk", "name", "slug", "description", "icon", "order", "is_mature")
+            "fields": ("pk", "name", "slug", "description", "order", "is_mature")
         }),
         (
             "Translations",
             {
                 "fields": ("translations",),
                 "description": 'JSON field for localized names and descriptions. Format: {"zh": {"name": "小说", "description": "..."}, "en": {...}}',
+                "classes": ("collapse",),
+            },
+        ),
+        (
+            "Timestamps",
+            {
+                "fields": ("created_at", "updated_at"),
+                "classes": ("collapse",),
+            },
+        ),
+    )
+
+
+@admin.register(Author)
+class AuthorAdmin(admin.ModelAdmin):
+    list_display = ["name", "slug", "created_at"]
+    search_fields = ["name", "slug"]
+    prepopulated_fields = {"slug": ("name",)}
+    readonly_fields = ["pk", "created_at", "updated_at"]
+    ordering = ["name"]
+
+    fieldsets = (
+        (None, {
+            "fields": ("pk", "name", "slug", "description", "avatar")
+        }),
+        (
+            "Translations",
+            {
+                "fields": ("translations",),
+                "description": 'JSON field for localized names and descriptions. Format: {"zh": {"name": "天蚕土豆", "description": "..."}, "en": {...}}',
                 "classes": ("collapse",),
             },
         ),
@@ -233,13 +264,6 @@ class GenreAdmin(admin.ModelAdmin):
         (None, {
             "fields": ("pk", "section", "name", "slug", "description", "parent", "is_primary")
         }),
-        (
-            "Display Options",
-            {
-                "fields": ("icon", "color"),
-                "description": "Visual customization for genre badges and navigation",
-            },
-        ),
         (
             "Translations",
             {
@@ -393,6 +417,7 @@ class BookMasterAdmin(admin.ModelAdmin):
     form = BookMasterAdminForm  # Use custom form with validation
     list_display = [
         "canonical_title",
+        "author",
         "section",
         "owner",
         "original_language",
@@ -400,15 +425,15 @@ class BookMasterAdmin(admin.ModelAdmin):
         "tag_list",
         "created_at",
     ]
-    list_filter = ["section", "original_language", "created_at"]
-    search_fields = ["canonical_title"]
+    list_filter = ["section", "author", "original_language", "created_at"]
+    search_fields = ["canonical_title", "author__name"]
     readonly_fields = ["pk"]
     ordering = ["canonical_title"]
     inlines = [BookGenreInline, BookTagInline]
 
     fieldsets = (
         (None, {
-            "fields": ("pk", "canonical_title", "section", "owner", "original_language")
+            "fields": ("pk", "canonical_title", "author", "section", "owner", "original_language")
         }),
         (
             "Images",

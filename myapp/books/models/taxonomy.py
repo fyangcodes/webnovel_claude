@@ -8,6 +8,7 @@ This module contains models for categorizing and tagging books:
 - Tag: Flexible tagging system for book attributes
 - BookTag: Through model for book-tag relationships
 - BookKeyword: Denormalized search index for fast keyword lookups
+- Author: Language-independent author entity
 """
 
 from django.conf import settings
@@ -15,11 +16,11 @@ from django.db import models
 from django.core.exceptions import ValidationError
 from django.utils.text import slugify
 
-from books.models.base import TimeStampedModel
+from books.models.base import TimeStampModel, LocalizationModel
 from books.choices import TagCategory, TagSource, KeywordType
 
 
-class Section(TimeStampedModel):
+class Section(TimeStampModel, LocalizationModel):
     """
     Top-level content category for books.
 
@@ -28,6 +29,7 @@ class Section(TimeStampedModel):
     Examples: Fiction, BL (Boys' Love), GL (Girls' Love), Non-fiction
     """
 
+    # Override name and slug to add unique constraint
     name = models.CharField(
         max_length=50,
         unique=True,
@@ -38,10 +40,8 @@ class Section(TimeStampedModel):
         unique=True,
         help_text="URL-friendly identifier"
     )
-    description = models.TextField(
-        blank=True,
-        help_text="Description of this section"
-    )
+
+    # Section-specific fields
     order = models.PositiveSmallIntegerField(
         default=0,
         help_text="Display order (lower = first)"
@@ -49,11 +49,6 @@ class Section(TimeStampedModel):
     is_mature = models.BooleanField(
         default=False,
         help_text="Whether this section contains mature content requiring age verification"
-    )
-    translations = models.JSONField(
-        default=dict,
-        blank=True,
-        help_text="Localized names and descriptions. Format: {language_code: {name, description}}"
     )
 
     class Meta:
@@ -68,25 +63,8 @@ class Section(TimeStampedModel):
     def __str__(self):
         return self.name
 
-    def save(self, *args, **kwargs):
-        if not self.slug:
-            self.slug = slugify(self.name)
-        super().save(*args, **kwargs)
 
-    def get_localized_name(self, language_code):
-        """Get localized section name or fall back to default"""
-        if language_code in self.translations:
-            return self.translations[language_code].get('name', self.name)
-        return self.name
-
-    def get_localized_description(self, language_code):
-        """Get localized section description or fall back to default"""
-        if language_code in self.translations:
-            return self.translations[language_code].get('description', self.description)
-        return self.description
-
-
-class Genre(TimeStampedModel):
+class Genre(TimeStampModel, LocalizationModel):
     """
     Hierarchical genre classification system.
 
@@ -98,14 +76,7 @@ class Genre(TimeStampedModel):
     enforced by unique_together on (section, slug).
     """
 
-    section = models.ForeignKey(
-        Section,
-        on_delete=models.CASCADE,
-        related_name='genres',
-        null=True,  # Temporarily nullable for migration
-        blank=True,
-        help_text="The section this genre belongs to"
-    )
+    # Override name and slug for Genre-specific constraints
     name = models.CharField(
         max_length=50,
         help_text="Genre name (can repeat across sections)"
@@ -114,9 +85,15 @@ class Genre(TimeStampedModel):
         max_length=50,
         help_text="URL-friendly identifier (unique within section)"
     )
-    description = models.TextField(
+
+    # Genre-specific fields
+    section = models.ForeignKey(
+        Section,
+        on_delete=models.CASCADE,
+        related_name='genres',
+        null=True,  # Temporarily nullable for migration
         blank=True,
-        help_text="Description of this genre"
+        help_text="The section this genre belongs to"
     )
     parent = models.ForeignKey(
         'self',
@@ -129,11 +106,6 @@ class Genre(TimeStampedModel):
     is_primary = models.BooleanField(
         default=True,
         help_text="Primary genres appear in main navigation; sub-genres are refinements"
-    )
-    translations = models.JSONField(
-        default=dict,
-        blank=True,
-        help_text="Localized names and descriptions. Format: {language_code: {name, description}}"
     )
 
     class Meta:
@@ -202,20 +174,8 @@ class Genre(TimeStampedModel):
                               f"{self.parent.parent.name} creates a loop back to {self.name}."
                 })
 
-    def get_localized_name(self, language_code):
-        """Get localized genre name or fall back to default"""
-        if language_code in self.translations:
-            return self.translations[language_code].get('name', self.name)
-        return self.name
 
-    def get_localized_description(self, language_code):
-        """Get localized genre description or fall back to default"""
-        if language_code in self.translations:
-            return self.translations[language_code].get('description', self.description)
-        return self.description
-
-
-class BookGenre(TimeStampedModel):
+class BookGenre(TimeStampModel):
     """
     Through model for ordered book-genre relationships.
 
@@ -258,7 +218,7 @@ class BookGenre(TimeStampedModel):
             })
 
 
-class Tag(TimeStampedModel):
+class Tag(TimeStampModel, LocalizationModel):
     """
     Flexible tagging system for book attributes.
 
@@ -270,6 +230,7 @@ class Tag(TimeStampedModel):
     - Content warnings (violence, sexual content)
     """
 
+    # Override name and slug to add unique constraint
     name = models.CharField(
         max_length=50,
         unique=True,
@@ -280,19 +241,12 @@ class Tag(TimeStampedModel):
         unique=True,
         help_text="URL-friendly identifier"
     )
+
+    # Tag-specific field
     category = models.CharField(
         max_length=20,
         choices=TagCategory.choices,
         help_text="Category for organizing tags"
-    )
-    description = models.TextField(
-        blank=True,
-        help_text="Description of this tag"
-    )
-    translations = models.JSONField(
-        default=dict,
-        blank=True,
-        help_text="Localized names and descriptions. Format: {language_code: {name, description}}"
     )
 
     class Meta:
@@ -307,25 +261,8 @@ class Tag(TimeStampedModel):
     def __str__(self):
         return f"{self.name} ({self.get_category_display()})"
 
-    def save(self, *args, **kwargs):
-        if not self.slug:
-            self.slug = slugify(self.name)
-        super().save(*args, **kwargs)
 
-    def get_localized_name(self, language_code):
-        """Get localized tag name or fall back to default"""
-        if language_code in self.translations:
-            return self.translations[language_code].get('name', self.name)
-        return self.name
-
-    def get_localized_description(self, language_code):
-        """Get localized tag description or fall back to default"""
-        if language_code in self.translations:
-            return self.translations[language_code].get('description', self.description)
-        return self.description
-
-
-class BookTag(TimeStampedModel):
+class BookTag(TimeStampModel):
     """
     Through model for book-tag relationships with metadata.
 
@@ -364,7 +301,7 @@ class BookTag(TimeStampedModel):
         return f"{self.bookmaster.canonical_title} - {self.tag.name} ({self.get_source_display()})"
 
 
-class BookKeyword(TimeStampedModel):
+class BookKeyword(TimeStampModel):
     """
     Denormalized keyword index for fast multi-language search.
 
@@ -412,3 +349,44 @@ class BookKeyword(TimeStampedModel):
 
     def __str__(self):
         return f"{self.bookmaster.canonical_title} - {self.keyword} ({self.get_keyword_type_display()})"
+
+
+class Author(TimeStampModel, LocalizationModel):
+    """
+    Language-independent author entity.
+
+    Authors are shared across all language versions of books.
+    Translators are stored in the Book model (language-specific).
+    """
+
+    # Override name and slug to add unique constraint
+    name = models.CharField(
+        max_length=100,
+        unique=True,
+        help_text="Author's canonical name"
+    )
+    slug = models.SlugField(
+        max_length=100,
+        unique=True,
+        help_text="URL-friendly identifier"
+    )
+
+    # Author-specific field
+    avatar = models.ImageField(
+        upload_to="authors/",
+        blank=True,
+        null=True,
+        help_text="Author profile image"
+    )
+
+    class Meta:
+        ordering = ['name']
+        verbose_name = "Author"
+        verbose_name_plural = "Taxonomy - Authors"
+        indexes = [
+            models.Index(fields=['slug']),
+            models.Index(fields=['name']),
+        ]
+
+    def __str__(self):
+        return self.name

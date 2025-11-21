@@ -17,14 +17,12 @@ from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse
 from django.http import Http404
 from django.core.paginator import Paginator
-from django.db.models import Case, When
 from django.views import View
+from django.views.generic import DetailView
 
 from books.models import Book, Chapter, Genre, Tag, BookGenre
-from books.utils.search import BookSearchService
 from reader import cache
-from .base import BaseBookListView, BaseBookDetailView, BaseReaderView
-from django.views.generic import DetailView
+from .base import BaseBookListView, BaseBookDetailView, BaseReaderView, BaseSearchView
 
 
 class SectionHomeView(BaseBookListView):
@@ -404,103 +402,42 @@ class SectionChapterDetailView(BaseReaderView, DetailView):
         return context
 
 
-class SectionSearchView(BaseBookListView):
+class SectionSearchView(BaseSearchView):
     """
-    Search within a section.
+    Search within a specific section.
 
     URL: /<language>/<section>/search/?q=<query>&genre=<slug>&tag=<slug>...
     Example: /en/fiction/search/?q=cultivation&genre=fantasy
 
-    Similar to global search but scoped to a specific section.
+    Scoped to a specific section from URL path.
     """
-    template_name = "reader/search.html"
-    model = Book
-    paginate_by = 20
 
-    def get_queryset(self):
-        """Get search results within section"""
-        query = self.request.GET.get('q', '').strip()
+    def get_section_for_search(self):
+        """Get section from URL path (required)."""
         section = self.get_section()
-
         if not section:
             raise Http404("Section required")
-
-        if not query:
-            # No query - return empty queryset
-            self.search_results = None
-            return Book.objects.none()
-
-        # Get filter parameters
-        genre_slug = self.request.GET.get('genre')
-        tag_slug = self.request.GET.get('tag')
-        status = self.request.GET.get('status')
-
-        # Get language
-        language = self.get_language()
-
-        # Perform search (scoped to section)
-        search_results = BookSearchService.search(
-            query=query,
-            language_code=language.code,
-            section_slug=section.slug,  # Scope to section
-            genre_slug=genre_slug,
-            tag_slug=tag_slug,
-            status=status,
-            limit=500  # Large limit, let Django paginate
-        )
-
-        # Store search metadata for context
-        self.search_results = search_results
-
-        # Return books as list (Django will paginate)
-        book_ids = [book.id for book in search_results['books']]
-
-        if not book_ids:
-            return Book.objects.none()
-
-        # Return queryset maintaining search order
-        queryset = Book.objects.filter(id__in=book_ids).select_related(
-            "bookmaster", "bookmaster__section", "language"
-        ).prefetch_related(
-            "chapters", "bookmaster__genres", "bookmaster__genres__section", "bookmaster__tags"
-        )
-
-        # Preserve search ranking order
-        preserved_order = Case(*[When(id=pk, then=pos) for pos, pk in enumerate(book_ids)])
-        queryset = queryset.order_by(preserved_order)
-
-        return queryset
+        return section
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        section = self.get_section()
+        context.update(self.get_search_context())
+
+        section = self.get_section_for_search()
         language_code = self.kwargs.get("language_code")
 
-        # Show section nav on section search (CRITICAL - only way to switch sections)
+        # Section-scoped specific context
         context['show_section_nav'] = True
-
-        # Add section to context
         context["section"] = section
         context["section_localized_name"] = section.get_localized_name(language_code)
 
-        # Add search query to context
-        context['search_query'] = self.request.GET.get('q', '').strip()
+        # Add genre hierarchy context
+        self._add_genre_hierarchy_context(context, section, language_code)
 
-        # Add search metadata if available
-        if hasattr(self, 'search_results') and self.search_results:
-            context['matched_keywords'] = self.search_results['matched_keywords']
-            context['search_time_ms'] = self.search_results['search_time_ms']
-            context['total_results'] = self.search_results['total_results']
-        else:
-            context['matched_keywords'] = []
-            context['search_time_ms'] = 0
-            context['total_results'] = 0
+        return context
 
-        # Add current filter values to context (for filter UI)
-        context["selected_genre"] = self.request.GET.get("genre", "")
-        context["selected_tag"] = self.request.GET.get("tag", "")
-        context["selected_status"] = self.request.GET.get("status", "")
-
+    def _add_genre_hierarchy_context(self, context, section, language_code):
+        """Add full genre hierarchy for section-scoped search."""
         # Get all genres for this section
         all_section_genres = cache.get_cached_genres_flat(section_id=section.id)
 
@@ -556,8 +493,6 @@ class SectionSearchView(BaseBookListView):
 
         context["primary_genre"] = primary_genre
         context["secondary_genres"] = secondary_genres
-
-        return context
 
 
 class SectionGenreBookListView(View):

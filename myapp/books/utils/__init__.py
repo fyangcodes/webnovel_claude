@@ -8,6 +8,7 @@ This package provides service classes for:
 - ChapterTranslationService: AI-powered chapter translation with entity consistency
 - JobConcurrencyManager: Manage concurrent job processing limits
 - update_book_keywords: Extract and populate search keywords from taxonomy and entities
+- rebuild_bookmaster_entities: Rebuild entity data from ChapterContext records
 """
 
 from .base_ai_service import BaseAIService
@@ -22,6 +23,7 @@ from .chapter_translation import (
 )
 from .job_concurrency import JobConcurrencyManager
 from .keywords import update_book_keywords
+from .entities import rebuild_bookmaster_entities, rebuild_single_chapter_entities
 
 __all__ = [
     # Base AI service
@@ -43,4 +45,7 @@ __all__ = [
     "JobConcurrencyManager",
     # Keywords
     "update_book_keywords",
+    # Entities
+    "rebuild_bookmaster_entities",
+    "rebuild_single_chapter_entities",
 ]

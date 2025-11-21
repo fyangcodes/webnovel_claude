@@ -9,10 +9,10 @@ This module contains models for tracking views and engagement:
 
 from django.db import models
 
-from books.models.base import TimeStampedModel
+from books.models.base import TimeStampModel
 
 
-class ViewEvent(TimeStampedModel):
+class ViewEvent(TimeStampModel):
     """
     Time-series event log for detailed analytics.
     Records individual view events using session-based anonymous tracking.
@@ -88,7 +88,7 @@ class ViewEvent(TimeStampedModel):
         return ct.get_object_for_this_type(pk=self.object_id)
 
 
-class ChapterStats(TimeStampedModel):
+class ChapterStats(TimeStampModel):
     """Statistics for individual chapters (session-based anonymous tracking)"""
 
     chapter = models.OneToOneField(
@@ -164,7 +164,7 @@ class ChapterStats(TimeStampedModel):
         return (self.completion_count / self.total_views) * 100
 
 
-class BookStats(TimeStampedModel):
+class BookStats(TimeStampModel):
     """Statistics for books (session-based anonymous tracking)"""
 
     book = models.OneToOneField(

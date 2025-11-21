@@ -122,8 +122,8 @@ class Migration(migrations.Migration):
 
     dependencies = [
         ('reader', '0001_initial'),
-        ('books', '__latest__'),  # Depends on books app having Section/Genre
-        ('contenttypes', '__latest__'),  # Depends on ContentType framework
+        ('books', '0022_remove_genre_color_remove_genre_icon_and_more'),  # Depends on books app having Section/Genre
+        ('contenttypes', '0002_remove_content_type_name'),  # Depends on ContentType framework
     ]
 
     operations = [

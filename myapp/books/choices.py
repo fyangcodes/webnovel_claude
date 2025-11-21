@@ -65,3 +65,5 @@ class KeywordType(models.TextChoices):
     ENTITY_CHARACTER = "entity_character", "Character"
     ENTITY_PLACE = "entity_place", "Place"
     ENTITY_TERM = "entity_term", "Term"
+    TITLE = "title", "Title"
+    AUTHOR = "author", "Author"

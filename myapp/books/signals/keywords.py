@@ -8,6 +8,7 @@ with the book's metadata.
 
 Signal handlers:
 - BookMaster post_save: Update section keywords when section is assigned
+- Book post_save: Update title/author keywords when book is created/updated
 - BookGenre m2m_changed: Update genre keywords when genres are added/removed
 - BookTag m2m_changed: Update tag keywords when tags are added/removed
 - BookEntity post_save: Update entity keywords when entities are created/updated
@@ -16,7 +17,7 @@ Signal handlers:
 from django.db.models.signals import post_save, m2m_changed
 from django.dispatch import receiver
 
-from books.models import BookMaster, BookGenre, BookTag, BookEntity
+from books.models import Book, BookMaster, BookGenre, BookTag, BookEntity
 from books.utils import update_book_keywords
 
 import logging
@@ -51,6 +52,43 @@ def update_bookmaster_keywords(sender, instance, **kwargs):
     except Exception as e:
         logger.error(
             f"Failed to update keywords for bookmaster '{instance.canonical_title}': {e}",
+            exc_info=True
+        )
+
+
+# ==============================================================================
+# BOOK SIGNALS
+# ==============================================================================
+
+@receiver(post_save, sender=Book)
+def update_book_title_author_keywords(sender, instance, **kwargs):
+    """
+    Update keywords when Book is saved.
+
+    This handles title and author keyword updates when a Book (language-specific
+    version) is created or updated. Updates the keywords for the bookmaster
+    to include this book's title and author.
+
+    Args:
+        sender: The model class (Book)
+        instance: The book instance that was saved
+        **kwargs: Additional signal arguments (created, update_fields, etc.)
+    """
+    if not instance.bookmaster:
+        return
+
+    try:
+        # Update all keywords for the bookmaster this book belongs to
+        keyword_count = update_book_keywords(instance.bookmaster)
+        logger.debug(
+            f"Updated {keyword_count} keywords after book change "
+            f"(title: {instance.title}) for "
+            f"bookmaster '{instance.bookmaster.canonical_title}'"
+        )
+    except Exception as e:
+        logger.error(
+            f"Failed to update keywords after book change "
+            f"(title: {instance.title}): {e}",
             exc_info=True
         )
 

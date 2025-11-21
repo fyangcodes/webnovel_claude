@@ -7,10 +7,10 @@ This module contains models related to the reader/presentation layer.
 from django.db import models
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
-from books.models.base import TimeStampedModel
+from books.models.base import TimeStampModel
 
 
-class StyleConfig(TimeStampedModel):
+class StyleConfig(TimeStampModel):
     """
     Generic UI styling configuration for any model.
 

@@ -10,8 +10,10 @@ This module contains:
 from django.shortcuts import get_object_or_404
 from django.views.generic import ListView, DetailView
 from django.http import Http404
+from django.db.models import Case, When
 
-from books.models import Language, Section
+from books.models import Book, Language, Section
+from books.utils.search import BookSearchService
 from reader import cache
 
 
@@ -273,6 +275,114 @@ class BaseBookListView(BaseReaderView, ListView):
         context["books"] = self.enrich_books_with_metadata(
             context["books"], language_code
         )
+
+        return context
+
+
+class BaseSearchView(BaseBookListView):
+    """
+    Base class for search views with shared search logic.
+
+    Provides:
+    - Common get_queryset() with BookSearchService integration
+    - Common search context (query, matched_keywords, search_time_ms)
+    - Order preservation for search results
+
+    Subclasses must implement:
+    - get_section_for_search(): Return Section or None for scoping
+    """
+
+    template_name = "reader/search.html"
+    model = Book
+    paginate_by = 20
+
+    def get_section_for_search(self):
+        """
+        Return Section instance for scoping search, or None for global search.
+
+        Subclasses must override this method.
+        """
+        raise NotImplementedError("Subclasses must implement get_section_for_search()")
+
+    def get_queryset(self):
+        """
+        Common search queryset logic using BookSearchService.
+
+        Returns empty queryset if no query provided.
+        """
+        query = self.request.GET.get('q', '').strip()
+
+        if not query:
+            self.search_results = None
+            return Book.objects.none()
+
+        # Get filter parameters
+        genre_slug = self.request.GET.get('genre')
+        tag_slug = self.request.GET.get('tag')
+        status = self.request.GET.get('status')
+
+        # Get section (implementation-specific)
+        section = self.get_section_for_search()
+        section_slug = section.slug if section else None
+
+        # Get language
+        language = self.get_language()
+
+        # Perform search
+        search_results = BookSearchService.search(
+            query=query,
+            language_code=language.code,
+            section_slug=section_slug,
+            genre_slug=genre_slug,
+            tag_slug=tag_slug,
+            status=status,
+            limit=500  # Large limit, let Django paginate
+        )
+
+        self.search_results = search_results
+
+        book_ids = [book.id for book in search_results['books']]
+
+        if not book_ids:
+            return Book.objects.none()
+
+        queryset = Book.objects.filter(id__in=book_ids).select_related(
+            "bookmaster", "bookmaster__section", "language"
+        ).prefetch_related(
+            "chapters", "bookmaster__genres", "bookmaster__genres__section", "bookmaster__tags"
+        )
+
+        # Preserve search ranking order
+        preserved_order = Case(*[When(id=pk, then=pos) for pos, pk in enumerate(book_ids)])
+        return queryset.order_by(preserved_order)
+
+    def get_search_context(self):
+        """
+        Return common search context data.
+
+        Includes:
+        - search_query: The user's search query
+        - matched_keywords: Keywords that matched in the search
+        - search_time_ms: Time taken to perform the search
+        - total_results: Total number of results
+        - Filter values: selected_genre, selected_tag, selected_status
+        """
+        context = {}
+        context['search_query'] = self.request.GET.get('q', '').strip()
+
+        if hasattr(self, 'search_results') and self.search_results:
+            context['matched_keywords'] = self.search_results['matched_keywords']
+            context['search_time_ms'] = self.search_results['search_time_ms']
+            context['total_results'] = self.search_results['total_results']
+        else:
+            context['matched_keywords'] = []
+            context['search_time_ms'] = 0
+            context['total_results'] = 0
+
+        # Common filter values
+        context["selected_genre"] = self.request.GET.get("genre", "")
+        context["selected_tag"] = self.request.GET.get("tag", "")
+        context["selected_status"] = self.request.GET.get("status", "")
 
         return context
 

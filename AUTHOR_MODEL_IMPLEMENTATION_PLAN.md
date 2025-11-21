@@ -4,9 +4,48 @@
 
 **This plan has been superseded by the [TAXONOMY_REFACTORING_PLAN.md](TAXONOMY_REFACTORING_PLAN.md).**
 
-The new approach uses a `LocalizedTaxonomyMixin` abstract base model that provides shared fields and methods for Section, Genre, Tag, and Author models. This follows the DRY principle and ensures better code maintainability.
+The new approach uses a `LocalizationModel` abstract base model that provides shared fields and methods for Section, Genre, Tag, and Author models. This follows the DRY principle and ensures better code maintainability.
 
 **Please refer to TAXONOMY_REFACTORING_PLAN.md for the recommended implementation.**
+
+---
+
+## Summary of Refactoring Steps
+
+The full implementation requires the following steps (detailed in TAXONOMY_REFACTORING_PLAN.md):
+
+### Step 0: Rename TimeStampedModel to TimeStampModel
+Rename existing abstract model for consistent noun-based naming across 8 files:
+- `myapp/books/models/base.py`
+- `myapp/books/models/__init__.py`
+- `myapp/books/models/core.py`
+- `myapp/books/models/taxonomy.py`
+- `myapp/books/models/job.py`
+- `myapp/books/models/context.py`
+- `myapp/books/models/stat.py`
+- `myapp/reader/models.py`
+
+### Step 1: Create LocalizationModel
+Add new abstract base model in `myapp/books/models/base.py` with:
+- `name`, `slug`, `description`, `translations` fields
+- `get_localized_name()`, `get_localized_description()` methods
+- Auto-slug generation in `save()`
+
+### Step 2-5: Refactor Existing Models
+Update Section, Genre, Tag to inherit from `LocalizationModel`:
+- Remove duplicate fields and methods
+- Keep model-specific fields and validation logic
+
+### Step 6: Add Author Model
+Create new Author model inheriting from `TimeStampModel` and `LocalizationModel`:
+- Override `name` and `slug` with unique=True
+- Add `avatar` field
+- Add FK to BookMaster
+
+### Step 7-9: Exports, Migration, Documentation
+- Update model exports in `__init__.py`
+- Create migration for Author model
+- Update CLAUDE.md documentation
 
 ---
 
@@ -28,7 +67,7 @@ After analyzing the shared patterns across Section, Genre, Tag, and Author model
 - All models share: `get_localized_name()`, `get_localized_description()` methods
 - All models share: Auto-slug generation logic in `save()`
 
-The refactoring plan creates a `LocalizedTaxonomyMixin` that eliminates this duplication while maintaining the same functionality.
+The refactoring plan creates a `LocalizationModel` that eliminates this duplication while maintaining the same functionality.
 
 ## Implementation Steps
 

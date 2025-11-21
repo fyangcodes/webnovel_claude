@@ -2,17 +2,16 @@
 Books models package.
 
 This package organizes models by concern:
-- base: TimeStampedModel
+- base: TimeStampModel, LocalizationModel, SlugGeneratorMixin
 - core: Language, BookMaster, Book, ChapterMaster, Chapter
-- taxonomy: Section, Genre, BookGenre, Tag, BookTag, BookKeyword
+- taxonomy: Section, Genre, BookGenre, Tag, BookTag, BookKeyword, Author
 - job: TranslationJob, AnalysisJob, FileUploadJob
 - context: BookEntity, ChapterContext
 - stat: ViewEvent, ChapterStats, BookStats
 """
 
-from .base import TimeStampedModel
+from .base import TimeStampModel, LocalizationModel, SlugGeneratorMixin
 from .core import (
-    SlugGeneratorMixin,
     Language,
     BookMaster,
     Book,
@@ -26,6 +25,7 @@ from .taxonomy import (
     Tag,
     BookTag,
     BookKeyword,
+    Author,
 )
 from .job import (
     TranslationJob,
@@ -44,8 +44,8 @@ from .stat import (
 
 __all__ = [
     # Base
-    "TimeStampedModel",
-    # Core - Mixins
+    "TimeStampModel",
+    "LocalizationModel",
     "SlugGeneratorMixin",
     # Core - Content models
     "Language",
@@ -60,6 +60,7 @@ __all__ = [
     "Tag",
     "BookTag",
     "BookKeyword",
+    "Author",
     # Jobs
     "TranslationJob",
     "AnalysisJob",

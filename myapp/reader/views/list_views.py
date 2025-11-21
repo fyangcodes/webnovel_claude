@@ -7,14 +7,11 @@ This module contains all list-based views:
 - BookSearchView: Keyword search with weighted results
 """
 
-from django.shortcuts import get_object_or_404
 from django.conf import settings
-from django.db.models import Case, When
 
 from books.models import Book, Genre, Section, Tag, BookGenre
-from books.utils.search import BookSearchService
 from reader import cache
-from .base import BaseBookListView
+from .base import BaseBookListView, BaseSearchView
 
 
 class WelcomeView(BaseBookListView):
@@ -240,95 +237,28 @@ class BookListView(BaseBookListView):
         return context
 
 
-class BookSearchView(BaseBookListView):
+class BookSearchView(BaseSearchView):
     """
-    Keyword search view with filtering.
+    Global keyword search across all sections.
 
     URL: /<language_code>/search/?q=<query>&section=<slug>&genre=<slug>...
 
     Uses BookSearchService for weighted keyword search across sections, genres, tags,
     and entities. Supports all standard filters (section, genre, tag, status).
     """
-    template_name = "reader/search.html"
-    model = Book
-    paginate_by = 20
 
-    def get_queryset(self):
-        """
-        Get search results using BookSearchService.
-
-        Returns empty queryset if no query provided.
-        """
-        query = self.request.GET.get('q', '').strip()
-
-        if not query:
-            # No query - return empty queryset
-            self.search_results = None
-            return Book.objects.none()
-
-        # Get filter parameters
+    def get_section_for_search(self):
+        """Get section from query parameter (optional filter)."""
         section_slug = self.request.GET.get('section')
-        genre_slug = self.request.GET.get('genre')
-        tag_slug = self.request.GET.get('tag')
-        status = self.request.GET.get('status')
-
-        # Get language
-        language = self.get_language()
-
-        # Perform search (returns all results, pagination handled by Django)
-        search_results = BookSearchService.search(
-            query=query,
-            language_code=language.code,
-            section_slug=section_slug,
-            genre_slug=genre_slug,
-            tag_slug=tag_slug,
-            status=status,
-            limit=500  # Large limit, let Django paginate
-        )
-
-        # Store search metadata for context
-        self.search_results = search_results
-
-        # Return books as list (Django will paginate)
-        # We need to convert to queryset for proper pagination
-        book_ids = [book.id for book in search_results['books']]
-
-        if not book_ids:
-            return Book.objects.none()
-
-        # Return queryset maintaining search order
-        queryset = Book.objects.filter(id__in=book_ids).select_related(
-            "bookmaster", "bookmaster__section", "language"
-        ).prefetch_related(
-            "chapters", "bookmaster__genres", "bookmaster__genres__section", "bookmaster__tags"
-        )
-
-        # Preserve search ranking order
-        preserved_order = Case(*[When(id=pk, then=pos) for pos, pk in enumerate(book_ids)])
-        queryset = queryset.order_by(preserved_order)
-
-        return queryset
+        if section_slug:
+            return Section.objects.filter(slug=section_slug).first()
+        return None
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+        context.update(self.get_search_context())
 
-        # Add search query to context
-        context['search_query'] = self.request.GET.get('q', '').strip()
-
-        # Add search metadata if available
-        if self.search_results:
-            context['matched_keywords'] = self.search_results['matched_keywords']
-            context['search_time_ms'] = self.search_results['search_time_ms']
-            context['total_results'] = self.search_results['total_results']
-        else:
-            context['matched_keywords'] = []
-            context['search_time_ms'] = 0
-            context['total_results'] = 0
-
-        # Add current filter values to context (for filter UI)
+        # Global search specific: section as optional filter
         context["selected_section"] = self.request.GET.get("section", "")
-        context["selected_genre"] = self.request.GET.get("genre", "")
-        context["selected_tag"] = self.request.GET.get("tag", "")
-        context["selected_status"] = self.request.GET.get("status", "")
 
         return context

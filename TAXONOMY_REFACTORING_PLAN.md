@@ -20,21 +20,21 @@ All models implement:
 - `save()`: Auto-generates slug from name if not provided
 
 ### Differences to Preserve
-- **Section**: Has `icon`, `order`, `is_mature` fields
-- **Genre**: Has `section` FK, `parent` FK, `is_primary`, `icon`, `color`, complex validation
+- **Section**: Has `order`, `is_mature` fields
+- **Genre**: Has `section` FK, `parent` FK, `is_primary`, complex validation
 - **Tag**: Has `category` field with choices
 - **Author**: Has `avatar` field
 
 ## Proposed Solution
 
-### 1. Create LocalizedTaxonomyMixin
+### 1. Create LocalizationModel
 
 **File**: `myapp/books/models/base.py`
 
 Add a new abstract base model that provides localization infrastructure:
 
 ```python
-class LocalizedTaxonomyMixin(models.Model):
+class LocalizationModel(models.Model):
     """
     Abstract base model for taxonomy entities with localization support.
 
@@ -85,12 +85,12 @@ class LocalizedTaxonomyMixin(models.Model):
 
 ### 2. Update Individual Models
 
-Each model will inherit from both `TimeStampedModel` and `LocalizedTaxonomyMixin`, then add model-specific fields and logic.
+Each model will inherit from both `TimeStampModel` and `LocalizationModel`, then add model-specific fields and logic.
 
 #### Section Model (Simplified)
 
 ```python
-class Section(TimeStampedModel, LocalizedTaxonomyMixin):
+class Section(TimeStampModel, LocalizationModel):
     """
     Top-level content category for books.
 
@@ -112,11 +112,6 @@ class Section(TimeStampedModel, LocalizedTaxonomyMixin):
     )
 
     # Section-specific fields
-    icon = models.CharField(
-        max_length=50,
-        blank=True,
-        help_text="FontAwesome icon class (e.g., 'fa-book')"
-    )
     order = models.PositiveSmallIntegerField(
         default=0,
         help_text="Display order (lower = first)"
@@ -142,7 +137,7 @@ class Section(TimeStampedModel, LocalizedTaxonomyMixin):
 #### Genre Model (Simplified)
 
 ```python
-class Genre(TimeStampedModel, LocalizedTaxonomyMixin):
+class Genre(TimeStampModel, LocalizationModel):
     """
     Hierarchical genre classification system.
 
@@ -174,16 +169,6 @@ class Genre(TimeStampedModel, LocalizedTaxonomyMixin):
     is_primary = models.BooleanField(
         default=True,
         help_text="Primary genres appear in main navigation; sub-genres are refinements"
-    )
-    icon = models.CharField(
-        max_length=50,
-        blank=True,
-        help_text="FontAwesome icon class"
-    )
-    color = models.CharField(
-        max_length=7,
-        blank=True,
-        help_text="Hex color code (e.g., #3B82F6)"
     )
 
     class Meta:
@@ -258,7 +243,7 @@ class Genre(TimeStampedModel, LocalizedTaxonomyMixin):
 #### Tag Model (Simplified)
 
 ```python
-class Tag(TimeStampedModel, LocalizedTaxonomyMixin):
+class Tag(TimeStampModel, LocalizationModel):
     """
     Flexible tagging system for book attributes.
 
@@ -305,7 +290,7 @@ class Tag(TimeStampedModel, LocalizedTaxonomyMixin):
 #### Author Model (New)
 
 ```python
-class Author(TimeStampedModel, LocalizedTaxonomyMixin):
+class Author(TimeStampModel, LocalizationModel):
     """
     Language-independent author entity.
 
@@ -348,11 +333,39 @@ class Author(TimeStampedModel, LocalizedTaxonomyMixin):
 
 ## Implementation Steps
 
-### Step 1: Create LocalizedTaxonomyMixin
+### Step 0: Rename TimeStampedModel to TimeStampModel
 
 **File**: `myapp/books/models/base.py`
 
-1. Add the `LocalizedTaxonomyMixin` class after `TimeStampedModel`
+Rename the existing `TimeStampedModel` class to `TimeStampModel` for consistent noun-based naming:
+
+```python
+# Before
+class TimeStampedModel(models.Model):
+    ...
+
+# After
+class TimeStampModel(models.Model):
+    ...
+```
+
+**Files to update** (8 files total):
+1. `myapp/books/models/base.py` - Class definition
+2. `myapp/books/models/__init__.py` - Import and export
+3. `myapp/books/models/core.py` - Import and inheritance
+4. `myapp/books/models/taxonomy.py` - Import and inheritance
+5. `myapp/books/models/job.py` - Import and inheritance
+6. `myapp/books/models/context.py` - Import and inheritance
+7. `myapp/books/models/stat.py` - Import and inheritance
+8. `myapp/reader/models.py` - Import and inheritance
+
+**Note**: This is a code-only change. Since it's an abstract model, no database migration is required.
+
+### Step 1: Create LocalizationModel
+
+**File**: `myapp/books/models/base.py`
+
+1. Add the `LocalizationModel` class after `TimeStampModel`
 2. Include all common fields and methods
 
 ### Step 2: Update Model Imports
@@ -361,28 +374,28 @@ class Author(TimeStampedModel, LocalizedTaxonomyMixin):
 
 Update imports:
 ```python
-from books.models.base import TimeStampedModel, LocalizedTaxonomyMixin
+from books.models.base import TimeStampModel, LocalizationModel
 ```
 
 ### Step 3: Refactor Section Model
 
 **File**: `myapp/books/models/taxonomy.py`
 
-1. Add `LocalizedTaxonomyMixin` to inheritance
+1. Add `LocalizationModel` to inheritance
 2. Override `name` and `slug` fields with model-specific constraints
 3. Remove `description`, `translations` fields (inherited)
 4. Remove `get_localized_name()`, `get_localized_description()` methods (inherited)
-5. Keep model-specific fields: `icon`, `order`, `is_mature`
+5. Keep model-specific fields: `order`, `is_mature`
 6. Keep/update `save()` if custom logic needed beyond slug generation
 
 ### Step 4: Refactor Genre Model
 
 **File**: `myapp/books/models/taxonomy.py`
 
-1. Add `LocalizedTaxonomyMixin` to inheritance
+1. Add `LocalizationModel` to inheritance
 2. Remove `name`, `slug`, `description`, `translations` fields (inherited)
 3. Remove `get_localized_name()`, `get_localized_description()` methods (inherited)
-4. Keep model-specific fields: `section`, `parent`, `is_primary`, `icon`, `color`
+4. Keep model-specific fields: `section`, `parent`, `is_primary`
 5. Keep `save()` with custom validation logic
 6. Keep all `clean()` validation methods
 
@@ -390,7 +403,7 @@ from books.models.base import TimeStampedModel, LocalizedTaxonomyMixin
 
 **File**: `myapp/books/models/taxonomy.py`
 
-1. Add `LocalizedTaxonomyMixin` to inheritance
+1. Add `LocalizationModel` to inheritance
 2. Override `name` and `slug` fields with unique=True
 3. Remove `description`, `translations` fields (inherited)
 4. Remove `get_localized_name()`, `get_localized_description()` methods (inherited)
@@ -400,7 +413,7 @@ from books.models.base import TimeStampedModel, LocalizedTaxonomyMixin
 
 **File**: `myapp/books/models/taxonomy.py`
 
-1. Create new `Author` class inheriting from `TimeStampedModel` and `LocalizedTaxonomyMixin`
+1. Create new `Author` class inheriting from `TimeStampModel` and `LocalizationModel`
 2. Override `name` and `slug` fields with unique=True
 3. Add model-specific field: `avatar`
 4. No custom save() or clean() needed (uses inherited)
@@ -411,15 +424,15 @@ from books.models.base import TimeStampedModel, LocalizedTaxonomyMixin
 
 Update base model imports:
 ```python
-from .base import TimeStampedModel, LocalizedTaxonomyMixin
+from .base import TimeStampModel, LocalizationModel
 ```
 
 Add to `__all__`:
 ```python
 __all__ = [
     # Base
-    "TimeStampedModel",
-    "LocalizedTaxonomyMixin",
+    "TimeStampModel",
+    "LocalizationModel",
     # ... rest
     "Author",
 ]
@@ -436,7 +449,7 @@ Since we're refactoring without changing the database schema:
 
 **File**: `CLAUDE.md`
 
-Add documentation about `LocalizedTaxonomyMixin` in the architecture section.
+Add documentation about `LocalizationModel` in the architecture section.
 
 ## Key Benefits
 
@@ -472,7 +485,7 @@ Add documentation about `LocalizedTaxonomyMixin` in the architecture section.
 When a model needs unique constraints or different parameters, override the field:
 
 ```python
-class Tag(TimeStampedModel, LocalizedTaxonomyMixin):
+class Tag(TimeStampModel, LocalizationModel):
     # Override to add unique=True
     name = models.CharField(
         max_length=50,
@@ -496,9 +509,9 @@ def save(self, *args, **kwargs):
 
 ### Multiple Inheritance Order
 
-Always put `TimeStampedModel` first, then `LocalizedTaxonomyMixin`:
+Always put `TimeStampModel` first, then `LocalizationModel`:
 ```python
-class MyModel(TimeStampedModel, LocalizedTaxonomyMixin):
+class MyModel(TimeStampModel, LocalizationModel):
     pass
 ```
 
@@ -510,7 +523,7 @@ This ensures:
 ## Migration Strategy
 
 ### Phase 1: Add Mixin (No Migration)
-- Create `LocalizedTaxonomyMixin` in base.py
+- Create `LocalizationModel` in base.py
 - Code change only, no database changes
 - Safe to deploy
 
@@ -578,7 +591,8 @@ After refactoring, verify:
 
 ## Timeline Estimate
 
-- Add LocalizedTaxonomyMixin: 15 minutes
+- Rename TimeStampedModel to TimeStampModel: 10 minutes
+- Add LocalizationModel: 15 minutes
 - Refactor Section: 10 minutes
 - Refactor Genre: 15 minutes (preserve validation)
 - Refactor Tag: 10 minutes

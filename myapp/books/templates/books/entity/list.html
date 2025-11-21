@@ -100,14 +100,16 @@
                         <tr>
                             <th style="width: 80px;" class="text-center">Type</th>
                             <th style="min-width: 200px;">Entity Name</th>
-                            <th style="width: 120px;">First Appeared</th>
+                            <th style="width: 100px;" class="text-center">Actions</th>
+                            <th style="width: 80px;">First</th>
+                            <th style="width: 80px;">Last</th>
+                            <th style="width: 60px;" class="text-center">Count</th>
                             {% for language in languages %}
                             <th style="min-width: 150px;">
                                 {{ language.name }}
                                 <small class="text-muted">({{ language.code }})</small>
                             </th>
                             {% endfor %}
-                            <th style="width: 120px;" class="text-center">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -131,29 +133,6 @@
                             <td class="align-middle">
                                 <strong>{{ entity.source_name }}</strong>
                             </td>
-                            <td class="align-middle">
-                                {% if entity.first_chapter %}
-                                    <a href="{% url 'books:chapter_detail' entity.first_chapter.id %}"
-                                       class="text-decoration-none">
-                                        <span class="badge bg-info">
-                                            Ch. {{ entity.first_chapter.chaptermaster.chapter_number }}
-                                        </span>
-                                    </a>
-                                {% else %}
-                                    <span class="text-muted">—</span>
-                                {% endif %}
-                            </td>
-                            {% for language in languages %}
-                            <td class="align-middle">
-                                {% with translation=entity.translations|get_item:language.code %}
-                                    {% if translation %}
-                                        <span class="text-success">{{ translation }}</span>
-                                    {% else %}
-                                        <span class="text-muted fst-italic">Not translated</span>
-                                    {% endif %}
-                                {% endwith %}
-                            </td>
-                            {% endfor %}
                             <td class="text-center align-middle">
                                 <div class="btn-group btn-group-sm" role="group">
                                     <a href="{% url 'books:entity_update' entity.id %}"
@@ -168,6 +147,44 @@
                                     </a>
                                 </div>
                             </td>
+                            <td class="align-middle">
+                                {% if entity.first_chapter %}
+                                    <a href="{% url 'books:chapter_detail' entity.first_chapter.id %}"
+                                       class="text-decoration-none">
+                                        <span class="badge bg-info">
+                                            Ch. {{ entity.first_chapter.chaptermaster.chapter_number }}
+                                        </span>
+                                    </a>
+                                {% else %}
+                                    <span class="text-muted">—</span>
+                                {% endif %}
+                            </td>
+                            <td class="align-middle">
+                                {% if entity.last_chapter %}
+                                    <a href="{% url 'books:chapter_detail' entity.last_chapter.id %}"
+                                       class="text-decoration-none">
+                                        <span class="badge bg-secondary">
+                                            Ch. {{ entity.last_chapter.chaptermaster.chapter_number }}
+                                        </span>
+                                    </a>
+                                {% else %}
+                                    <span class="text-muted">—</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-center align-middle">
+                                <span class="badge bg-light text-dark">{{ entity.occurrence_count }}</span>
+                            </td>
+                            {% for language in languages %}
+                            <td class="align-middle">
+                                {% with translation=entity.translations|get_item:language.code %}
+                                    {% if translation %}
+                                        <span class="text-success">{{ translation }}</span>
+                                    {% else %}
+                                        <span class="text-muted fst-italic">Not translated</span>
+                                    {% endif %}
+                                {% endwith %}
+                            </td>
+                            {% endfor %}
                         </tr>
                         {% endfor %}
                     </tbody>

@@ -8,11 +8,17 @@ This module contains models for storing AI-extracted metadata:
 
 from django.db import models
 
-from books.models.base import TimeStampedModel
+from books.models.base import TimeStampModel
 from books.choices import EntityType
 
 
-class BookEntity(TimeStampedModel):
+class BookEntity(TimeStampModel):
+    """
+    Named entity (character, place, term) extracted from a book.
+
+    Tracks where entities first and last appear, and how often they
+    occur across chapters for search relevance weighting.
+    """
 
     bookmaster = models.ForeignKey(
         "BookMaster",
@@ -25,10 +31,27 @@ class BookEntity(TimeStampedModel):
     )
     source_name = models.CharField(max_length=255)
     translations = models.JSONField(default=dict, blank=True)  # {"en": "Li Wei", "es": "Li Wei"}
+
+    # Chapter where entity first appears
     first_chapter = models.ForeignKey(
         "Chapter",
         on_delete=models.CASCADE,
-        related_name="entities",
+        related_name="new_entities",  # Entities introduced in this chapter
+        help_text="Chapter where entity first appears",
+    )
+
+    # Occurrence tracking for search relevance
+    occurrence_count = models.PositiveIntegerField(
+        default=1,
+        help_text="Number of chapters this entity appears in",
+    )
+    last_chapter = models.ForeignKey(
+        "Chapter",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="latest_entities",  # Entities last seen in this chapter
+        help_text="Most recent chapter where entity appears",
     )
 
     class Meta:
@@ -37,6 +60,7 @@ class BookEntity(TimeStampedModel):
         verbose_name_plural = "Context - Book Entities"
         indexes = [
             models.Index(fields=["bookmaster", "entity_type"]),
+            models.Index(fields=["occurrence_count"]),
         ]
 
     def get_translation(self, language_code):
@@ -47,7 +71,7 @@ class BookEntity(TimeStampedModel):
         self.save(update_fields=["translations"])
 
 
-class ChapterContext(TimeStampedModel):
+class ChapterContext(TimeStampModel):
     """Chapter context and entity analysis for translation consistency"""
 
     chapter = models.OneToOneField(

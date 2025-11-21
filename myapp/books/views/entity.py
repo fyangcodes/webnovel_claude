@@ -23,7 +23,8 @@ class BookEntityListView(LoginRequiredMixin, ListView):
         queryset = BookEntity.objects.filter(bookmaster=self.bookmaster).select_related(
             "first_chapter__chaptermaster",
             "first_chapter__book",
-            "first_chapter__book__language"
+            "first_chapter__book__language",
+            "last_chapter__chaptermaster",
         )
 
         # Filter by entity type
@@ -57,8 +58,13 @@ class BookEntityListView(LoginRequiredMixin, ListView):
         )
         context["books"] = books
 
-        # Get languages, filtering out None values
-        context["languages"] = [book.language for book in books if book.language]
+        # Get languages, filtering out None values and original language
+        # (translations in original language are redundant)
+        original_lang_code = self.bookmaster.original_language.code if self.bookmaster.original_language else None
+        context["languages"] = [
+            book.language for book in books
+            if book.language and book.language.code != original_lang_code
+        ]
 
         # Add filter state
         context["current_type"] = self.request.GET.get("type", "").lower()

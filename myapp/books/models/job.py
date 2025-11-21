@@ -10,11 +10,11 @@ This module contains models for tracking async background jobs:
 from django.conf import settings
 from django.db import models
 
-from books.models.base import TimeStampedModel
+from books.models.base import TimeStampModel
 from books.choices import ProcessingStatus
 
 
-class TranslationJob(TimeStampedModel):
+class TranslationJob(TimeStampModel):
     """Track async chapter translation jobs"""
 
     chapter = models.ForeignKey(
@@ -55,7 +55,7 @@ class TranslationJob(TimeStampedModel):
         return f"Translation of {self.chapter.title} (#{self.chapter.pk}) to {self.target_language.name}"
 
 
-class AnalysisJob(TimeStampedModel):
+class AnalysisJob(TimeStampModel):
     """Track async AI entity extraction and chapter analysis jobs"""
 
     chapter = models.ForeignKey(
@@ -99,7 +99,7 @@ class AnalysisJob(TimeStampedModel):
         return f"Analysis of {self.chapter.title} (#{self.chapter.pk})"
 
 
-class FileUploadJob(TimeStampedModel):
+class FileUploadJob(TimeStampModel):
     """Track async file upload and chapter creation jobs"""
 
     book = models.ForeignKey(

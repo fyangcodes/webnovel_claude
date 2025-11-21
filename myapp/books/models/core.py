@@ -16,33 +16,12 @@ from django.db import models
 from django.utils import timezone
 from django.utils.text import slugify
 
-from books.models.base import TimeStampedModel
+from books.models.base import TimeStampModel, SlugGeneratorMixin
 from books.choices import BookProgress, ChapterProgress, CountUnit
 from books.validators import unicode_slug_validator
 
 
-class SlugGeneratorMixin:
-    """Mixin to generate unique slugs with automatic conflict resolution"""
-
-    def generate_unique_slug(self, base_slug, filter_kwargs=None):
-        from django.db import transaction
-        import uuid
-
-        filter_kwargs = filter_kwargs or {}
-        model_class = self.__class__
-
-        # Try the base slug first
-        if (
-            not model_class.objects.filter(slug=base_slug, **filter_kwargs)
-            .exclude(pk=self.pk)
-            .exists()
-        ):
-            return base_slug
-        # If not, include uuid in slug
-        return f"{base_slug}-{uuid.uuid4().hex[:8]}"
-
-
-class Language(TimeStampedModel):
+class Language(TimeStampModel):
     code = models.CharField(max_length=10, unique=True)  # e.g., 'zh-CN'
     name = models.CharField(max_length=50)  # e.g., 'Chinese (Simplified)'
     local_name = models.CharField(max_length=50)  # e.g., '中文（简体）'
@@ -79,7 +58,7 @@ class Language(TimeStampedModel):
         return self.name
 
 
-class BookMaster(TimeStampedModel):
+class BookMaster(TimeStampModel):
     """Master book entity for translation management"""
 
     canonical_title = models.CharField(max_length=255)
@@ -130,6 +109,14 @@ class BookMaster(TimeStampedModel):
         related_name='bookmasters',
         blank=True,
         help_text="Book tags (protagonist type, tropes, themes, etc.)"
+    )
+    author = models.ForeignKey(
+        'Author',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='bookmasters',
+        help_text="Original author of the work"
     )
 
     class Meta:
@@ -220,7 +207,7 @@ class BookMaster(TimeStampedModel):
             return self.effective_cover_image
 
 
-class Book(TimeStampedModel, SlugGeneratorMixin):
+class Book(TimeStampModel, SlugGeneratorMixin):
     """Language-specific version of a book"""
 
     title = models.CharField(max_length=255)
@@ -321,7 +308,7 @@ class Book(TimeStampedModel, SlugGeneratorMixin):
         return self.bookmaster.effective_cover_image
 
 
-class ChapterMaster(TimeStampedModel):
+class ChapterMaster(TimeStampModel):
     """Master chapter entity"""
 
     canonical_title = models.CharField(max_length=255)
@@ -346,7 +333,7 @@ class ChapterMaster(TimeStampedModel):
         return self.canonical_title
 
 
-class Chapter(TimeStampedModel, SlugGeneratorMixin):
+class Chapter(TimeStampModel, SlugGeneratorMixin):
     """Simplified chapter with basic text content"""
 
     title = models.CharField(max_length=255)

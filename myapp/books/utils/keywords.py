@@ -16,9 +16,11 @@ logger = logging.getLogger(__name__)
 
 def update_book_keywords(bookmaster):
     """
-    Rebuild all keywords for a bookmaster from taxonomy and entities.
+    Rebuild all keywords for a bookmaster from taxonomy, entities, and book metadata.
 
     This function extracts keywords from:
+    - Book titles (canonical and language-specific)
+    - Author names (from language-specific books)
     - Section name (if assigned)
     - Genre names (including parent genres)
     - Tag names
@@ -35,10 +37,12 @@ def update_book_keywords(bookmaster):
         int: Number of keywords created
 
     Weights applied:
-    - Section: 1.5 (highest - broad categorization)
+    - Title: 2.0 (highest - direct title match is most relevant)
+    - Author: 1.8 (high - author search is common use case)
+    - Section: 1.5 (broad categorization)
     - Genre: 1.0 (standard - primary classification)
     - Tag: 0.8 (moderate - descriptive attributes)
-    - Entity: 0.6 (lower - specific names, may not be search terms)
+    - Entity: 0.4-1.1 (dynamic - based on occurrence frequency)
     """
     # Delete existing keywords for this bookmaster
     BookKeyword.objects.filter(bookmaster=bookmaster).delete()
@@ -46,23 +50,33 @@ def update_book_keywords(bookmaster):
     keywords_to_create = []
     seen_keywords = set()  # Track (keyword, language_code, type) to avoid duplicates
 
-    # 1. Extract section keywords
+    # 1. Extract title keywords (highest weight)
+    keywords_to_create.extend(
+        _extract_title_keywords(bookmaster, seen_keywords)
+    )
+
+    # 2. Extract author keywords (high weight)
+    keywords_to_create.extend(
+        _extract_author_keywords(bookmaster, seen_keywords)
+    )
+
+    # 3. Extract section keywords
     if bookmaster.section:
         keywords_to_create.extend(
             _extract_section_keywords(bookmaster, seen_keywords)
         )
 
-    # 2. Extract genre keywords
+    # 4. Extract genre keywords
     keywords_to_create.extend(
         _extract_genre_keywords(bookmaster, seen_keywords)
     )
 
-    # 3. Extract tag keywords
+    # 5. Extract tag keywords
     keywords_to_create.extend(
         _extract_tag_keywords(bookmaster, seen_keywords)
     )
 
-    # 4. Extract entity keywords
+    # 6. Extract entity keywords (dynamic weight based on occurrence)
     keywords_to_create.extend(
         _extract_entity_keywords(bookmaster, seen_keywords)
     )
@@ -75,6 +89,62 @@ def update_book_keywords(bookmaster):
         )
 
     return len(keywords_to_create)
+
+
+def _extract_title_keywords(bookmaster, seen_keywords: Set) -> List[BookKeyword]:
+    """
+    Extract keywords from book titles.
+
+    Sources:
+    - BookMaster.canonical_title (original language)
+    - Book.title for each language version
+
+    Weight: 2.0 (highest - direct title match is most relevant)
+    """
+    keywords = []
+    weight = 2.0
+
+    # Get original language code
+    original_lang = bookmaster.original_language.code if bookmaster.original_language else 'zh'
+
+    # Add canonical title (original language)
+    _add_keyword(
+        keywords, seen_keywords, bookmaster,
+        bookmaster.canonical_title, KeywordType.TITLE, original_lang, weight
+    )
+
+    # Add titles from all language-specific Book instances
+    for book in bookmaster.books.all():
+        if book.title:
+            _add_keyword(
+                keywords, seen_keywords, bookmaster,
+                book.title, KeywordType.TITLE, book.language.code, weight
+            )
+
+    return keywords
+
+
+def _extract_author_keywords(bookmaster, seen_keywords: Set) -> List[BookKeyword]:
+    """
+    Extract keywords from author names.
+
+    Sources:
+    - Book.author for each language version
+
+    Weight: 1.8 (high - author search is common use case)
+    """
+    keywords = []
+    weight = 1.8
+
+    # Get author names from all language-specific Book instances
+    for book in bookmaster.books.all():
+        if book.author:
+            _add_keyword(
+                keywords, seen_keywords, bookmaster,
+                book.author, KeywordType.AUTHOR, book.language.code, weight
+            )
+
+    return keywords
 
 
 def _extract_section_keywords(bookmaster, seen_keywords: Set) -> List[BookKeyword]:
@@ -202,10 +272,60 @@ def _extract_tag_keywords(bookmaster, seen_keywords: Set) -> List[BookKeyword]:
     return keywords
 
 
+def _calculate_entity_weight(entity, total_chapters: int) -> float:
+    """
+    Calculate entity keyword weight based on occurrence frequency.
+
+    Weight formula:
+    - Base weight: 0.4
+    - Frequency bonus: up to 0.6 based on occurrence ratio
+
+    Examples (for a 100-chapter book):
+    - Entity in 1 chapter:   0.4 + (1/100 * 0.6)   = 0.406
+    - Entity in 10 chapters: 0.4 + (10/100 * 0.6)  = 0.46
+    - Entity in 50 chapters: 0.4 + (50/100 * 0.6)  = 0.7
+    - Entity in 100 chapters: 0.4 + (100/100 * 0.6) = 1.0
+
+    Additional modifiers:
+    - Characters get +0.1 bonus (protagonists are common search terms)
+    - Places get +0.05 bonus
+    """
+    BASE_WEIGHT = 0.4
+    MAX_FREQUENCY_BONUS = 0.6
+
+    # Calculate frequency ratio (capped at 1.0)
+    if total_chapters > 0:
+        occurrence_count = getattr(entity, 'occurrence_count', 1) or 1
+        frequency_ratio = min(occurrence_count / total_chapters, 1.0)
+    else:
+        frequency_ratio = 0.0
+
+    weight = BASE_WEIGHT + (frequency_ratio * MAX_FREQUENCY_BONUS)
+
+    # Entity type bonus
+    if entity.entity_type == EntityType.CHARACTER:
+        weight += 0.1
+    elif entity.entity_type == EntityType.PLACE:
+        weight += 0.05
+
+    return min(weight, 1.1)  # Cap at 1.1
+
+
 def _extract_entity_keywords(bookmaster, seen_keywords: Set) -> List[BookKeyword]:
-    """Extract keywords from entities (characters, places, terms)"""
+    """
+    Extract keywords from entities with dynamic weights based on occurrence.
+
+    Entities that appear in more chapters get higher weights, making them
+    more relevant in search results. Characters and places also get
+    type-based bonuses.
+    """
     keywords = []
-    weight = 0.6
+
+    # Get total chapter count for frequency calculation
+    from django.db.models import Count
+    total_chapters = bookmaster.books.aggregate(
+        total=Count('chapters')
+    )['total'] or 1
 
     # Get original language code
     original_lang = bookmaster.original_language.code if bookmaster.original_language else 'zh'
@@ -214,6 +334,9 @@ def _extract_entity_keywords(bookmaster, seen_keywords: Set) -> List[BookKeyword
     entities = bookmaster.entities.all()
 
     for entity in entities:
+        # Calculate dynamic weight based on occurrence
+        weight = _calculate_entity_weight(entity, total_chapters)
+
         # Map EntityType to KeywordType
         keyword_type_map = {
             EntityType.CHARACTER: KeywordType.ENTITY_CHARACTER,
@@ -228,7 +351,7 @@ def _extract_entity_keywords(bookmaster, seen_keywords: Set) -> List[BookKeyword
             entity.source_name, keyword_type, original_lang, weight
         )
 
-        # Add translated entity names
+        # Add translated entity names (same weight)
         if entity.translations:
             for lang_code, translated_name in entity.translations.items():
                 if translated_name:  # translations is dict with {lang_code: translated_name}

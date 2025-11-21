@@ -1,9 +1,7 @@
 
-add author model
+author model in reader apps / book detail view
 
-search book title, author, section, genre, tag
-
-terms with frequency and weight for search
+book meta partial for status, section, genre, tags, top 5 character entities
 
 cache for section styling
 
@@ -16,4 +14,4 @@ container flower
 
 deployment
 
-section url and reader UI htmx for genres?
+reader UI htmx for genres, pagination, infinite scroll in chapter detail view?
