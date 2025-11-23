@@ -40,10 +40,11 @@ class BookEntityListView(LoginRequiredMixin, ListView):
                 | Q(translations__icontains=search)
             )
 
-        # Order by first appearance (chapter number) and then by name
-        # Use nulls_first to handle entities without first_chapter
+        # Order by priority (order field), then first appearance, then name
         queryset = queryset.order_by(
-            "first_chapter__chaptermaster__chapter_number", "source_name"
+            "order",
+            "first_chapter__chaptermaster__chapter_number",
+            "source_name"
         )
 
         return queryset
@@ -85,7 +86,7 @@ class BookEntityListView(LoginRequiredMixin, ListView):
 class BookEntityUpdateView(LoginRequiredMixin, UpdateView):
     model = BookEntity
     template_name = "books/entity/update.html"
-    fields = ["entity_type", "source_name", "translations"]
+    fields = ["entity_type", "source_name", "order", "translations"]
     context_object_name = "entity"
 
     def get_queryset(self):

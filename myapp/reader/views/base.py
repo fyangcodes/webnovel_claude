@@ -2,9 +2,13 @@
 Base view classes for the reader app.
 
 This module contains:
-- BaseReaderView: Universal base for all reader views with language/section validation
-- BaseBookListView: Base for list views with book enrichment and pagination
-- BaseBookDetailView: Base for book detail views with localization
+- BaseReaderView: Universal base for all reader views with:
+  - Language/section validation
+  - Book enrichment (metadata, chapter counts, localized taxonomy)
+  - Global navigation context (languages, sections, genres, tags)
+- BaseBookListView: Base for list views with pagination
+- BaseBookDetailView: Base for book detail views
+- BaseSearchView: Base for search views with BookSearchService integration
 """
 
 from django.shortcuts import get_object_or_404
@@ -164,6 +168,97 @@ class BaseReaderView:
 
         return genres_hierarchical
 
+    def enrich_book_with_metadata(self, book, language_code):
+        """
+        Add metadata, chapter count, views, and localized taxonomy to a single book.
+
+        This is the universal enrichment method used by both list and detail views.
+        Enriches book with:
+        - Published chapters count (cached)
+        - Total chapter views (cached)
+        - Localized section name
+        - Localized genres with parent hierarchy
+        - Localized tags grouped by category
+        - Localized entities grouped by type
+
+        Args:
+            book: Book object to enrich
+            language_code: Language code for localization
+
+        Returns:
+            The enriched book object (modified in-place)
+        """
+        # Use cached chapter count (eliminates N+1 query)
+        book.published_chapters_count = cache.get_cached_chapter_count(book.id)
+
+        # Add total chapter views (eliminates N+1 query)
+        book.total_chapter_views = cache.get_cached_total_chapter_views(book.id)
+
+        # Add localized section name if section exists
+        if hasattr(book.bookmaster, 'section') and book.bookmaster.section:
+            book.section_localized_name = book.bookmaster.section.get_localized_name(language_code)
+        else:
+            book.section_localized_name = None
+
+        # Add localized names to each genre (including parent) and store on book
+        genres = list(book.bookmaster.genres.all())
+        for genre in genres:
+            genre.localized_name = genre.get_localized_name(language_code)
+            if genre.parent:
+                genre.parent_localized_name = genre.parent.get_localized_name(language_code)
+            # Add section localized name if genre has section
+            if genre.section:
+                genre.section_localized_name = genre.section.get_localized_name(language_code)
+        book.enriched_genres = genres
+
+        # Set primary genre for breadcrumb (first genre without parent)
+        primary_genres = [g for g in genres if not g.parent]
+        book.primary_genre = primary_genres[0] if primary_genres else None
+
+        # Add localized tag names grouped by category
+        tags = book.bookmaster.tags.all()
+        tags_by_category = {}
+        for tag in tags:
+            tag.localized_name = tag.get_localized_name(language_code)
+            category = tag.category
+            if category not in tags_by_category:
+                tags_by_category[category] = []
+            tags_by_category[category].append(tag)
+        book.tags_by_category = tags_by_category
+
+        # Add entities grouped by type (exclude default order 999)
+        entities = book.bookmaster.entities.exclude(order=999)
+        entities_by_type = {}
+        for entity in entities:
+            # Get localized name from translations or fall back to source_name
+            entity.localized_name = entity.translations.get(language_code, entity.source_name)
+            entity_type_display = entity.get_entity_type_display()
+            if entity_type_display not in entities_by_type:
+                entities_by_type[entity_type_display] = []
+            entities_by_type[entity_type_display].append(entity)
+        book.entities_by_type = entities_by_type
+
+        return book
+
+    def enrich_books_with_metadata(self, books, language_code):
+        """
+        Add metadata to multiple books (list view helper).
+
+        Calls enrich_book_with_metadata() for each book.
+
+        Args:
+            books: Queryset or list of Book objects
+            language_code: Language code for localization
+
+        Returns:
+            List of enriched book objects
+        """
+        enriched_books = []
+        for book in books:
+            self.enrich_book_with_metadata(book, language_code)
+            enriched_books.append(book)
+        return enriched_books
+
     def get_context_data(self, **kwargs):
         """
         Add global navigation context to all reader views.
@@ -200,13 +295,13 @@ class BaseReaderView:
         genres_flat = cache.get_cached_genres_flat()
         context["genres"] = self.get_localized_genres(genres_flat, language_code)
 
-        # Add tags grouped by category (cached)
-        tags_by_category = cache.get_cached_tags()
+        # Add all tags grouped by category for navigation/filtering (cached)
+        all_tags_by_category = cache.get_cached_tags()
         # Add localized names to tags
-        for category, tags in tags_by_category.items():
+        for category, tags in all_tags_by_category.items():
             for tag in tags:
                 tag.localized_name = tag.get_localized_name(language_code)
-        context["tags_by_category"] = tags_by_category
+        context["all_tags_by_category"] = all_tags_by_category
 
         return context
 
@@ -226,52 +321,12 @@ class BaseBookListView(BaseReaderView, ListView):
     context_object_name = "books"
     paginate_by = 12
 
-    def enrich_books_with_metadata(self, books, language_code):
-        """
-        Add published chapters count, total views, localized genres, and section to books.
-
-        Uses cached data to eliminate N+1 queries.
-
-        Args:
-            books: Queryset or list of Book objects
-            language_code: Language code for localization
-
-        Returns:
-            List of enriched book objects
-        """
-        enriched_books = []
-        for book in books:
-            # Use cached chapter count (eliminates N+1 query)
-            book.published_chapters_count = cache.get_cached_chapter_count(book.id)
-
-            # Add total chapter views (eliminates N+1 query)
-            book.total_chapter_views = cache.get_cached_total_chapter_views(book.id)
-
-            # Add localized section name if section exists
-            if hasattr(book.bookmaster, 'section') and book.bookmaster.section:
-                book.section_localized_name = book.bookmaster.section.get_localized_name(language_code)
-            else:
-                book.section_localized_name = None
-
-            # Add localized names to each genre (including parent)
-            for genre in book.bookmaster.genres.all():
-                genre.localized_name = genre.get_localized_name(language_code)
-                if genre.parent:
-                    genre.parent_localized_name = genre.parent.get_localized_name(language_code)
-                # Add section localized name if genre has section
-                if genre.section:
-                    genre.section_localized_name = genre.section.get_localized_name(language_code)
-
-            enriched_books.append(book)
-
-        return enriched_books
-
     def get_context_data(self, **kwargs):
         """Add enriched books to context"""
         context = super().get_context_data(**kwargs)
         language_code = self.kwargs.get("language_code")
 
-        # Enrich books with metadata (using cached chapter counts)
+        # Enrich books with metadata using inherited method from BaseReaderView
         context["books"] = self.enrich_books_with_metadata(
             context["books"], language_code
         )
@@ -308,13 +363,54 @@ class BaseSearchView(BaseBookListView):
         """
         Common search queryset logic using BookSearchService.
 
-        Returns empty queryset if no query provided.
+        Returns all books in section if no query provided.
         """
         query = self.request.GET.get('q', '').strip()
 
         if not query:
             self.search_results = None
-            return Book.objects.none()
+            # Return all books in section when no query
+            language = self.get_language()
+            section = self.get_section_for_search()
+
+            queryset = Book.objects.filter(
+                language=language,
+                is_public=True
+            )
+
+            if section:
+                queryset = queryset.filter(bookmaster__section=section)
+
+            # Apply filters
+            genre_slug = self.request.GET.get('genre')
+            if genre_slug:
+                from books.models import Genre, BookGenre
+                genre = Genre.objects.filter(slug=genre_slug).first()
+                if genre:
+                    bookmaster_ids = BookGenre.objects.filter(genre=genre).values_list(
+                        "bookmaster_id", flat=True
+                    )
+                    queryset = queryset.filter(bookmaster_id__in=bookmaster_ids)
+
+            tag_slug = self.request.GET.get('tag')
+            if tag_slug:
+                from books.models import Tag, BookTag
+                tag = Tag.objects.filter(slug=tag_slug).first()
+                if tag:
+                    bookmaster_ids = BookTag.objects.filter(tag=tag).values_list(
+                        "bookmaster_id", flat=True
+                    )
+                    queryset = queryset.filter(bookmaster_id__in=bookmaster_ids)
+
+            status = self.request.GET.get('status')
+            if status and status in ["draft", "ongoing", "completed"]:
+                queryset = queryset.filter(progress=status)
+
+            return (
+                queryset.select_related("bookmaster", "bookmaster__section", "language")
+                .prefetch_related("chapters", "bookmaster__genres", "bookmaster__genres__section", "bookmaster__tags")
+                .order_by("-published_at", "-created_at")
+            )
 
         # Get filter parameters
         genre_slug = self.request.GET.get('genre')
@@ -393,7 +489,7 @@ class BaseBookDetailView(BaseReaderView, DetailView):
 
     Provides:
     - Book queryset with proper select_related/prefetch_related
-    - Book localization (section, genres, tags)
+    - Book localization (section, genres, tags, entities)
     - All BaseReaderView functionality
     """
 
@@ -404,45 +500,24 @@ class BaseBookDetailView(BaseReaderView, DetailView):
 
     def get_context_data(self, **kwargs):
         """
-        Add localized book taxonomy to context.
+        Add enriched book metadata to context.
 
-        Localizes:
-        - Section name
-        - Genre names (with parent hierarchy)
-        - Tag names (grouped by category)
+        Uses the inherited enrich_book_with_metadata() method from BaseReaderView
+        to add all metadata, localized taxonomy, chapter counts, and views.
         """
         context = super().get_context_data(**kwargs)
         language_code = self.kwargs.get("language_code")
 
-        # Add localized section name to book object and context
-        if self.object.bookmaster.section:
-            self.object.section_localized_name = self.object.bookmaster.section.get_localized_name(language_code)
+        # Enrich book with all metadata using inherited method from BaseReaderView
+        self.enrich_book_with_metadata(self.object, language_code)
+
+        # Add convenience context variables for templates
+        if self.object.section_localized_name:
             context["section_localized_name"] = self.object.section_localized_name
             context["section"] = self.object.bookmaster.section
 
-        # Add localized genre names with hierarchy
-        genres = self.object.bookmaster.genres.all()
-        for genre in genres:
-            genre.localized_name = genre.get_localized_name(language_code)
-            if genre.parent:
-                genre.parent_localized_name = genre.parent.get_localized_name(language_code)
-            if genre.section:
-                genre.section_localized_name = genre.section.get_localized_name(language_code)
-        context["genres"] = genres
-
-        # Set primary genre on book object for breadcrumb (first genre without parent)
-        primary_genres = [g for g in genres if not g.parent]
-        self.object.primary_genre = primary_genres[0] if primary_genres else None
-
-        # Add localized tag names grouped by category
-        tags = self.object.bookmaster.tags.all()
-        tags_by_category = {}
-        for tag in tags:
-            tag.localized_name = tag.get_localized_name(language_code)
-            category = tag.category
-            if category not in tags_by_category:
-                tags_by_category[category] = []
-            tags_by_category[category].append(tag)
-        context["tags_by_category"] = tags_by_category
+        context["genres"] = self.object.enriched_genres
+        context["tags_by_category"] = self.object.tags_by_category
+        context["entities_by_type"] = self.object.entities_by_type
 
         return context

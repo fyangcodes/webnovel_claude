@@ -20,7 +20,7 @@ from .base import BaseReaderView, BaseBookListView, BaseBookDetailView
 from .list_views import WelcomeView, BookListView, BookSearchView
 
 # Detail views
-from .detail_views import BookDetailView, ChapterDetailView
+from .detail_views import BookDetailView, ChapterDetailView, AuthorDetailView
 
 # Redirect views
 from .redirect_views import GenreBookListView, TagBookListView
@@ -34,6 +34,7 @@ from .section_views import (
     SectionSearchView,
     SectionGenreBookListView,
     SectionTagBookListView,
+    SectionAuthorDetailView,
 )
 
 # Legacy redirect views (Phase 1)
@@ -58,6 +59,7 @@ __all__ = [
     # Detail views
     "BookDetailView",
     "ChapterDetailView",
+    "AuthorDetailView",
     # Redirect views
     "GenreBookListView",
     "TagBookListView",
@@ -69,6 +71,7 @@ __all__ = [
     "SectionSearchView",
     "SectionGenreBookListView",
     "SectionTagBookListView",
+    "SectionAuthorDetailView",
     # Legacy redirect views
     "LegacyBookDetailRedirectView",
     "LegacyChapterDetailRedirectView",

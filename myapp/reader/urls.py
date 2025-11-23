@@ -78,6 +78,28 @@ urlpatterns = [
     path("robots.txt", views.RobotsTxtView.as_view(), name="robots_txt"),
 
     # ============================================================================
+    # GLOBAL URLS (must come before section-scoped to avoid slug conflicts)
+    # ============================================================================
+    # Welcome/Homepage
+    path(
+        "<str:language_code>/",
+        views.WelcomeView.as_view(),
+        name="welcome",
+    ),
+    # Global search (cross-section search from welcome page)
+    path(
+        "<str:language_code>/search/",
+        views.BookSearchView.as_view(),
+        name="search",
+    ),
+    # Global author page (for authors with books across sections)
+    path(
+        "<str:language_code>/author/<slug:author_slug>/",
+        views.AuthorDetailView.as_view(),
+        name="author_detail",
+    ),
+
+    # ============================================================================
     # SECTION-SCOPED URLS (NEW)
     # ============================================================================
     # These URLs include section in the path for better organization and SEO
@@ -125,6 +147,12 @@ urlpatterns = [
         views.SectionChapterDetailView.as_view(),
         name="section_chapter_detail",
     ),
+    # Section author detail
+    path(
+        "<str:language_code>/<slug:section_slug>/author/<slug:author_slug>/",
+        views.SectionAuthorDetailView.as_view(),
+        name="section_author_detail",
+    ),
 
     # ============================================================================
     # LEGACY URLS (BACKWARD COMPATIBILITY)
@@ -132,18 +160,6 @@ urlpatterns = [
     # These URLs maintain backward compatibility and redirect to section URLs
     # Will be kept indefinitely for bookmarks and external links
 
-    # Welcome/Homepage
-    path(
-        "<str:language_code>/",
-        views.WelcomeView.as_view(),
-        name="welcome",
-    ),
-    # Global search (cross-section search from welcome page)
-    path(
-        "<str:language_code>/search/",
-        views.BookSearchView.as_view(),
-        name="search",
-    ),
     # REMOVED: Cross-section routes (migrated to fully section-scoped architecture)
     # These routes have been removed as part of navigation refactoring
     # All browsing is now section-scoped: /<language>/<section>/books/

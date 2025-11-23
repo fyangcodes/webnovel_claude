@@ -176,6 +176,7 @@ The application expects these environment variables:
 - `DJANGO_SECRET_KEY` - Django secret key (required)
 - `DJANGO_DEBUG` - Set to "TRUE" for debug mode (defaults to True)
 - `DJANGO_ALLOWED_HOSTS` - Comma-separated list of allowed hosts (defaults to localhost,127.0.0.1)
+- `DISABLE_CACHE` - Set to "True" to disable Redis cache layer and always hit database (useful for development to avoid stale data confusion)
 
 ## Working Directory
 

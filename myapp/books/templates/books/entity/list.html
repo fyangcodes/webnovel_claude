@@ -100,6 +100,7 @@
                         <tr>
                             <th style="width: 80px;" class="text-center">Type</th>
                             <th style="min-width: 200px;">Entity Name</th>
+                            <th style="width: 70px;" class="text-center" title="Display priority (lower = shown first)">Priority</th>
                             <th style="width: 100px;" class="text-center">Actions</th>
                             <th style="width: 80px;">First</th>
                             <th style="width: 80px;">Last</th>
@@ -132,6 +133,13 @@
                             </td>
                             <td class="align-middle">
                                 <strong>{{ entity.source_name }}</strong>
+                            </td>
+                            <td class="text-center align-middle">
+                                {% if entity.order < 100 %}
+                                    <span class="badge bg-warning text-dark">{{ entity.order }}</span>
+                                {% else %}
+                                    <span class="text-muted">{{ entity.order }}</span>
+                                {% endif %}
                             </td>
                             <td class="text-center align-middle">
                                 <div class="btn-group btn-group-sm" role="group">

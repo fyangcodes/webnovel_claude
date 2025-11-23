@@ -139,16 +139,21 @@ class BookGenreInlineForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
 
         # Filter genres by BookMaster's section
-        if self.instance and self.instance.bookmaster and self.instance.bookmaster.section:
-            bookmaster = self.instance.bookmaster
-            self.fields['genre'].queryset = Genre.objects.filter(
-                section=bookmaster.section
-            ).select_related('parent', 'section').order_by('section', '-is_primary', 'name')
+        # Check pk to avoid RelatedObjectDoesNotExist on new empty forms
+        if self.instance and self.instance.pk:
+            try:
+                bookmaster = self.instance.bookmaster
+                if bookmaster and bookmaster.section:
+                    self.fields['genre'].queryset = Genre.objects.filter(
+                        section=bookmaster.section
+                    ).select_related('parent', 'section').order_by('section', '-is_primary', 'name')
 
-            self.fields['genre'].help_text = (
-                f"Only genres from section '{bookmaster.section.name}' are shown. "
-                f"To add genres from another section, change the BookMaster's section first."
-            )
+                    self.fields['genre'].help_text = (
+                        f"Only genres from section '{bookmaster.section.name}' are shown. "
+                        f"To add genres from another section, change the BookMaster's section first."
+                    )
+            except BookGenre.bookmaster.RelatedObjectDoesNotExist:
+                pass
 
 
 # ============================================================================
@@ -185,6 +190,64 @@ class LanguageAdmin(admin.ModelAdmin):
 
 
 # ============================================================================
+# TAXONOMY INLINE CLASSES
+# ============================================================================
+
+
+class PrimaryGenreInline(admin.TabularInline):
+    """Inline for managing primary genres within a Section"""
+    model = Genre
+    fk_name = "section"
+    extra = 1
+    fields = ["name", "slug", "order"]
+    ordering = ["order", "name"]
+    verbose_name = "Primary Genre"
+    verbose_name_plural = "Primary Genres"
+
+    def get_queryset(self, request):
+        """Only show primary genres"""
+        qs = super().get_queryset(request)
+        return qs.filter(is_primary=True)
+
+    def save_model(self, request, obj, form, change):
+        """Ensure is_primary is set to True for genres created here"""
+        if not change:  # Only for new genres
+            obj.is_primary = True
+        super().save_model(request, obj, form, change)
+
+    def save_formset(self, request, form, formset, change):
+        """Ensure is_primary is True for all genres in this inline"""
+        instances = formset.save(commit=False)
+        for instance in instances:
+            instance.is_primary = True
+            instance.save()
+        formset.save_m2m()
+
+
+class SubGenreInline(admin.TabularInline):
+    """Inline for managing sub-genres within a primary Genre"""
+    model = Genre
+    fk_name = "parent"
+    extra = 1
+    fields = ["name", "slug", "order"]
+    ordering = ["order", "name"]
+    verbose_name = "Sub-genre"
+    verbose_name_plural = "Sub-genres"
+
+    def save_formset(self, request, form, formset, change):
+        """Auto-set section and is_primary for sub-genres"""
+        instances = formset.save(commit=False)
+        parent_genre = form.instance
+        for instance in instances:
+            # Inherit section from parent
+            instance.section = parent_genre.section
+            # Sub-genres are not primary
+            instance.is_primary = False
+            instance.save()
+        formset.save_m2m()
+
+
+# ============================================================================
 # TAXONOMY ADMINS
 # ============================================================================
 
@@ -197,6 +260,7 @@ class SectionAdmin(admin.ModelAdmin):
     prepopulated_fields = {"slug": ("name",)}
     readonly_fields = ["pk", "created_at", "updated_at"]
     ordering = ["order", "name"]
+    inlines = [PrimaryGenreInline]
 
     fieldsets = (
         (None, {
@@ -253,16 +317,17 @@ class AuthorAdmin(admin.ModelAdmin):
 @admin.register(Genre)
 class GenreAdmin(admin.ModelAdmin):
     form = GenreAdminForm  # Use custom form with validation
-    list_display = ["name", "section", "parent", "is_primary", "slug", "created_at"]
+    list_display = ["name", "section", "parent", "is_primary", "order", "slug", "created_at"]
+    list_editable = ["order"]
     list_filter = ["section", "is_primary", "parent"]
     search_fields = ["name", "slug"]
     prepopulated_fields = {"slug": ("name",)}
     readonly_fields = ["pk", "created_at", "updated_at"]
-    ordering = ["section", "-is_primary", "name"]
+    ordering = ["section", "-is_primary", "order", "name"]
 
     fieldsets = (
         (None, {
-            "fields": ("pk", "section", "name", "slug", "description", "parent", "is_primary")
+            "fields": ("pk", "section", "name", "slug", "description", "parent", "is_primary", "order")
         }),
         (
             "Translations",
@@ -280,6 +345,12 @@ class GenreAdmin(admin.ModelAdmin):
             },
         ),
     )
+
+    def get_inlines(self, request, obj):
+        """Only show SubGenreInline for primary genres"""
+        if obj and obj.is_primary:
+            return [SubGenreInline]
+        return []
 
 
 @admin.register(Tag)
@@ -710,9 +781,13 @@ class BookEntityAdmin(admin.ModelAdmin):
         "source_name",
         "entity_type",
         "bookmaster",
+        "order",
         "first_chapter",
+        "last_chapter",
+        "occurrence_count",
         "created_at",
     ]
+    list_editable = ["order"]
     list_filter = ["entity_type", "bookmaster", "created_at"]
     search_fields = [
         "source_name",
@@ -720,12 +795,12 @@ class BookEntityAdmin(admin.ModelAdmin):
         "first_chapter__title",
     ]
     readonly_fields = ["pk", "created_at", "updated_at"]
-    ordering = ["bookmaster", "entity_type", "source_name"]
+    ordering = ["bookmaster", "order", "source_name"]
 
     fieldsets = (
         (
             None,
-            {"fields": ("pk", "bookmaster", "entity_type", "source_name", "first_chapter")},
+            {"fields": ("pk", "bookmaster", "entity_type", "source_name", "order", "first_chapter", "last_chapter", "occurrence_count")},
         ),
         (
             "Translations",
@@ -742,7 +817,7 @@ class BookEntityAdmin(admin.ModelAdmin):
 
     def get_queryset(self, request):
         return (
-            super().get_queryset(request).select_related("bookmaster", "first_chapter")
+            super().get_queryset(request).select_related("bookmaster", "first_chapter", "last_chapter")
         )
 
 

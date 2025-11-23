@@ -20,7 +20,7 @@ from django.core.paginator import Paginator
 from django.views import View
 from django.views.generic import DetailView
 
-from books.models import Book, Chapter, Genre, Tag, BookGenre
+from books.models import Book, Chapter, Genre, Tag, BookGenre, Author
 from reader import cache
 from .base import BaseBookListView, BaseBookDetailView, BaseReaderView, BaseSearchView
 
@@ -71,6 +71,9 @@ class SectionHomeView(BaseBookListView):
 
         # Show section nav on section home (CRITICAL - primary section navigation)
         context['show_section_nav'] = True
+
+        # Hide section badge on book cards (we're already in this section)
+        context['show_section'] = False
 
         # Add section to context with localized name
         context["section"] = section
@@ -157,6 +160,9 @@ class SectionBookListView(BaseBookListView):
 
         # Show section nav on section book list (CRITICAL - only way to switch sections)
         context['show_section_nav'] = True
+
+        # Hide section badge on book cards (we're already in this section)
+        context['show_section'] = False
 
         # Add section to context
         context["section"] = section
@@ -263,7 +269,7 @@ class SectionBookDetailView(BaseBookDetailView):
                 is_public=True,
                 bookmaster__section=section  # Validate section
             )
-            .select_related("bookmaster", "bookmaster__section", "language")
+            .select_related("bookmaster", "bookmaster__section", "bookmaster__author", "language")
             .prefetch_related(
                 "chapters__chaptermaster",
                 "bookmaster__genres",
@@ -276,9 +282,16 @@ class SectionBookDetailView(BaseBookDetailView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         section = self.get_section()
+        language_code = self.kwargs.get("language_code")
 
         # Show section nav on book detail (for discoverability)
         context['show_section_nav'] = True
+
+        # Add author context with localized name
+        author = self.object.bookmaster.author
+        if author:
+            context["author"] = author
+            context["author_localized_name"] = author.get_localized_name(language_code)
 
         # Get all published chapters
         all_chapters = (
@@ -288,7 +301,7 @@ class SectionBookDetailView(BaseBookDetailView):
         )
 
         # Pagination for chapters
-        paginator = Paginator(all_chapters, 20)  # 20 chapters per page
+        paginator = Paginator(all_chapters, 20)  # 2 chapters per page
         page_number = self.request.GET.get("page")
         page_obj = paginator.get_page(page_number)
 
@@ -428,6 +441,10 @@ class SectionSearchView(BaseSearchView):
 
         # Section-scoped specific context
         context['show_section_nav'] = True
+
+        # Hide section badge on book cards (we're already in this section)
+        context['show_section'] = False
+
         context["section"] = section
         context["section_localized_name"] = section.get_localized_name(language_code)
 
@@ -529,3 +546,69 @@ class SectionTagBookListView(View):
         # Build URL with query parameters
         url = reverse("reader:section_book_list", args=[language_code, section_slug])
         return redirect(f"{url}?tag={tag_slug}")
+
+
+class SectionAuthorDetailView(BaseReaderView, DetailView):
+    """
+    Author detail page with section validation.
+
+    URL: /<language>/<section>/author/<slug>/
+    Example: /en/fiction/author/er-gen/
+
+    Displays:
+    - Author information (name, description, avatar)
+    - List of books by this author in this section
+    """
+
+    template_name = "reader/author_detail.html"
+    model = Author
+    context_object_name = "author"
+    slug_field = "slug"
+    slug_url_kwarg = "author_slug"
+
+    def get_object(self, queryset=None):
+        """Use cached author lookup by slug."""
+        slug = self.kwargs.get(self.slug_url_kwarg)
+        author = cache.get_cached_author_by_slug(slug)
+        if author is None:
+            raise Http404("Author not found")
+        return author
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        language = self.get_language()
+        section = self.get_section()
+        language_code = language.code
+
+        if not section:
+            raise Http404("Section required")
+
+        # Show section nav
+        context['show_section_nav'] = True
+
+        # Hide section badge on book cards (we're already in this section)
+        context['show_section'] = False
+
+        context['section'] = section
+        context['section_localized_name'] = section.get_localized_name(language_code)
+
+        # Localized author info
+        context['author_name'] = self.object.get_localized_name(language_code)
+        context['author_description'] = self.object.get_localized_description(language_code)
+
+        # Get author's books (published in current language and section)
+        books = list(Book.objects.filter(
+            bookmaster__author=self.object,
+            bookmaster__section=section,
+            language=language,
+            is_public=True
+        ).select_related(
+            'bookmaster', 'bookmaster__section', 'language'
+        ).prefetch_related(
+            'bookmaster__genres', 'bookmaster__genres__section'
+        ).order_by('-created_at'))
+
+        # Enrich books with metadata using inherited method from BaseReaderView
+        context['books'] = self.enrich_books_with_metadata(books, language_code)
+
+        return context

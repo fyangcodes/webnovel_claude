@@ -1,0 +1,110 @@
+{% comment %}
+Book Meta Partial - Displays taxonomy badges for books
+
+Required Context:
+- book: Book object with bookmaster relationship
+- current_language: Language object (for URLs)
+- section: Section object (or book.bookmaster.section)
+- section_localized_name: Localized section name
+
+Optional Context (passed via include):
+- show_section: bool (default True)
+- show_genres: bool (default True)
+- show_tags: bool (default True)
+- show_entities: bool (default False)
+- max_genres: int (default None = all)
+- max_tags: int (default None = all)
+- max_entities: int (default None = all)
+- compact: bool (default False)
+- show_hierarchy: bool (default True)
+
+Usage:
+{% include "reader/partials/book_meta.html" with show_section=False compact=True %}
+{% endcomment %}
+
+{% with show_section_val=show_section|default:True show_genres_val=show_genres|default:True show_tags_val=show_tags|default:True show_entities_val=show_entities|default:False compact_val=compact|default:False show_hierarchy_val=show_hierarchy|default:True %}
+
+<div class="book-meta {% if compact_val %}book-meta-compact{% endif %}">
+    {# Single flexbox container for all badges #}
+    <div class="book-meta-badges-container d-flex flex-wrap gap-1">
+
+        {# SECTION BADGE - Orange (bg-primary-custom) #}
+        {% if show_section_val and section %}
+        <a href="{% url 'reader:section_home' current_language.code section.slug %}"
+           class="badge bg-primary-custom text-decoration-none">
+            {% if section.icon %}<i class="{{ section.icon }} me-1"></i>{% endif %}
+            {{ section_localized_name|default:section.name }}
+        </a>
+        {% endif %}
+
+        {# GENRE BADGES - Blue (Bootstrap primary) #}
+        {% if show_genres_val and genres %}
+            {% if max_genres %}
+                {% for genre in genres|slice:max_genres %}
+                <a href="{% url 'reader:section_genre_book_list' current_language.code section.slug genre.slug %}"
+                   class="badge bg-primary text-decoration-none">
+                    {% if show_hierarchy_val and genre.parent_localized_name %}
+                        {{ genre.parent_localized_name }} &rsaquo;
+                    {% endif %}
+                    {{ genre.localized_name }}
+                </a>
+                {% endfor %}
+            {% else %}
+                {% for genre in genres %}
+                <a href="{% url 'reader:section_genre_book_list' current_language.code section.slug genre.slug %}"
+                   class="badge bg-primary text-decoration-none">
+                    {% if show_hierarchy_val and genre.parent_localized_name %}
+                        {{ genre.parent_localized_name }} &rsaquo;
+                    {% endif %}
+                    {{ genre.localized_name }}
+                </a>
+                {% endfor %}
+            {% endif %}
+        {% endif %}
+
+        {# TAG BADGES - Gray (Bootstrap secondary) #}
+        {% if show_tags_val and tags_by_category %}
+            {% for category, tags in tags_by_category.items %}
+                {# {% if not compact_val %}<small class="text-muted me-2">{{ category }}:</small>{% endif %} #}
+                {% if max_tags %}
+                    {% for tag in tags|slice:max_tags %}
+                    <a href="{% url 'reader:section_tag_book_list' current_language.code section.slug tag.slug %}"
+                       class="badge bg-secondary text-decoration-none">
+                        {{ tag.localized_name }}
+                    </a>
+                    {% endfor %}
+                {% else %}
+                    {% for tag in tags %}
+                    <a href="{% url 'reader:section_tag_book_list' current_language.code section.slug tag.slug %}"
+                       class="badge bg-secondary text-decoration-none">
+                        {{ tag.localized_name }}
+                    </a>
+                    {% endfor %}
+                {% endif %}
+            {% endfor %}
+        {% endif %}
+
+        {# ENTITY BADGES - Gray outline (all types) #}
+        {% if show_entities_val and entities_by_type %}
+            {% for type, entities in entities_by_type.items %}
+                {# {% if not compact_val %}<small class="text-muted me-2">{{ type }}:</small>{% endif %} #}
+                {% if max_entities %}
+                    {% for entity in entities|slice:max_entities %}
+                    <span class="badge border text-secondary bg-transparent">
+                        {{ entity.localized_name|default:entity.source_name }}
+                    </span>
+                    {% endfor %}
+                {% else %}
+                    {% for entity in entities %}
+                    <span class="badge border text-secondary bg-transparent">
+                        {{ entity.localized_name|default:entity.source_name }}
+                    </span>
+                    {% endfor %}
+                {% endif %}
+            {% endfor %}
+        {% endif %}
+
+    </div>
+</div>
+
+{% endwith %}

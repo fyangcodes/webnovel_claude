@@ -1,0 +1,66 @@
+{% load reader_extras %}
+
+<!-- Chapter Navigation -->
+<div class="chapter-nav-container d-flex justify-content-between align-items-center gap-2">
+    <!-- Previous Chapter Button -->
+    <div class="flex-fill">
+        {% if previous_chapter %}
+            {% if book.bookmaster.section %}
+                <a href="{% url 'reader:section_chapter_detail' current_language.code book.bookmaster.section.slug book.slug previous_chapter.slug %}"
+                   class="btn btn-primary-custom w-100"
+                   title="{{ previous_chapter.title }}">
+                    <i class="fas fa-arrow-left"></i>
+                    <span class="d-none d-md-inline ms-2">Previous</span>
+                </a>
+            {% else %}
+                <a href="{% url 'reader:chapter_detail' current_language.code book.slug previous_chapter.slug %}"
+                   class="btn btn-primary-custom w-100"
+                   title="{{ previous_chapter.title }}">
+                    <i class="fas fa-arrow-left"></i>
+                    <span class="d-none d-md-inline ms-2">Previous</span>
+                </a>
+            {% endif %}
+        {% else %}
+            <button class="btn btn-outline-secondary w-100" disabled>
+                <i class="fas fa-arrow-left"></i>
+                <span class="d-none d-md-inline ms-2">Previous</span>
+            </button>
+        {% endif %}
+    </div>
+
+    <!-- Back to Book Index Button -->
+    <div class="flex-fill">
+        <a href="{% url 'reader:section_book_detail' current_language.code book.bookmaster.section.slug book.slug %}"
+           class="btn btn-outline-secondary w-100"
+           title="{{ book.title }}">
+            <i class="fas fa-list"></i>
+            <span class="ms-2">Index</span>
+        </a>
+    </div>
+
+    <!-- Next Chapter Button -->
+    <div class="flex-fill">
+        {% if next_chapter %}
+            {% if book.bookmaster.section %}
+                <a href="{% url 'reader:section_chapter_detail' current_language.code book.bookmaster.section.slug book.slug next_chapter.slug %}"
+                   class="btn btn-primary-custom w-100"
+                   title="{{ next_chapter.title }}">
+                    <span class="me-2">Next</span>
+                    <i class="fas fa-arrow-right"></i>
+                </a>
+            {% else %}
+                <a href="{% url 'reader:chapter_detail' current_language.code book.slug next_chapter.slug %}"
+                   class="btn btn-primary-custom w-100"
+                   title="{{ next_chapter.title }}">
+                    <span class="d-none d-md-inline me-2">Next</span>
+                    <i class="fas fa-arrow-right"></i>
+                </a>
+            {% endif %}
+        {% else %}
+            <button class="btn btn-outline-secondary w-100" disabled>
+                <span class="me-2">Next</span>
+                <i class="fas fa-arrow-right"></i>
+            </button>
+        {% endif %}
+    </div>
+</div>

@@ -4,11 +4,14 @@ Parameters:
 - book: Book object to display
 - current_language: Current language object for URL generation
 - current_section: (Optional) Current section for context-aware URLs
+- show_section: (Optional) Whether to show section badge (default True)
 {% endcomment %}
 
+{% with card_section=book.bookmaster.section card_section_name=book.section_localized_name card_genres=book.enriched_genres card_tags=book.tags_by_category %}
+
 <div class="book-card">
-    {% if book.bookmaster.section %}
-        <a href="{% url 'reader:section_book_detail' current_language.code book.bookmaster.section.slug book.slug %}" class="book-card-link">
+    {% if card_section %}
+        <a href="{% url 'reader:section_book_detail' current_language.code card_section.slug book.slug %}" class="book-card-link">
     {% else %}
         <a href="{% url 'reader:book_detail' current_language.code book.slug %}" class="book-card-link">
     {% endif %}
@@ -17,10 +20,18 @@ Parameters:
 
             <!-- Status Badge -->
             {% if book.progress == 'ongoing' %}
-                <span class="badge bg-primary position-absolute top-0 end-0 m-2">Ongoing</span>
+                <span class="badge bg-primary position-absolute top-0 end-0 m-1">Ongoing</span>
             {% elif book.progress == 'completed' %}
-                <span class="badge bg-success position-absolute top-0 end-0 m-2">Completed</span>
+                <span class="badge bg-success position-absolute top-0 end-0 m-1">Completed</span>
             {% endif %}
+
+            <!-- Stats (bottom left corner) -->
+            <div class="book-card-stats">
+                {% if book.total_chapter_views %}
+                <span class="book-card-stat-item"><i class="fa fa-eye"></i> {{ book.total_chapter_views|default:0 }}</span>
+                {% endif %}
+                <span class="book-card-stat-item"><i class="fa fa-list"></i> {{ book.published_chapters_count }}</span>
+            </div>
 
             <button class="book-card-info-btn" data-bs-toggle="modal" data-bs-target="#bookModal{{ book.id }}" onclick="event.preventDefault(); event.stopPropagation();">
                 <i class="fas fa-info"></i>
@@ -28,31 +39,15 @@ Parameters:
         </div>
         <h3 class="book-card-title">{{ book.title }}</h3>
 
-        <!-- Section and Genre Info -->
-        <div class="muted small mb-1">
-            {% if book.section_localized_name %}
-                <span class="badge bg-primary-custom" style="font-size: 0.7rem;">{{ book.section_localized_name }}</span>
-            {% endif %}
-            {% with book.bookmaster.genres.all|slice:":2" as genres %}
-                {% for genre in genres %}
-                    <span class="badge bg-secondary" style="font-size: 0.7rem;">{{ genre.localized_name }}</span>
-                {% endfor %}
-            {% endwith %}
-        </div>
-
-        <!-- Stats -->
-        <div class="d-flex justify-content-between align-items-center muted small">
-            <div class="d-flex gap-2">
-                {% if book.total_chapter_views %}
-                <p class="mb-0"><i class="fa fa-eye"></i> {{ book.total_chapter_views|default:0 }}</p>
-                {% endif %}
-                <p class="mb-0"><i class="fa fa-list"></i> {{ book.published_chapters_count }}</p>
-            </div>
-        </div>
+        <!-- Section, Genre, and Tags (using book_meta partial) -->
+        {% include "reader/partials/book_meta.html" with section=card_section section_localized_name=card_section_name genres=card_genres tags_by_category=card_tags show_section=show_section|default:True show_tags=True show_entities=False max_genres=2 max_tags=3 compact=True show_hierarchy=False %}
     </a>
 </div>
 
+{% endwith %}
+
 <!-- Book Info Modal -->
+{% with modal_section=book.bookmaster.section modal_section_name=book.section_localized_name modal_genres=book.enriched_genres %}
 <div class="modal fade" id="bookModal{{ book.id }}" tabindex="-1" aria-labelledby="bookModalLabel{{ book.id }}" aria-hidden="true">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
@@ -66,34 +61,19 @@ Parameters:
                     <div class="col-md-4">
                         <img src="{{ book.effective_cover_image }}" alt="{{ book.title }}" class="img-fluid mb-3">
 
-                        <!-- Taxonomy Section -->
-                        {% if book.section_localized_name %}
-                        <div class="mb-3">
-                            <h6 class="text-muted mb-1" style="font-size: 0.8rem;">Section</h6>
-                            <span class="badge bg-primary-custom">{{ book.section_localized_name }}</span>
-                        </div>
-                        {% endif %}
-
-                        {% if book.bookmaster.genres.all %}
-                        <div class="mb-3">
-                            <h6 class="text-muted mb-1" style="font-size: 0.8rem;">Genres</h6>
-                            <div>
-                                {% for genre in book.bookmaster.genres.all %}
-                                <span class="badge bg-secondary me-1 mb-1">
-                                    {% if genre.parent_localized_name %}
-                                        {{ genre.parent_localized_name }} &rsaquo;
-                                    {% endif %}
-                                    {{ genre.localized_name }}
-                                </span>
-                                {% endfor %}
-                            </div>
-                        </div>
-                        {% endif %}
+                        <!-- Taxonomy Section (using book_meta partial) -->
+                        {% include "reader/partials/book_meta.html" with section=modal_section section_localized_name=modal_section_name genres=modal_genres tags_by_category=book.tags_by_category entities_by_type=book.entities_by_type show_section=True show_tags=True show_entities=True compact=False %}
                     </div>
                     <!-- Right: Book Info -->
                     <div class="col-md-8">
                         <h4 class="fw-bold modal-book-title">{{ book.title }}</h4>
-                        {% if book.author %}
+                        {% if book.bookmaster.author %}
+                        <p class="modal-book-author mb-3">
+                            by <a href="{% url 'reader:section_author_detail' current_language.code book.bookmaster.section.slug book.bookmaster.author.slug %}" class="text-decoration-none">
+                                {{ book.bookmaster.author.name }}
+                            </a>
+                        </p>
+                        {% elif book.author %}
                         <p class="modal-book-author mb-3">
                             {{ book.author }}
                         </p>
@@ -137,8 +117,8 @@ Parameters:
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-outline-primary-custom" data-bs-dismiss="modal">Close</button>
-                {% if book.bookmaster.section %}
-                    <a href="{% url 'reader:section_book_detail' current_language.code book.bookmaster.section.slug book.slug %}" class="btn btn-primary-custom">
+                {% if modal_section %}
+                    <a href="{% url 'reader:section_book_detail' current_language.code modal_section.slug book.slug %}" class="btn btn-primary-custom">
                         Read Now
                     </a>
                 {% else %}
@@ -150,3 +130,4 @@ Parameters:
         </div>
     </div>
 </div>
+{% endwith %}

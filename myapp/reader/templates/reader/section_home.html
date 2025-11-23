@@ -2,7 +2,7 @@
 {% load static %}
 {% load reader_extras %}
 
-{% block title %}{{ section_localized_name }} - {{ current_language.local_name }}{% endblock %}
+{% block title %}{{ section_localized_name }} - literatures{% endblock %}
 
 {% block extra_css %}
 <!-- Section-specific meta tags for JavaScript -->
@@ -22,33 +22,35 @@
 {% block content %}
 <div class="container py-4">
     <!-- Section Header -->
-    <div class="text-center mb-5">
-        <h1 class="display-4 fw-bold mb-3">
-            {% if section.icon %}
-            <i class="{{ section.icon }} me-2"></i>
+    <div class="section-header mb-5">
+        <div class="section-header-content">
+            <h1 class="section-title">
+                {% if section.icon %}
+                <i class="{{ section.icon }} me-2"></i>
+                {% endif %}
+                {{ section_localized_name }}
+            </h1>
+            {% if section.description %}
+            <div class="section-description-wrapper">
+                <p class="section-description collapsed" id="sectionDescription">
+                    {{ section.description }}
+                </p>
+                <button class="section-description-toggle btn btn-link p-0"
+                        id="descriptionToggle"
+                        aria-expanded="false"
+                        aria-controls="sectionDescription">
+                    <i class="fas fa-chevron-down"></i>
+                </button>
+            </div>
             {% endif %}
-            {{ section_localized_name }}
-        </h1>
-        {% if section.description %}
-        <p class="lead text-muted">{{ section.description }}</p>
-        {% endif %}
+        </div>
     </div>
 
     <!-- Section Genres -->
     {% if section_genres %}
     <div class="mb-5">
         <h2 class="h4 mb-3">Browse by Genre</h2>
-        <div class="d-flex flex-wrap gap-2">
-            {% for genre in section_genres %}
-                {% if genre.is_primary %}
-                <a href="{% url 'reader:section_book_list' current_language.code section.slug %}?genre={{ genre.slug }}"
-                   class="btn btn-outline-primary">
-                    {% if genre.icon %}<i class="{{ genre.icon }} me-1"></i>{% endif %}
-                    {{ genre.localized_name }}
-                </a>
-                {% endif %}
-            {% endfor %}
-        </div>
+        <div class="d-flex flex-wrap gap-2"><a href="{% url 'reader:section_book_list' current_language.code section.slug %}" class="btn-genre">All Genres</a>{% for genre in section_genres %}{% if genre.is_primary %}<a href="{% url 'reader:section_book_list' current_language.code section.slug %}?genre={{ genre.slug }}" class="btn-genre">{% if genre.icon %}<i class="{{ genre.icon }} me-1"></i>{% endif %}{{ genre.localized_name }}</a>{% endif %}{% endfor %}</div>
     </div>
     {% endif %}
 
@@ -58,8 +60,9 @@
         <div class="d-flex justify-content-between align-items-center mb-3">
             <h2 class="h4 mb-0">Recent Updates</h2>
             <a href="{% url 'reader:section_book_list' current_language.code section.slug %}"
-               class="btn btn-sm btn-outline-primary">
-                View All Books
+               class="btn-view-all">
+                View All
+                <i class="fas fa-arrow-right ms-1"></i>
             </a>
         </div>
 
@@ -102,5 +105,31 @@
     if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
         window.SectionNavigation.config.debugMode = true;
     }
+
+    // Section description toggle
+    document.addEventListener('DOMContentLoaded', function() {
+        const descriptionToggle = document.getElementById('descriptionToggle');
+        const sectionDescription = document.getElementById('sectionDescription');
+
+        if (descriptionToggle && sectionDescription) {
+            descriptionToggle.addEventListener('click', function() {
+                const isExpanded = sectionDescription.classList.contains('expanded');
+
+                if (isExpanded) {
+                    sectionDescription.classList.remove('expanded');
+                    sectionDescription.classList.add('collapsed');
+                    descriptionToggle.setAttribute('aria-expanded', 'false');
+                    descriptionToggle.querySelector('i').classList.remove('fa-chevron-up');
+                    descriptionToggle.querySelector('i').classList.add('fa-chevron-down');
+                } else {
+                    sectionDescription.classList.remove('collapsed');
+                    sectionDescription.classList.add('expanded');
+                    descriptionToggle.setAttribute('aria-expanded', 'true');
+                    descriptionToggle.querySelector('i').classList.remove('fa-chevron-down');
+                    descriptionToggle.querySelector('i').classList.add('fa-chevron-up');
+                }
+            });
+        }
+    });
 </script>
 {% endblock %}

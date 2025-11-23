@@ -133,7 +133,7 @@
                    style="border-color: var(--color-primary); color: var(--color-primary);{% if not section %} background-color: var(--color-primary);{% endif %}"
                    data-section-color="true">
                     <i class="fas fa-home me-1"></i>
-                    All
+                    Home
                 </a>
 
                 <!-- Section Home Links -->
@@ -141,7 +141,7 @@
                 <a href="{% url 'reader:section_home' current_language.code nav_section.slug %}"
                    class="section-nav-btn rounded-pill {% if section and section.slug == nav_section.slug %}active{% endif %}"
                    {% if nav_section|style_color %}style="border-color: {{ nav_section|style_color }}; color: {{ nav_section|style_color }};{% if section and section.slug == nav_section.slug %} background-color: {{ nav_section|style_color }};{% endif %}" data-section-color="true"{% endif %}
-                   data-ajax-nav="section"
+                   
                    data-section-slug="{{ nav_section.slug }}">
                     {% if nav_section|style_icon %}<i class="{{ nav_section|style_icon }} me-1"></i>{% endif %}
                     {{ nav_section.localized_name }}
@@ -170,7 +170,7 @@
                        style="border-color: var(--color-primary); color: var(--color-primary);{% if not section %} background-color: var(--color-primary);{% endif %}"
                        data-section-color="true">
                         <i class="fas fa-home me-1"></i>
-                        All
+                        Home
                     </a>
 
                     <!-- Section Home Links -->

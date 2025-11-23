@@ -3,7 +3,7 @@
 {% load books_extras %}
 {% load reader_extras %}
 
-{% block title %}{{ book.title }}{% endblock %}
+{% block title %}{{ section_localized_name }} - {{ book.title }}{% endblock %}
 
 {% block extra_css %}
 <!-- SEO Meta Tags -->
@@ -23,7 +23,13 @@
         <div class="mb-4">
             <h1 class="display-5 mb-3">{{ book.title }}</h1>
             
-            {% if book.author %}
+            {% if author %}
+            <p class="lead mb-3">
+                by <a href="{% url 'reader:section_author_detail' current_language.code book.bookmaster.section.slug author.slug %}" class="text-decoration-none">
+                    {{ author_localized_name }}
+                </a>
+            </p>
+            {% elif book.author %}
             <p class="lead mb-3">by {{ book.author }}</p>
             {% endif %}
             
@@ -61,79 +67,9 @@
             </div>
             {% endif %}
 
-            <!-- Taxonomy: Section, Genres, and Tags -->
+            <!-- Taxonomy: Section, Genres, Tags, and Entities -->
             <div class="mb-4">
-                <!-- Section Badge -->
-                {% if book.bookmaster.section %}
-                <div class="mb-3">
-                    <h6 class="text-muted mb-2">Section</h6>
-                    <a href="{% url 'reader:section_home' current_language.code book.bookmaster.section.slug %}"
-                       class="badge bg-primary-custom text-decoration-none"
-                       style="font-size: 0.9rem; padding: 0.5rem 1rem;">
-                        {% if book.bookmaster.section.icon %}<i class="{{ book.bookmaster.section.icon }} me-1"></i>{% endif %}
-                        {{ book.section_localized_name }}
-                    </a>
-                </div>
-                {% endif %}
-
-                <!-- Genres -->
-                {% if genres %}
-                <div class="mb-3">
-                    <h6 class="text-muted mb-2">Genres</h6>
-                    <div class="d-flex flex-wrap gap-2">
-                        {% for genre in genres %}
-                        {% if book.bookmaster.section %}
-                            <a href="{% url 'reader:section_genre_book_list' current_language.code book.bookmaster.section.slug genre.slug %}"
-                               class="badge bg-secondary text-decoration-none"
-                               style="font-size: 0.85rem; padding: 0.4rem 0.8rem;">
-                                {% if genre.parent_localized_name %}
-                                    {{ genre.parent_localized_name }} &rsaquo;
-                                {% endif %}
-                                {{ genre.localized_name }}
-                            </a>
-                        {% else %}
-                            <a href="{% url 'reader:section_genre_book_list' current_language.code book.bookmaster.section.slug genre.slug %}"
-                               class="badge bg-secondary text-decoration-none"
-                               style="font-size: 0.85rem; padding: 0.4rem 0.8rem;">
-                                {% if genre.parent_localized_name %}
-                                    {{ genre.parent_localized_name }} &rsaquo;
-                                {% endif %}
-                                {{ genre.localized_name }}
-                            </a>
-                        {% endif %}
-                        {% endfor %}
-                    </div>
-                </div>
-                {% endif %}
-
-                <!-- Tags grouped by category -->
-                {% if tags_by_category %}
-                <div class="mb-3">
-                    <h6 class="text-muted mb-2">Tags</h6>
-                    {% for category, tags in tags_by_category.items %}
-                        <div class="mb-2">
-                            <small class="text-muted d-block mb-1">{{ category }}</small>
-                            <div class="d-flex flex-wrap gap-1">
-                                {% for tag in tags %}
-                                {% if book.bookmaster.section %}
-                                    <a href="{% url 'reader:section_tag_book_list' current_language.code book.bookmaster.section.slug tag.slug %}"
-                                       class="badge bg-light text-dark text-decoration-none border"
-                                       style="font-size: 0.8rem; padding: 0.3rem 0.7rem;">
-                                        {{ tag.localized_name }}
-                                    </a>
-                                {% else %}
-                                    <a href="{% url 'reader:tag_book_list' current_language.code tag.slug %}"
-                                       class="badge bg-light text-dark text-decoration-none border"
-                                       style="font-size: 0.8rem; padding: 0.3rem 0.7rem;">
-                                        {{ tag.localized_name }}
-                                    </a>
-                                {% endif %}
-                                {% endfor %}
-                            </div>
-                        </div>
-                    {% endfor %}
-                </div>
-                {% endif %}
+                {% include "reader/partials/book_meta.html" with section=book.bookmaster.section section_localized_name=section_localized_name genres=genres tags_by_category=tags_by_category entities_by_type=entities_by_type show_tags=True show_entities=True %}
             </div>
         </div>
     </div>
@@ -152,66 +88,11 @@
 <div class="row mt-5">
     <div class="col-12">
         <h3 class="mb-4">Chapters</h3>
-        
-        {% if chapters %}
-        <div class="row">
-            {% for chapter in chapters %}
-            <div class="col-lg-3 col-md-4 col-sm-6 mb-3">
-                {% if book.bookmaster.section %}
-                    <a href="{% url 'reader:section_chapter_detail' current_language.code book.bookmaster.section.slug book.slug chapter.slug %}"
-                       class="btn btn-outline-primary-custom w-100 text-start p-3"
-                       style="min-height: 60px; display: flex; align-items: center;">
-                        <span class="fw-medium">{{ chapter.title }}</span>
-                    </a>
-                {% else %}
-                    <a href="{% url 'reader:chapter_detail' current_language.code book.slug chapter.slug %}"
-                       class="btn btn-outline-primary-custom w-100 text-start p-3"
-                       style="min-height: 60px; display: flex; align-items: center;">
-                        <span class="fw-medium">{{ chapter.title }}</span>
-                    </a>
-                {% endif %}
-            </div>
-            {% endfor %}
-        </div>
 
-        <!-- Simple Pagination -->
-        {% if is_paginated %}
-        <nav aria-label="Chapter pagination" class="mt-4">
-            <div class="d-flex justify-content-center">
-                <div class="btn-group" role="group">
-                    {% if page_obj.has_previous %}
-                        <a href="?page=1" class="btn btn-outline-secondary btn-sm">1</a>
-                        {% if page_obj.previous_page_number > 2 %}
-                            {% if page_obj.previous_page_number > 3 %}
-                                <span class="btn btn-outline-secondary btn-sm disabled">...</span>
-                            {% endif %}
-                            <a href="?page={{ page_obj.previous_page_number }}" class="btn btn-outline-secondary btn-sm">{{ page_obj.previous_page_number }}</a>
-                        {% endif %}
-                    {% endif %}
-                    
-                    <span class="btn btn-primary btn-sm">{{ page_obj.number }}</span>
-                    
-                    {% if page_obj.has_next %}
-                        {% if page_obj.next_page_number < page_obj.paginator.num_pages %}
-                            <a href="?page={{ page_obj.next_page_number }}" class="btn btn-outline-secondary btn-sm">{{ page_obj.next_page_number }}</a>
-                            {% if page_obj.next_page_number < page_obj.paginator.num_pages|add:"-1" %}
-                                <span class="btn btn-outline-secondary btn-sm disabled">...</span>
-                            {% endif %}
-                        {% endif %}
-                        <a href="?page={{ page_obj.paginator.num_pages }}" class="btn btn-outline-secondary btn-sm">{{ page_obj.paginator.num_pages }}</a>
-                    {% endif %}
-                </div>
-            </div>
-        </nav>
-        {% endif %}
-        {% else %}
-        <!-- No Chapters State -->
-        <div class="text-center py-5">
-            <div class="display-3 text-muted mb-3">📄</div>
-            <h5 class="text-muted">No chapters published yet</h5>
-            <p class="text-muted">This book doesn't have any published chapters available for reading.</p>
+        <!-- Chapter list container (HTMX target for future Ajax pagination) -->
+        <div id="chapter-list-container">
+            {% include "reader/partials/chapter_list.html" %}
         </div>
-        {% endif %}
     </div>
 </div>
 {% endblock %}

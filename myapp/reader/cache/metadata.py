@@ -85,3 +85,97 @@ def invalidate_total_chapter_views(book_id):
     """
     cache_key = f"book:{book_id}:total_chapter_views"
     cache.delete(cache_key)
+
+
+# ==============================================================================
+# BULK CACHE FUNCTIONS
+# ==============================================================================
+
+
+def get_cached_chapter_counts_bulk(book_ids):
+    """
+    Get chapter counts for multiple books in one cache operation.
+
+    Uses cache.get_many() for efficiency.
+
+    Args:
+        book_ids: List of book IDs
+
+    Returns:
+        dict: {book_id: chapter_count}
+    """
+    if not book_ids:
+        return {}
+
+    # Build cache keys
+    cache_keys = [f"book:{book_id}:chapters:count" for book_id in book_ids]
+    key_to_book_id = {f"book:{book_id}:chapters:count": book_id for book_id in book_ids}
+
+    # Get from cache
+    cached = cache.get_many(cache_keys)
+
+    # Find missing keys
+    result = {}
+    missing_book_ids = []
+
+    for cache_key, book_id in key_to_book_id.items():
+        if cache_key in cached:
+            result[book_id] = cached[cache_key]
+        else:
+            missing_book_ids.append(book_id)
+
+    # Fetch missing from database
+    if missing_book_ids:
+        from django.db.models import Count
+
+        counts = (
+            Chapter.objects.filter(book_id__in=missing_book_ids, is_public=True)
+            .values('book_id')
+            .annotate(count=Count('id'))
+        )
+
+        counts_dict = {item['book_id']: item['count'] for item in counts}
+
+        # Cache the fetched values
+        to_cache = {}
+        for book_id in missing_book_ids:
+            count = counts_dict.get(book_id, 0)
+            result[book_id] = count
+            to_cache[f"book:{book_id}:chapters:count"] = count
+
+        cache.set_many(to_cache, timeout=TIMEOUT_METADATA)
+
+    return result
+
+
+def get_cached_total_chapter_views_bulk(book_ids):
+    """
+    Get total chapter views for multiple books.
+
+    Note: This function does NOT cache results because it includes real-time
+    Redis data. It optimizes by fetching all BookStats in one query.
+
+    Args:
+        book_ids: List of book IDs
+
+    Returns:
+        dict: {book_id: total_views}
+    """
+    if not book_ids:
+        return {}
+
+    from books.models import BookStats
+
+    # Fetch all book stats in one query
+    book_stats_list = BookStats.objects.filter(book_id__in=book_ids)
+    stats_dict = {bs.book_id: bs for bs in book_stats_list}
+
+    result = {}
+    for book_id in book_ids:
+        if book_id in stats_dict:
+            # Include real-time Redis counts for immediate feedback
+            result[book_id] = stats_dict[book_id].get_total_chapter_views(include_realtime=True)
+        else:
+            result[book_id] = 0
+
+    return result

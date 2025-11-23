@@ -32,6 +32,12 @@ class BookEntity(TimeStampModel):
     source_name = models.CharField(max_length=255)
     translations = models.JSONField(default=dict, blank=True)  # {"en": "Li Wei", "es": "Li Wei"}
 
+    # Display order for entity badges
+    order = models.PositiveSmallIntegerField(
+        default=999,
+        help_text="Display order (lower numbers appear first)"
+    )
+
     # Chapter where entity first appears
     first_chapter = models.ForeignKey(
         "Chapter",
@@ -55,12 +61,14 @@ class BookEntity(TimeStampModel):
     )
 
     class Meta:
+        ordering = ['order', 'source_name']
         unique_together = ["bookmaster", "source_name"]
         verbose_name = "Book Entity"
         verbose_name_plural = "Context - Book Entities"
         indexes = [
             models.Index(fields=["bookmaster", "entity_type"]),
             models.Index(fields=["occurrence_count"]),
+            models.Index(fields=["order"]),
         ]
 
     def get_translation(self, language_code):

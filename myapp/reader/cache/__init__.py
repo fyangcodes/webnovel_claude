@@ -38,6 +38,15 @@ from .static_data import (
     get_cached_genres_flat,
     get_cached_featured_genres,
     get_cached_tags,
+    # StyleConfig
+    get_cached_style_config,
+    get_cached_styles_for_model,
+    invalidate_style_config_cache,
+    # Author
+    get_cached_author,
+    get_cached_author_by_slug,
+    get_cached_authors,
+    invalidate_author_cache,
 )
 
 from .metadata import (
@@ -45,6 +54,9 @@ from .metadata import (
     invalidate_chapter_count,
     get_cached_total_chapter_views,
     invalidate_total_chapter_views,
+    # Bulk functions
+    get_cached_chapter_counts_bulk,
+    get_cached_total_chapter_views_bulk,
 )
 
 from .homepage import (
@@ -75,11 +87,23 @@ __all__ = [
     "get_cached_genres_flat",
     "get_cached_featured_genres",
     "get_cached_tags",
+    # StyleConfig
+    "get_cached_style_config",
+    "get_cached_styles_for_model",
+    "invalidate_style_config_cache",
+    # Author
+    "get_cached_author",
+    "get_cached_author_by_slug",
+    "get_cached_authors",
+    "invalidate_author_cache",
     # Metadata
     "get_cached_chapter_count",
     "invalidate_chapter_count",
     "get_cached_total_chapter_views",
     "invalidate_total_chapter_views",
+    # Bulk functions
+    "get_cached_chapter_counts_bulk",
+    "get_cached_total_chapter_views_bulk",
     # Homepage
     "get_cached_featured_books",
     "get_cached_recently_updated",

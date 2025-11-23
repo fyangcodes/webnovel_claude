@@ -49,6 +49,38 @@ The `StyleConfig` model in `reader/models.py` is **NOT cached** at all.
 
 ---
 
+## Author Model - NO CACHING
+
+The `Author` model in `books/models/taxonomy.py` is **NOT cached** but is used in:
+- `AuthorDetailView` - Author detail page
+- `SectionAuthorDetailView` - Section-scoped author detail page
+- `BookDetailView` / `SectionBookDetailView` - Author info on book pages
+
+| Issue | Impact |
+|-------|--------|
+| No caching for author lookups | Query per author page |
+| No caching for author's books list | Query per author detail view |
+| Author detail views call `get_cached_chapter_count` per book | N+1 cache calls |
+
+### Recommendations for Author Caching
+
+1. **Add cache functions** in `reader/cache/static_data.py`:
+   - `get_cached_author(author_id)` - Get single author by ID
+   - `get_cached_author_by_slug(slug)` - Get author by slug (for URL lookups)
+   - `get_cached_authors()` - Get all authors (for dropdowns/lists)
+
+2. **Add signal handlers** in `books/signals/cache.py`:
+   - Invalidate author cache when `Author` is saved/deleted
+
+3. **Suggested cache key pattern**:
+   - `author:{author_id}` - Individual author by ID
+   - `author:slug:{slug}` - Author by slug
+   - `authors:all` - All authors list
+
+4. **TTL**: 1 hour (same as other static/admin-managed data)
+
+---
+
 ## N+1 Query Issues Breakdown
 
 ### 1. `enrich_books_with_metadata()` - Cache calls per book
@@ -154,6 +186,25 @@ These inherit the same patterns from `BookDetailView` and `ChapterDetailView`, s
 
 ---
 
+### 6. `AuthorDetailView` / `SectionAuthorDetailView` - Cache calls per book
+
+**Location**: `reader/views/detail_views.py:195-201` and `reader/views/section_views.py:583-589`
+
+```python
+for book in books:
+    book.published_chapters_count = cache.get_cached_chapter_count(book.id)  # 1 cache call per book
+    book.total_chapter_views = cache.get_cached_total_chapter_views(book.id)  # 1 cache call per book
+    # ...
+    for genre in book.bookmaster.genres.all():
+        genre.localized_name = genre.get_localized_name(language_code)
+```
+
+**Issue**: Same N+1 cache call pattern as `enrich_books_with_metadata()`. For an author with 10 books, this makes **20 cache lookups**.
+
+**Recommendation**: Use the same bulk cache functions (`get_cached_chapter_counts_bulk`, `get_cached_total_chapter_views_bulk`) proposed in Task 4.
+
+---
+
 ## Summary Table
 
 | Location | Issue | Queries/Calls | Severity | Status |
@@ -163,15 +214,18 @@ These inherit the same patterns from `BookDetailView` and `ChapterDetailView`, s
 | `ChapterDetailView.get_context_data` | Separate prev/next queries | 2 queries | Low | TODO |
 | Genre/Section localization | Parent/section access | 0 (prefetched) | N/A | RESOLVED |
 | `StyleConfig` | No caching at all | 1+ queries per use | Medium | TODO |
+| `Author` | No caching at all | 1+ queries per use | Medium | TODO |
+| `AuthorDetailView` | Cache calls in loop for books | 20+ cache hits/page | Low | TODO |
 
 ---
 
 ## Implementation Priority
 
 1. **High**: StyleConfig caching (new feature, needs foundation)
-2. **Medium**: BookDetailView triple evaluation (affects every book page)
-3. **Low**: Cache bulk operations (optimization, cache is already fast)
-4. **Low**: ChapterDetailView prev/next (only 2 small queries)
+2. **High**: Author caching (new feature, used in multiple views)
+3. **Medium**: BookDetailView triple evaluation (affects every book page)
+4. **Low**: Cache bulk operations (optimization, cache is already fast)
+5. **Low**: ChapterDetailView prev/next (only 2 small queries)
 
 ---
 
@@ -340,9 +394,313 @@ style = section_styles.get(section.id)  # Returns StyleConfig or None
 
 ---
 
-### Task 2: Fix BookDetailView Triple Queryset Evaluation
+### Task 2: Author Caching
 
-#### Step 2.1: Update `reader/views/detail_views.py` - `BookDetailView.get_context_data()`
+#### Step 2.1: Add cache functions to `reader/cache/static_data.py`
+
+Add the following functions at the end of the file:
+
+```python
+# ==============================================================================
+# AUTHOR CACHING
+# ==============================================================================
+
+
+def get_cached_author(author_id):
+    """
+    Get Author by ID from cache or database.
+
+    Cache key: author:{author_id}
+    TTL: 1 hour (rarely changes, admin-only)
+    Invalidated by: Author model save/delete signals
+
+    Args:
+        author_id: Author primary key
+
+    Returns:
+        Author object or None if not found
+    """
+    from books.models import Author
+
+    cache_key = f"author:{author_id}"
+    author = cache.get(cache_key)
+
+    if author is None:
+        try:
+            author = Author.objects.get(id=author_id)
+        except Author.DoesNotExist:
+            author = False  # Use False to distinguish "not found" from "not cached"
+
+        cache.set(cache_key, author, timeout=TIMEOUT_STATIC)
+
+    return author if author is not False else None
+
+
+def get_cached_author_by_slug(slug):
+    """
+    Get Author by slug from cache or database.
+
+    Cache key: author:slug:{slug}
+    TTL: 1 hour
+    Invalidated by: Author model save/delete signals
+
+    Args:
+        slug: Author slug
+
+    Returns:
+        Author object or None if not found
+    """
+    from books.models import Author
+
+    cache_key = f"author:slug:{slug}"
+    author = cache.get(cache_key)
+
+    if author is None:
+        try:
+            author = Author.objects.get(slug=slug)
+        except Author.DoesNotExist:
+            author = False
+
+        cache.set(cache_key, author, timeout=TIMEOUT_STATIC)
+
+    return author if author is not False else None
+
+
+def get_cached_authors():
+    """
+    Get all authors from cache or database.
+
+    Cache key: authors:all
+    TTL: 1 hour
+    Invalidated by: Author model save/delete signals
+
+    Returns:
+        list: All Author objects ordered by name
+    """
+    from books.models import Author
+
+    cache_key = "authors:all"
+    authors = cache.get(cache_key)
+
+    if authors is None:
+        authors = list(Author.objects.all().order_by('name'))
+        cache.set(cache_key, authors, timeout=TIMEOUT_STATIC)
+
+    return authors
+
+
+def invalidate_author_cache(author_id=None, slug=None):
+    """
+    Invalidate Author caches.
+
+    Called by signal handlers when Author is saved/deleted.
+
+    Args:
+        author_id: Author ID to invalidate (optional)
+        slug: Author slug to invalidate (optional)
+    """
+    # Always invalidate the all-authors list
+    cache.delete("authors:all")
+
+    # Invalidate specific author caches if provided
+    if author_id:
+        cache.delete(f"author:{author_id}")
+    if slug:
+        cache.delete(f"author:slug:{slug}")
+```
+
+#### Step 2.2: Export new functions in `reader/cache/__init__.py`
+
+Add to imports:
+```python
+from .static_data import (
+    # ... existing imports ...
+    get_cached_author,
+    get_cached_author_by_slug,
+    get_cached_authors,
+    invalidate_author_cache,
+)
+```
+
+Add to `__all__`:
+```python
+__all__ = [
+    # ... existing exports ...
+    # Author
+    "get_cached_author",
+    "get_cached_author_by_slug",
+    "get_cached_authors",
+    "invalidate_author_cache",
+]
+```
+
+#### Step 2.3: Add signal handlers in `books/signals/cache.py`
+
+Add at the end of the file:
+
+```python
+# ==============================================================================
+# AUTHOR SIGNALS
+# ==============================================================================
+
+from books.models import Author
+
+@receiver([post_save, post_delete], sender=Author)
+def invalidate_author_caches(sender, instance, **kwargs):
+    """
+    Invalidate Author caches when an author is created, updated, or deleted.
+
+    Affected caches:
+    1. Individual author cache by ID
+    2. Individual author cache by slug
+    3. All authors list
+    """
+    from reader.cache import invalidate_author_cache
+
+    invalidate_author_cache(author_id=instance.id, slug=instance.slug)
+```
+
+#### Step 2.4: Update AuthorDetailView to use cache
+
+Update `reader/views/detail_views.py` - `AuthorDetailView`:
+
+```python
+class AuthorDetailView(BaseReaderView, DetailView):
+    """
+    Author detail page showing author info and their books.
+    """
+
+    template_name = "reader/author_detail.html"
+    model = Author
+    context_object_name = "author"
+    slug_field = "slug"
+    slug_url_kwarg = "author_slug"
+
+    def get_object(self, queryset=None):
+        """Use cached author lookup by slug."""
+        slug = self.kwargs.get(self.slug_url_kwarg)
+        author = cache.get_cached_author_by_slug(slug)
+        if author is None:
+            raise Http404("Author not found")
+        return author
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        language = self.get_language()
+        language_code = language.code
+
+        # Localized author info
+        context['author_name'] = self.object.get_localized_name(language_code)
+        context['author_description'] = self.object.get_localized_description(language_code)
+
+        # Get author's books (published in current language)
+        books = Book.objects.filter(
+            bookmaster__author=self.object,
+            language=language,
+            is_public=True
+        ).select_related(
+            'bookmaster', 'bookmaster__section', 'language'
+        ).prefetch_related(
+            'bookmaster__genres', 'bookmaster__genres__section'
+        ).order_by('-created_at')
+
+        # Use bulk cache functions for chapter counts and views
+        book_ids = [book.id for book in books]
+        chapter_counts = cache.get_cached_chapter_counts_bulk(book_ids)
+        chapter_views = cache.get_cached_total_chapter_views_bulk(book_ids)
+
+        # Enrich books with metadata
+        for book in books:
+            book.published_chapters_count = chapter_counts.get(book.id, 0)
+            book.total_chapter_views = chapter_views.get(book.id, 0)
+            if book.bookmaster.section:
+                book.section_localized_name = book.bookmaster.section.get_localized_name(language_code)
+            for genre in book.bookmaster.genres.all():
+                genre.localized_name = genre.get_localized_name(language_code)
+
+        context['books'] = books
+
+        return context
+```
+
+#### Step 2.5: Update SectionAuthorDetailView to use cache
+
+Apply same pattern to `reader/views/section_views.py` - `SectionAuthorDetailView`:
+
+```python
+class SectionAuthorDetailView(BaseReaderView, DetailView):
+    """
+    Author detail page with section validation.
+    """
+
+    template_name = "reader/author_detail.html"
+    model = Author
+    context_object_name = "author"
+    slug_field = "slug"
+    slug_url_kwarg = "author_slug"
+
+    def get_object(self, queryset=None):
+        """Use cached author lookup by slug."""
+        slug = self.kwargs.get(self.slug_url_kwarg)
+        author = cache.get_cached_author_by_slug(slug)
+        if author is None:
+            raise Http404("Author not found")
+        return author
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        language = self.get_language()
+        section = self.get_section()
+        language_code = language.code
+
+        if not section:
+            raise Http404("Section required")
+
+        # Show section nav
+        context['show_section_nav'] = True
+        context['section'] = section
+        context['section_localized_name'] = section.get_localized_name(language_code)
+
+        # Localized author info
+        context['author_name'] = self.object.get_localized_name(language_code)
+        context['author_description'] = self.object.get_localized_description(language_code)
+
+        # Get author's books (published in current language and section)
+        books = Book.objects.filter(
+            bookmaster__author=self.object,
+            bookmaster__section=section,
+            language=language,
+            is_public=True
+        ).select_related(
+            'bookmaster', 'bookmaster__section', 'language'
+        ).prefetch_related(
+            'bookmaster__genres', 'bookmaster__genres__section'
+        ).order_by('-created_at')
+
+        # Use bulk cache functions for chapter counts and views
+        book_ids = [book.id for book in books]
+        chapter_counts = cache.get_cached_chapter_counts_bulk(book_ids)
+        chapter_views = cache.get_cached_total_chapter_views_bulk(book_ids)
+
+        # Enrich books with metadata
+        for book in books:
+            book.published_chapters_count = chapter_counts.get(book.id, 0)
+            book.total_chapter_views = chapter_views.get(book.id, 0)
+            if book.bookmaster.section:
+                book.section_localized_name = book.bookmaster.section.get_localized_name(language_code)
+            for genre in book.bookmaster.genres.all():
+                genre.localized_name = genre.get_localized_name(language_code)
+
+        context['books'] = books
+
+        return context
+```
+
+---
+
+### Task 3: Fix BookDetailView Triple Queryset Evaluation
+
+#### Step 3.1: Update `reader/views/detail_views.py` - `BookDetailView.get_context_data()`
 
 Replace lines 51-75:
 
@@ -393,7 +751,7 @@ def get_context_data(self, **kwargs):
     return context
 ```
 
-#### Step 2.2: Apply same fix to `reader/views/section_views.py` - `SectionBookDetailView.get_context_data()`
+#### Step 3.2: Apply same fix to `reader/views/section_views.py` - `SectionBookDetailView.get_context_data()`
 
 Replace lines 284-307 with the same pattern:
 
@@ -450,9 +808,9 @@ def get_context_data(self, **kwargs):
 
 ---
 
-### Task 3: Fix ChapterDetailView Separate Prev/Next Queries
+### Task 4: Fix ChapterDetailView Separate Prev/Next Queries
 
-#### Step 3.1: Update `reader/views/detail_views.py` - `ChapterDetailView.get_context_data()`
+#### Step 4.1: Update `reader/views/detail_views.py` - `ChapterDetailView.get_context_data()`
 
 Replace lines 130-143:
 
@@ -493,7 +851,7 @@ def get_context_data(self, **kwargs):
     return context
 ```
 
-#### Step 3.2: Apply same fix to `reader/views/section_views.py` - `SectionChapterDetailView.get_context_data()`
+#### Step 4.2: Apply same fix to `reader/views/section_views.py` - `SectionChapterDetailView.get_context_data()`
 
 Replace lines 372-400:
 
@@ -545,9 +903,9 @@ def get_context_data(self, **kwargs):
 
 ---
 
-### Task 4: Add Bulk Cache Functions (Optional Optimization)
+### Task 5: Add Bulk Cache Functions (Optional Optimization)
 
-#### Step 4.1: Add bulk functions to `reader/cache/metadata.py`
+#### Step 5.1: Add bulk functions to `reader/cache/metadata.py`
 
 ```python
 def get_cached_chapter_counts_bulk(book_ids):
@@ -664,7 +1022,7 @@ def get_cached_total_chapter_views_bulk(book_ids):
     return result
 ```
 
-#### Step 4.2: Update `reader/views/base.py` - `enrich_books_with_metadata()`
+#### Step 5.2: Update `reader/views/base.py` - `enrich_books_with_metadata()`
 
 ```python
 def enrich_books_with_metadata(self, books, language_code):
@@ -719,6 +1077,13 @@ After implementing the fixes:
   - [ ] Update StyleConfig, verify cache is invalidated
   - [ ] Delete StyleConfig, verify cache is invalidated
 
+- [ ] Test Author caching:
+  - [ ] Create an Author in admin, verify it's cached
+  - [ ] Update Author, verify cache is invalidated (by ID and slug)
+  - [ ] Delete Author, verify cache is invalidated
+  - [ ] Test `get_cached_author_by_slug()` in AuthorDetailView
+  - [ ] Test bulk cache usage for author's books
+
 - [ ] Test BookDetailView optimization:
   - [ ] Use Django Debug Toolbar to verify only 1 chapter query
   - [ ] Verify chapter count, word count, and last_update are correct
@@ -730,3 +1095,4 @@ After implementing the fixes:
 - [ ] Test bulk cache functions:
   - [ ] Verify book lists load with 2 cache operations instead of 24
   - [ ] Test cache miss scenario (first load after cache clear)
+  - [ ] Verify AuthorDetailView uses bulk cache for books

@@ -354,3 +354,201 @@ def get_cached_tags(category=None):
         cache.set(cache_key, result, timeout=TIMEOUT_STATIC)
 
     return result
+
+
+# ==============================================================================
+# STYLECONFIG CACHING
+# ==============================================================================
+
+
+def get_cached_style_config(content_type_id, object_id):
+    """
+    Get StyleConfig for a specific object from cache or database.
+
+    Cache key: styleconfig:{content_type_id}:{object_id}
+    TTL: 1 hour (rarely changes, admin-only)
+    Invalidated by: StyleConfig model save/delete signals
+
+    Args:
+        content_type_id: ContentType ID for the model
+        object_id: Primary key of the object
+
+    Returns:
+        StyleConfig object or None if not found
+    """
+    from reader.models import StyleConfig
+
+    cache_key = f"styleconfig:{content_type_id}:{object_id}"
+    style = cache.get(cache_key)
+
+    if style is None:
+        try:
+            style = StyleConfig.objects.get(
+                content_type_id=content_type_id,
+                object_id=object_id
+            )
+        except StyleConfig.DoesNotExist:
+            style = False  # Use False to distinguish "not found" from "not cached"
+
+        cache.set(cache_key, style, timeout=TIMEOUT_STATIC)
+
+    return style if style is not False else None
+
+
+def get_cached_styles_for_model(model_class):
+    """
+    Get all StyleConfigs for a model type from cache or database.
+
+    Useful for bulk lookups (e.g., get all Section styles at once).
+
+    Cache key: styleconfig:model:{app_label}.{model_name}
+    TTL: 1 hour
+    Invalidated by: StyleConfig model save/delete signals
+
+    Args:
+        model_class: Django model class (e.g., Section, Genre)
+
+    Returns:
+        dict: {object_id: StyleConfig} for all objects of this model type
+    """
+    from django.contrib.contenttypes.models import ContentType
+    from reader.models import StyleConfig
+
+    content_type = ContentType.objects.get_for_model(model_class)
+    cache_key = f"styleconfig:model:{content_type.app_label}.{content_type.model}"
+
+    styles_dict = cache.get(cache_key)
+
+    if styles_dict is None:
+        styles = StyleConfig.objects.filter(content_type=content_type)
+        styles_dict = {style.object_id: style for style in styles}
+        cache.set(cache_key, styles_dict, timeout=TIMEOUT_STATIC)
+
+    return styles_dict
+
+
+def invalidate_style_config_cache(content_type_id, object_id):
+    """
+    Invalidate StyleConfig cache for a specific object.
+
+    Called by signal handlers when StyleConfig is saved/deleted.
+    """
+    from django.contrib.contenttypes.models import ContentType
+
+    # Invalidate individual style cache
+    cache.delete(f"styleconfig:{content_type_id}:{object_id}")
+
+    # Invalidate model-level cache
+    try:
+        content_type = ContentType.objects.get(id=content_type_id)
+        cache.delete(f"styleconfig:model:{content_type.app_label}.{content_type.model}")
+    except ContentType.DoesNotExist:
+        pass
+
+
+# ==============================================================================
+# AUTHOR CACHING
+# ==============================================================================
+
+
+def get_cached_author(author_id):
+    """
+    Get Author by ID from cache or database.
+
+    Cache key: author:{author_id}
+    TTL: 1 hour (rarely changes, admin-only)
+    Invalidated by: Author model save/delete signals
+
+    Args:
+        author_id: Author primary key
+
+    Returns:
+        Author object or None if not found
+    """
+    from books.models import Author
+
+    cache_key = f"author:{author_id}"
+    author = cache.get(cache_key)
+
+    if author is None:
+        try:
+            author = Author.objects.get(id=author_id)
+        except Author.DoesNotExist:
+            author = False  # Use False to distinguish "not found" from "not cached"
+
+        cache.set(cache_key, author, timeout=TIMEOUT_STATIC)
+
+    return author if author is not False else None
+
+
+def get_cached_author_by_slug(slug):
+    """
+    Get Author by slug from cache or database.
+
+    Cache key: author:slug:{slug}
+    TTL: 1 hour
+    Invalidated by: Author model save/delete signals
+
+    Args:
+        slug: Author slug
+
+    Returns:
+        Author object or None if not found
+    """
+    from books.models import Author
+
+    cache_key = f"author:slug:{slug}"
+    author = cache.get(cache_key)
+
+    if author is None:
+        try:
+            author = Author.objects.get(slug=slug)
+        except Author.DoesNotExist:
+            author = False
+
+        cache.set(cache_key, author, timeout=TIMEOUT_STATIC)
+
+    return author if author is not False else None
+
+
+def get_cached_authors():
+    """
+    Get all authors from cache or database.
+
+    Cache key: authors:all
+    TTL: 1 hour
+    Invalidated by: Author model save/delete signals
+
+    Returns:
+        list: All Author objects ordered by name
+    """
+    from books.models import Author
+
+    cache_key = "authors:all"
+    authors = cache.get(cache_key)
+
+    if authors is None:
+        authors = list(Author.objects.all().order_by('name'))
+        cache.set(cache_key, authors, timeout=TIMEOUT_STATIC)
+
+    return authors
+
+
+def invalidate_author_cache(author_id=None, slug=None):
+    """
+    Invalidate Author caches.
+
+    Called by signal handlers when Author is saved/deleted.
+
+    Args:
+        author_id: Author ID to invalidate (optional)
+        slug: Author slug to invalidate (optional)
+    """
+    # Always invalidate the all-authors list
+    cache.delete("authors:all")
+
+    # Invalidate specific author caches if provided
+    if author_id:
+        cache.delete(f"author:{author_id}")
+    if slug:
+        cache.delete(f"author:slug:{slug}")

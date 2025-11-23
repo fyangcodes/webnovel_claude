@@ -1,17 +1,15 @@
 
-author model in reader apps / book detail view
-
-book meta partial for status, section, genre, tags, top 5 character entities
-
-cache for section styling
-
 improve reader views design
 - i18n
 
 SEO
+
+delete unused views in reade apps
 
 container flower
 
 deployment
 
 reader UI htmx for genres, pagination, infinite scroll in chapter detail view?
+
+multilanguage view (book detail, book card modal)

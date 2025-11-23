@@ -219,3 +219,44 @@ def invalidate_tag_caches(sender, instance, **kwargs):
     # Delete category-specific cache if tag has category
     if instance.category:
         cache.delete(f'tags:category:{instance.category}')
+
+
+# ==============================================================================
+# STYLECONFIG SIGNALS
+# ==============================================================================
+
+from reader.models import StyleConfig
+
+@receiver([post_save, post_delete], sender=StyleConfig)
+def invalidate_styleconfig_caches(sender, instance, **kwargs):
+    """
+    Invalidate StyleConfig caches when a style is created, updated, or deleted.
+
+    Affected caches:
+    1. Individual style cache for this object
+    2. Model-level cache for this content type
+    """
+    from reader.cache import invalidate_style_config_cache
+
+    invalidate_style_config_cache(instance.content_type_id, instance.object_id)
+
+
+# ==============================================================================
+# AUTHOR SIGNALS
+# ==============================================================================
+
+from books.models import Author
+
+@receiver([post_save, post_delete], sender=Author)
+def invalidate_author_caches(sender, instance, **kwargs):
+    """
+    Invalidate Author caches when an author is created, updated, or deleted.
+
+    Affected caches:
+    1. Individual author cache by ID
+    2. Individual author cache by slug
+    3. All authors list
+    """
+    from reader.cache import invalidate_author_cache
+
+    invalidate_author_cache(author_id=instance.id, slug=instance.slug)

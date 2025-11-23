@@ -65,6 +65,26 @@
                 </div>
 
                 <div class="mb-3">
+                    <label for="{{ form.order.id_for_label }}" class="form-label">
+                        Display Priority <span class="text-danger">*</span>
+                    </label>
+                    <input type="number"
+                           name="{{ form.order.name }}"
+                           id="{{ form.order.id_for_label }}"
+                           value="{{ form.order.value|default:'999' }}"
+                           class="form-control {% if form.order.errors %}is-invalid{% endif %}"
+                           min="0"
+                           max="9999"
+                           required>
+                    {% if form.order.errors %}
+                        <div class="invalid-feedback">{{ form.order.errors }}</div>
+                    {% endif %}
+                    <small class="form-text text-muted">
+                        Display priority (lower numbers appear first). Important entities should have low numbers (0-10), regular entities use default (999).
+                    </small>
+                </div>
+
+                <div class="mb-3">
                     <label for="{{ form.translations.id_for_label }}" class="form-label">
                         Translations
                     </label>

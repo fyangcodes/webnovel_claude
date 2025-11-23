@@ -43,8 +43,8 @@ class Section(TimeStampModel, LocalizationModel):
 
     # Section-specific fields
     order = models.PositiveSmallIntegerField(
-        default=0,
-        help_text="Display order (lower = first)"
+        default=999,
+        help_text="Display order (lower numbers appear first)"
     )
     is_mature = models.BooleanField(
         default=False,
@@ -107,9 +107,13 @@ class Genre(TimeStampModel, LocalizationModel):
         default=True,
         help_text="Primary genres appear in main navigation; sub-genres are refinements"
     )
+    order = models.PositiveSmallIntegerField(
+        default=999,
+        help_text="Display order (lower numbers appear first)"
+    )
 
     class Meta:
-        ordering = ['section', '-is_primary', 'name']
+        ordering = ['section', '-is_primary', 'order', 'name']
         verbose_name = "Genre"
         verbose_name_plural = "Taxonomy - Genres"
         unique_together = [['section', 'slug']]

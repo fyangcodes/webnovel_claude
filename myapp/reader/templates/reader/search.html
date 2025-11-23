@@ -107,11 +107,12 @@
             </div>
             {% endif %}
 
+            {% comment %} 
             <!-- Tag Filter -->
-            {% if tags_by_category %}
+            {% if all_tags_by_category %}
             <div class="mb-3">
                 <h6 class="text-muted mb-2">Tags</h6>
-                {% for category, tags in tags_by_category.items %}
+                {% for category, tags in all_tags_by_category.items %}
                     <div class="mb-2">
                         <small class="text-muted d-block mb-1">{{ category }}</small>
                         <div class="d-flex flex-wrap gap-1">
@@ -127,6 +128,7 @@
                 {% endfor %}
             </div>
             {% endif %}
+            {% endcomment %}
 
             <!-- Status Filter -->
             <div class="d-flex gap-2">
@@ -154,60 +156,58 @@
 
 <!-- Results Section -->
 <section>
-    {% if search_query %}
-        {% if books %}
-            <!-- Results Grid -->
-            <div class="book-grid">
-            {% for book in books %}
-                {% include "reader/partials/book_card.html" with book=book current_language=current_language %}
-            {% endfor %}
-            </div>
+    {% if books %}
+        <!-- Results Grid -->
+        <div class="book-grid">
+        {% for book in books %}
+            {% include "reader/partials/book_card.html" with book=book current_language=current_language %}
+        {% endfor %}
+        </div>
 
-            <!-- Pagination -->
-            {% if is_paginated %}
-            <nav aria-label="Search results pagination" class="mt-4">
-                <div class="d-flex justify-content-center">
-                    <div class="btn-group" role="group">
-                        {% if page_obj.has_previous %}
-                            <a href="?{% query_transform request page=1 %}" class="btn btn-outline-secondary btn-sm">1</a>
-                            {% if page_obj.previous_page_number > 2 %}
-                                {% if page_obj.previous_page_number > 3 %}
-                                    <span class="btn btn-outline-secondary btn-sm disabled">...</span>
-                                {% endif %}
-                                <a href="?{% query_transform request page=page_obj.previous_page_number %}" class="btn btn-outline-secondary btn-sm">{{ page_obj.previous_page_number }}</a>
+        <!-- Pagination -->
+        {% if is_paginated %}
+        <nav aria-label="Search results pagination" class="mt-4">
+            <div class="d-flex justify-content-center">
+                <div class="btn-group" role="group">
+                    {% if page_obj.has_previous %}
+                        <a href="?{% query_transform request page=1 %}" class="btn btn-outline-secondary btn-sm">1</a>
+                        {% if page_obj.previous_page_number > 2 %}
+                            {% if page_obj.previous_page_number > 3 %}
+                                <span class="btn btn-outline-secondary btn-sm disabled">...</span>
+                            {% endif %}
+                            <a href="?{% query_transform request page=page_obj.previous_page_number %}" class="btn btn-outline-secondary btn-sm">{{ page_obj.previous_page_number }}</a>
+                        {% endif %}
+                    {% endif %}
+
+                    <span class="btn btn-primary btn-sm">{{ page_obj.number }}</span>
+
+                    {% if page_obj.has_next %}
+                        {% if page_obj.next_page_number < page_obj.paginator.num_pages %}
+                            <a href="?{% query_transform request page=page_obj.next_page_number %}" class="btn btn-outline-secondary btn-sm">{{ page_obj.next_page_number }}</a>
+                            {% if page_obj.next_page_number < page_obj.paginator.num_pages|add:"-1" %}
+                                <span class="btn btn-outline-secondary btn-sm disabled">...</span>
                             {% endif %}
                         {% endif %}
-
-                        <span class="btn btn-primary btn-sm">{{ page_obj.number }}</span>
-
-                        {% if page_obj.has_next %}
-                            {% if page_obj.next_page_number < page_obj.paginator.num_pages %}
-                                <a href="?{% query_transform request page=page_obj.next_page_number %}" class="btn btn-outline-secondary btn-sm">{{ page_obj.next_page_number }}</a>
-                                {% if page_obj.next_page_number < page_obj.paginator.num_pages|add:"-1" %}
-                                    <span class="btn btn-outline-secondary btn-sm disabled">...</span>
-                                {% endif %}
-                            {% endif %}
-                            <a href="?{% query_transform request page=page_obj.paginator.num_pages %}" class="btn btn-outline-secondary btn-sm">{{ page_obj.paginator.num_pages }}</a>
-                        {% endif %}
-                    </div>
+                        <a href="?{% query_transform request page=page_obj.paginator.num_pages %}" class="btn btn-outline-secondary btn-sm">{{ page_obj.paginator.num_pages }}</a>
+                    {% endif %}
                 </div>
-            </nav>
-            {% endif %}
-        {% else %}
-            <!-- No Results State -->
-            <div class="text-center py-5">
-                <div class="display-3 text-muted mb-3">🔍</div>
-                <h5 class="text-muted">No results found for "{{ search_query }}"</h5>
-                <p class="text-muted">Try different keywords or remove some filters</p>
-                {% if section %}
-                <a href="{% url 'reader:section_search' current_language.code section.slug %}" class="btn btn-outline-primary-custom">
-                    Clear Search
-                </a>
-                {% endif %}
             </div>
+        </nav>
         {% endif %}
+    {% elif search_query %}
+        <!-- No Results State (only show when there was a search query) -->
+        <div class="text-center py-5">
+            <div class="display-3 text-muted mb-3">🔍</div>
+            <h5 class="text-muted">No results found for "{{ search_query }}"</h5>
+            <p class="text-muted">Try different keywords or remove some filters</p>
+            {% if section %}
+            <a href="{% url 'reader:section_search' current_language.code section.slug %}" class="btn btn-outline-primary-custom">
+                Clear Search
+            </a>
+            {% endif %}
+        </div>
     {% else %}
-        <!-- Empty Search State -->
+        <!-- Empty Search State (when no query and no filters selected) -->
         <div class="text-center py-5">
             <div class="display-1 mb-3">🔍</div>
             <h3>Search for Books</h3>

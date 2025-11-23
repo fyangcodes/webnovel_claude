@@ -1,0 +1,89 @@
+{% extends "reader/base.html" %}
+{% load humanize %}
+{% load books_extras %}
+
+{% block title %}{{ author_name }}{% endblock %}
+
+{% block extra_css %}
+<!-- SEO Meta Tags -->
+<meta name="description" content="{{ author_description|truncatechars:160 }}">
+<meta property="og:title" content="{{ author_name }}">
+<meta property="og:description" content="{{ author_description|truncatechars:200 }}">
+<meta property="og:type" content="profile">
+{% if author.avatar %}
+<meta property="og:image" content="{{ request.scheme }}://{{ request.get_host }}{{ author.avatar.url }}">
+{% endif %}
+
+<!-- Structured Data (JSON-LD) -->
+<script type="application/ld+json">
+{
+    "@context": "https://schema.org",
+    "@type": "Person",
+    "name": "{{ author_name|escapejs }}",
+    "description": "{{ author_description|escapejs|truncatechars:500 }}"{% if author.avatar %},
+    "image": "{{ request.scheme }}://{{ request.get_host }}{{ author.avatar.url }}"{% endif %}
+}
+</script>
+{% endblock %}
+
+{% block content %}
+<div class="row mt-2">
+    <!-- Author Information -->
+    <div class="col-lg-8">
+        <div class="mb-4">
+            <h1 class="display-5 mb-3">{{ author_name }}</h1>
+
+            {% if author_description %}
+            <div class="mb-4">
+                <p class="text-muted">{{ author_description|linebreaks }}</p>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Books by Author -->
+        <h3 class="mb-4">Books by {{ author_name }}</h3>
+
+        {% if books %}
+        <div class="row">
+            {% for book in books %}
+            <div class="col-lg-3 col-md-4 col-sm-6 mb-4">
+                {% include "reader/partials/book_card.html" %}
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <!-- No Books State -->
+        <div class="text-center py-5">
+            <div class="display-3 text-muted mb-3">📚</div>
+            <h5 class="text-muted">No published books</h5>
+            <p class="text-muted">This author doesn't have any published books available in this language yet.</p>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Sidebar -->
+    <div class="col-lg-4">
+        {% if author.avatar %}
+        <div class="card mb-4">
+            <img src="{{ author.avatar.url }}" class="card-img-top" alt="{{ author_name }}"
+                 style="max-height: 400px; object-fit: cover;">
+        </div>
+        {% endif %}
+
+        <!-- Author Stats -->
+        {% if books %}
+        <div class="card mb-4">
+            <div class="card-body">
+                <h6 class="card-title text-muted mb-3">Author Stats</h6>
+                <div class="d-flex flex-column gap-2">
+                    <div>
+                        <i class="fas fa-book me-2"></i>
+                        <strong>{{ books|length }}</strong> book{{ books|length|pluralize }}
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

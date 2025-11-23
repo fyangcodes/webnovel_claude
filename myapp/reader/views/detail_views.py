@@ -10,7 +10,7 @@ from django.shortcuts import get_object_or_404
 from django.views.generic import DetailView
 from django.core.paginator import Paginator
 
-from books.models import Book, Chapter
+from books.models import Book, Chapter, Author
 from reader import cache
 from .base import BaseReaderView, BaseBookDetailView
 
@@ -35,7 +35,7 @@ class BookDetailView(BaseBookDetailView):
 
         return (
             Book.objects.filter(language=language, is_public=True)
-            .select_related("bookmaster", "bookmaster__section", "language")
+            .select_related("bookmaster", "bookmaster__section", "bookmaster__author", "language")
             .prefetch_related(
                 "chapters__chaptermaster",
                 "bookmaster__genres",
@@ -47,6 +47,13 @@ class BookDetailView(BaseBookDetailView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+        language_code = self.kwargs.get("language_code")
+
+        # Add author context with localized name
+        author = self.object.bookmaster.author
+        if author:
+            context["author"] = author
+            context["author_localized_name"] = author.get_localized_name(language_code)
 
         # Get all published chapters
         all_chapters = (
@@ -56,7 +63,7 @@ class BookDetailView(BaseBookDetailView):
         )
 
         # Pagination for chapters
-        paginator = Paginator(all_chapters, 20)  # 20 chapters per page
+        paginator = Paginator(all_chapters, 2)  # 2 chapters per page
         page_number = self.request.GET.get("page")
         page_obj = paginator.get_page(page_number)
 
@@ -149,5 +156,58 @@ class ChapterDetailView(BaseReaderView, DetailView):
         from books.stats import StatsService
         view_event = StatsService.track_chapter_view(self.object, self.request)
         context["view_event_id"] = view_event.id if view_event else None
+
+        return context
+
+
+class AuthorDetailView(BaseReaderView, DetailView):
+    """
+    Author detail page showing author info and their books.
+
+    URL: /<language>/author/<slug>/
+    Example: /en/author/er-gen/
+
+    Displays:
+    - Author information (name, description, avatar)
+    - List of books by this author
+    """
+
+    template_name = "reader/author_detail.html"
+    model = Author
+    context_object_name = "author"
+    slug_field = "slug"
+    slug_url_kwarg = "author_slug"
+
+    def get_object(self, queryset=None):
+        """Use cached author lookup by slug."""
+        from django.http import Http404
+        slug = self.kwargs.get(self.slug_url_kwarg)
+        author = cache.get_cached_author_by_slug(slug)
+        if author is None:
+            raise Http404("Author not found")
+        return author
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        language = self.get_language()
+        language_code = language.code
+
+        # Localized author info
+        context['author_name'] = self.object.get_localized_name(language_code)
+        context['author_description'] = self.object.get_localized_description(language_code)
+
+        # Get author's books (published in current language)
+        books = list(Book.objects.filter(
+            bookmaster__author=self.object,
+            language=language,
+            is_public=True
+        ).select_related(
+            'bookmaster', 'bookmaster__section', 'language'
+        ).prefetch_related(
+            'bookmaster__genres', 'bookmaster__genres__section'
+        ).order_by('-created_at'))
+
+        # Enrich books with metadata using inherited method from BaseReaderView
+        context['books'] = self.enrich_books_with_metadata(books, language_code)
 
         return context

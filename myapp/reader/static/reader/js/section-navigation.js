@@ -220,9 +220,15 @@
             const parser = new DOMParser();
             const doc = parser.parseFromString(html, 'text/html');
             const newContent = doc.querySelector('main');
+            const newTitle = doc.querySelector('title');
 
             if (newContent) {
                 mainContent.innerHTML = newContent.innerHTML;
+
+                // Update document title
+                if (newTitle) {
+                    document.title = newTitle.textContent;
+                }
 
                 // Update state
                 state.currentSection = sectionSlug;

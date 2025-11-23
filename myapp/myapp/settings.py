@@ -309,31 +309,45 @@ FEATURED_GENRES = [int(x) for x in os.getenv("FEATURED_GENRES", "").split(",") i
 # REDIS & CACHING CONFIGURATION
 # ==============================================================================
 
+# Enable/disable caching (useful for development)
+# Set DISABLE_CACHE=True in .env to use Django's dummy cache (no caching)
+CACHE_ENABLED = os.getenv('DISABLE_CACHE', 'False').lower() != 'true'
+
 # Redis URL from environment
 REDIS_URL = os.getenv('REDIS_URL', 'redis://localhost:6379/0')
 
-# Cache configuration using Redis
-CACHES = {
-    'default': {
-        'BACKEND': 'django_redis.cache.RedisCache',
-        'LOCATION': REDIS_URL,
-        'OPTIONS': {
-            'CLIENT_CLASS': 'django_redis.client.DefaultClient',
-            'SOCKET_CONNECT_TIMEOUT': 5,
-            'SOCKET_TIMEOUT': 5,
-            'RETRY_ON_TIMEOUT': True,
-            'CONNECTION_POOL_KWARGS': {
-                'max_connections': 50,
-                'retry_on_timeout': True,
+# Cache configuration
+if CACHE_ENABLED:
+    # Production: Use Redis cache
+    CACHES = {
+        'default': {
+            'BACKEND': 'django_redis.cache.RedisCache',
+            'LOCATION': REDIS_URL,
+            'OPTIONS': {
+                'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+                'SOCKET_CONNECT_TIMEOUT': 5,
+                'SOCKET_TIMEOUT': 5,
+                'RETRY_ON_TIMEOUT': True,
+                'CONNECTION_POOL_KWARGS': {
+                    'max_connections': 50,
+                    'retry_on_timeout': True,
+                },
+                # HiredisParser is optional and requires hiredis package
+                # If hiredis is installed, django-redis will use it automatically
+                # 'PARSER_CLASS': 'redis.connection.HiredisParser',  # Removed - not needed
             },
-            # HiredisParser is optional and requires hiredis package
-            # If hiredis is installed, django-redis will use it automatically
-            # 'PARSER_CLASS': 'redis.connection.HiredisParser',  # Removed - not needed
-        },
-        'KEY_PREFIX': 'webnovel',
-        'TIMEOUT': 300,  # Default cache timeout (5 minutes)
+            'KEY_PREFIX': 'webnovel',
+            'TIMEOUT': 300,  # Default cache timeout (5 minutes)
+        }
     }
-}
+else:
+    # Development: Use dummy cache (no caching, always hits database)
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.dummy.DummyCache',
+        }
+    }
+    print("⚠️  Cache disabled - using DummyCache backend (all cache calls will hit the database)")
 
 # Session storage using Redis (optional, for better performance)
 # SESSION_ENGINE = 'django.contrib.sessions.backends.cache'
