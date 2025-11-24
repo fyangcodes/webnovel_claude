@@ -1,4 +1,5 @@
 {% extends "reader/base.html" %}
+{% load i18n %}
 {% load humanize %}
 {% load books_extras %}
 {% load reader_extras %}
@@ -25,42 +26,18 @@
             
             {% if author %}
             <p class="lead mb-3">
-                by <a href="{% url 'reader:section_author_detail' current_language.code book.bookmaster.section.slug author.slug %}" class="text-decoration-none">
+                {% trans "by" %}
+                <a href="{% url 'reader:section_author_detail' current_language.code book.bookmaster.section.slug author.slug %}" class="text-decoration-none">
                     {{ author_localized_name }}
                 </a>
             </p>
             {% elif book.author %}
-            <p class="lead mb-3">by {{ book.author }}</p>
+            <p class="lead mb-3">{% blocktrans with author=book.author %}by {{ author }}{% endblocktrans %}</p>
             {% endif %}
             
             <!-- Book Stats -->
-            <div class="d-flex flex-wrap gap-3 mb-4" style="font-size: 0.95rem;">
-                <div>
-                    <i class="fas fa-list"></i>
-                    <strong>{{ total_chapters }}</strong> chapter{{ total_chapters|pluralize }}
-                </div>
-                <div>
-                    <i class="fas fa-font"></i>
-                    <strong>{{ total_words|natural_count:current_language.code }}</strong> words
-                </div>
-                {% if total_chapter_views %}
-                <div>
-                    <i class="fas fa-eye"></i>
-                    <strong>{{ total_chapter_views|intcomma }}</strong> view{{ total_chapter_views|pluralize }}
-                </div>
-                {% endif %}
-                <div>
-                    <i class="fas fa-circle-check"></i>
-                    <strong>{{ book.get_progress_display|default:"Unknown" }}</strong>
-                </div>
-                {% if last_update %}
-                <div>
-                    <i class="fas fa-clock"></i>
-                    Updated <strong>{{ last_update|naturaltime }}</strong>
-                </div>
-                {% endif %}
-            </div>
-            
+            {% include "reader/partials/book_stats.html" with book=book total_chapters=total_chapters total_words=total_words total_chapter_views=total_chapter_views last_update=last_update current_language=current_language %}
+
             {% if book.description %}
             <div class="mb-4">
                 <p class="text-muted">{{ book.description|linebreaks }}</p>
@@ -76,10 +53,8 @@
     
     <!-- Sidebar -->
     <div class="col-lg-4">
-        <div class="card mb-4">
-            <img src="{{ book.effective_cover_image }}" class="card-img-top" alt="{{ book.title }} cover" 
-                 style="max-height: 400px; object-fit: cover;">
-        </div>
+        <div class="book-cover-container mb-4">
+            <img src="{{ book.effective_cover_image }}" class="book-cover-image" alt="{{ book.title }} book cover">
         </div>
     </div>
 </div>
@@ -87,11 +62,9 @@
 <!-- Chapter List -->
 <div class="row mt-5">
     <div class="col-12">
-        <h3 class="mb-4">Chapters</h3>
-
         <!-- Chapter list container (HTMX target for future Ajax pagination) -->
         <div id="chapter-list-container">
-            {% include "reader/partials/chapter_list.html" %}
+            {% include "reader/partials/chapter_list.html" with book=book chapters=chapters is_paginated=is_paginated page_obj=page_obj current_language=current_language new_chapter_cutoff=new_chapter_cutoff %}
         </div>
     </div>
 </div>

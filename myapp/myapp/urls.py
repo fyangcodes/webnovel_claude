@@ -30,21 +30,20 @@ urlpatterns = [
     path("staff/", include("books.urls")),
     path("accounts/", include("accounts.urls")),
     path("sitemap.xml", sitemap, {"sitemaps": sitemaps}, name="django.contrib.sitemaps.views.sitemap"),
-    path("", include("reader.urls")),
 ]
 
-# Development tools and media files
+# Development tools - must come BEFORE reader URLs to avoid language code matching
 if settings.DEBUG:
     import debug_toolbar
 
-    urlpatterns = [
+    urlpatterns += [
         path("__debug__/", include(debug_toolbar.urls)),
-    ] + urlpatterns
+        path("rosetta/", include("rosetta.urls")),  # i18n translation management
+    ]
 
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
-# i18n management tool (available in both DEBUG and production, but should be secured)
-if settings.DEBUG:
-    urlpatterns += [
-        path("rosetta/", include("rosetta.urls")),
-    ]
+# Reader app URLs (catch-all, must be last)
+urlpatterns += [
+    path("", include("reader.urls")),
+]

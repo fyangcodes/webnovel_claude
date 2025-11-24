@@ -1,4 +1,5 @@
 {% extends "reader/base.html" %}
+{% load i18n %}
 {% load static %}
 {% load reader_extras %}
 
@@ -33,7 +34,7 @@
             {% if section.description %}
             <div class="section-description-wrapper">
                 <p class="section-description collapsed" id="sectionDescription">
-                    {{ section.description }}
+                    {{ section_localized_description }}
                 </p>
                 <button class="section-description-toggle btn btn-link p-0"
                         id="descriptionToggle"
@@ -49,8 +50,8 @@
     <!-- Section Genres -->
     {% if section_genres %}
     <div class="mb-5">
-        <h2 class="h4 mb-3">Browse by Genre</h2>
-        <div class="d-flex flex-wrap gap-2"><a href="{% url 'reader:section_book_list' current_language.code section.slug %}" class="btn-genre">All Genres</a>{% for genre in section_genres %}{% if genre.is_primary %}<a href="{% url 'reader:section_book_list' current_language.code section.slug %}?genre={{ genre.slug }}" class="btn-genre">{% if genre.icon %}<i class="{{ genre.icon }} me-1"></i>{% endif %}{{ genre.localized_name }}</a>{% endif %}{% endfor %}</div>
+        <h2 class="h4 mb-3">{% trans "Browse by Genre" %}</h2>
+        <div class="d-flex flex-wrap gap-2"><a href="{% url 'reader:section_book_list' current_language.code section.slug %}" class="btn-genre">{% trans "All Genres" %}</a>{% for genre in section_genres %}{% if genre.is_primary %}<a href="{% url 'reader:section_book_list' current_language.code section.slug %}?genre={{ genre.slug }}" class="btn-genre">{% if genre.icon %}<i class="{{ genre.icon }} me-1"></i>{% endif %}{{ genre.localized_name }}</a>{% endif %}{% endfor %}</div>
     </div>
     {% endif %}
 
@@ -58,10 +59,10 @@
     {% if books %}
     <div class="mb-5">
         <div class="d-flex justify-content-between align-items-center mb-3">
-            <h2 class="h4 mb-0">Recent Updates</h2>
+            <h2 class="h4 mb-0">{% trans "Recent Updates" %}</h2>
             <a href="{% url 'reader:section_book_list' current_language.code section.slug %}"
                class="btn-view-all">
-                View All
+                {% trans "View All" %}
                 <i class="fas fa-arrow-right ms-1"></i>
             </a>
         </div>
@@ -77,7 +78,7 @@
     {% else %}
     <div class="alert alert-info">
         <i class="fas fa-info-circle me-2"></i>
-        No books available in this section yet.
+        {% trans "No books available in this section yet." %}
     </div>
     {% endif %}
 

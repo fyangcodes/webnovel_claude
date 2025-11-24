@@ -73,6 +73,7 @@ MIDDLEWARE = [
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "debug_toolbar.middleware.DebugToolbarMiddleware",  # Debug toolbar - early in middleware stack
     "django.contrib.sessions.middleware.SessionMiddleware",
+    "reader.middleware.URLLanguageMiddleware",  # URL-based language activation for i18n
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
@@ -454,12 +455,10 @@ if DEBUG:
 # Languages available for translation
 LANGUAGES = [
     ('en', 'English'),
-    ('zh-hans', 'Simplified Chinese'),
-    ('zh-hant', 'Traditional Chinese'),
-    ('ja', 'Japanese'),
-    ('ko', 'Korean'),
-    ('es', 'Spanish'),
+    ('de', 'German'),
     ('fr', 'French'),
+    ('ja', 'Japanese'),
+    ('zh-hans', 'Simplified Chinese'),
 ]
 
 # Locale paths for translations
@@ -470,3 +469,10 @@ LOCALE_PATHS = [
 # Rosetta configuration
 ROSETTA_SHOW_AT_ADMIN_PANEL = True
 ROSETTA_ENABLE_TRANSLATION_SUGGESTIONS = False  # Set to True if you want Google Translate suggestions
+
+# ==============================================================================
+# READER APP CONFIGURATION
+# ==============================================================================
+
+# Number of days to consider a chapter as "new"
+NEW_CHAPTER_DAYS = int(os.getenv("NEW_CHAPTER_DAYS", "14"))

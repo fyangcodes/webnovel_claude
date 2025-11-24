@@ -1,0 +1,279 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2025-11-24 07:33+0000\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+
+#: reader/templates/reader/author_detail.html:45
+#, python-format
+msgid "Books by %(name)s"
+msgstr ""
+
+#: reader/templates/reader/author_detail.html:59
+msgid "No published books"
+msgstr ""
+
+#: reader/templates/reader/author_detail.html:60
+msgid ""
+"This author doesn't have any published books available in this language yet."
+msgstr ""
+
+#: reader/templates/reader/base.html:58 reader/templates/reader/base.html:77
+#, python-format
+msgid "Search in %(section)s"
+msgstr ""
+
+#: reader/templates/reader/base.html:58 reader/templates/reader/base.html:77
+msgid "Search all books"
+msgstr ""
+
+#: reader/templates/reader/base.html:100
+msgid "Dark"
+msgstr ""
+
+#: reader/templates/reader/base.html:104
+msgid "Light"
+msgstr ""
+
+#: reader/templates/reader/base.html:137 reader/templates/reader/base.html:174
+msgid "Home"
+msgstr ""
+
+#: reader/templates/reader/base.html:162
+msgid "Sections"
+msgstr ""
+
+#: reader/templates/reader/base.html:163
+#: reader/templates/reader/partials/book_card.html:57
+#: reader/templates/reader/partials/book_card.html:97
+msgid "Close"
+msgstr ""
+
+#: reader/templates/reader/base.html:199
+msgid "Select language"
+msgstr ""
+
+#: reader/templates/reader/book_detail.html:29
+#: reader/templates/reader/partials/book_card.html:73
+msgid "by"
+msgstr ""
+
+#: reader/templates/reader/book_detail.html:35
+#, python-format
+msgid "by %(author)s"
+msgstr ""
+
+#: reader/templates/reader/book_detail.html:67
+msgid "Chapters"
+msgstr ""
+
+#: reader/templates/reader/book_list.html:7
+msgid "All Books"
+msgstr ""
+
+#: reader/templates/reader/book_list.html:27
+#: reader/templates/reader/search.html:78
+#: reader/templates/reader/section_home.html:54
+msgid "All Genres"
+msgstr ""
+
+#: reader/templates/reader/book_list.html:46
+msgid "All Subgenres"
+msgstr ""
+
+#: reader/templates/reader/chapter_detail.html:22
+msgid "Back to Top"
+msgstr ""
+
+#: reader/templates/reader/chapter_detail.html:45
+#, python-format
+msgid "Chapter %(number)s"
+msgstr ""
+
+#: reader/templates/reader/chapter_detail.html:65
+msgid "You've reached the end!"
+msgstr ""
+
+#: reader/templates/reader/chapter_detail.html:66
+#, python-format
+msgid "Thanks for reading %(title)s!"
+msgstr ""
+
+#: reader/templates/reader/chapter_detail.html:69
+#, python-format
+msgid "Explore More %(section)s Books"
+msgstr ""
+
+#: reader/templates/reader/partials/book_card.html:56
+msgid "Book Details"
+msgstr ""
+
+#: reader/templates/reader/partials/book_card.html:100
+#: reader/templates/reader/partials/book_card.html:104
+#: reader/templates/reader/partials/hero_carousel.html:29
+msgid "Read Now"
+msgstr ""
+
+#: reader/templates/reader/partials/book_grid.html:21
+#: reader/templates/reader/section_home.html:65
+msgid "View All"
+msgstr ""
+
+#: reader/templates/reader/partials/book_stats.html:32
+msgid "Chapters:"
+msgstr ""
+
+#: reader/templates/reader/partials/book_stats.html:38
+msgid "Status:"
+msgstr ""
+
+#: reader/templates/reader/partials/book_stats.html:46
+msgid "Total Views:"
+msgstr ""
+
+#: reader/templates/reader/partials/book_stats.html:55
+msgid "Words:"
+msgstr ""
+
+#: reader/templates/reader/partials/book_stats.html:66
+msgid "chapter"
+msgid_plural "chapters"
+msgstr[0] ""
+
+#: reader/templates/reader/partials/book_stats.html:71
+msgid "words"
+msgstr ""
+
+#: reader/templates/reader/partials/book_stats.html:77
+msgid "view"
+msgid_plural "views"
+msgstr[0] ""
+
+#: reader/templates/reader/partials/book_stats.html:86
+#, python-format
+msgid "Updated %(time)s"
+msgstr ""
+
+#: reader/templates/reader/partials/book_status_badge.html:24
+msgid "Draft"
+msgstr ""
+
+#: reader/templates/reader/partials/book_status_badge.html:29
+msgid "Ongoing"
+msgstr ""
+
+#: reader/templates/reader/partials/book_status_badge.html:34
+msgid "Completed"
+msgstr ""
+
+#: reader/templates/reader/partials/chapter_list.html:86
+msgid "No chapters published yet"
+msgstr ""
+
+#: reader/templates/reader/partials/chapter_list.html:87
+msgid "This book doesn't have any published chapters available for reading."
+msgstr ""
+
+#: reader/templates/reader/partials/chapter_nav.html:14
+#: reader/templates/reader/partials/chapter_nav.html:21
+#: reader/templates/reader/partials/chapter_nav.html:27
+msgid "Previous"
+msgstr ""
+
+#: reader/templates/reader/partials/chapter_nav.html:38
+msgid "Index"
+msgstr ""
+
+#: reader/templates/reader/partials/chapter_nav.html:49
+#: reader/templates/reader/partials/chapter_nav.html:56
+#: reader/templates/reader/partials/chapter_nav.html:62
+msgid "Next"
+msgstr ""
+
+#: reader/templates/reader/search.html:7 reader/templates/reader/search.html:24
+msgid "Search"
+msgstr ""
+
+#: reader/templates/reader/search.html:20
+msgid "Search by section, genre, tag, or character..."
+msgstr ""
+
+#: reader/templates/reader/search.html:48
+#, python-format
+msgid "%(counter)s result"
+msgid_plural "%(counter)s results"
+msgstr[0] ""
+msgstr[1] ""
+
+#: reader/templates/reader/search.html:50
+msgid "matching:"
+msgstr ""
+
+#: reader/templates/reader/search.html:55
+#, python-format
+msgid "+%(more)s more"
+msgstr ""
+
+#: reader/templates/reader/search.html:59
+#, python-format
+msgid "Search completed in %(time)sms"
+msgstr ""
+
+#: reader/templates/reader/search.html:63
+msgid "Clear Search"
+msgstr ""
+
+#: reader/templates/reader/section_home.html:53
+msgid "Browse by Genre"
+msgstr ""
+
+#: reader/templates/reader/section_home.html:62
+msgid "Recent Updates"
+msgstr ""
+
+#: reader/templates/reader/section_home.html:81
+msgid "No books available in this section yet."
+msgstr ""
+
+#: reader/templates/reader/welcome.html:7
+msgid "Welcome"
+msgstr ""
+
+#: reader/templates/reader/welcome.html:27
+#, python-format
+msgid "All %(section)s"
+msgstr ""
+
+#: reader/templates/reader/welcome.html:54
+msgid "Continue Reading"
+msgstr ""
+
+#: reader/templates/reader/welcome.html:56
+msgid "Clear History"
+msgstr ""
+
+#: reader/templates/reader/welcome.html:65
+msgid "Recently Updated"
+msgstr ""
+
+#: reader/templates/reader/welcome.html:70
+msgid "New Arrivals"
+msgstr ""
+
+#: reader/templates/reader/welcome.html:131
+msgid "Are you sure you want to clear your reading history?"
+msgstr ""

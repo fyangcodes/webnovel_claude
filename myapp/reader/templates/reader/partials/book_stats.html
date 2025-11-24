@@ -1,0 +1,52 @@
+{% load i18n %}
+{% load humanize %}
+{% load books_extras %}
+{% comment %}
+Book Stats Partial
+
+Displays statistics for a book including chapters, words, views, status, and last update.
+
+Parameters:
+- book: Book object
+- total_chapters: (Optional) Total chapter count (default: book.published_chapters_count)
+- total_words: (Optional) Total word count (default: book.total_words)
+- total_chapter_views: (Optional) Total views (default: book.total_chapter_views)
+- last_update: (Optional) Last update timestamp
+- current_language: Current language object for formatting
+- show_icons: (Optional) Whether to show icons (default: True)
+
+Usage:
+{% include "reader/partials/book_stats.html" with book=book current_language=current_language %}
+{% endcomment %}
+
+{% with total_chapters_val=total_chapters|default:book.published_chapters_count total_words_val=total_words|default:book.total_words total_views_val=total_chapter_views|default:book.total_chapter_views show_icons_val=show_icons|default:True %}
+
+<div class="d-flex flex-wrap gap-3 mb-4" style="font-size: 0.95rem;">
+    <div>
+        {% include "reader/partials/book_status_badge.html" with status=book.progress %}
+    </div>
+    <div>
+        {% if show_icons_val %}<i class="fas fa-list"></i>{% endif %}
+        <strong>{{ total_chapters_val }}</strong> {% blocktrans count counter=total_chapters_val %}chapter{% plural %}chapters{% endblocktrans %}
+    </div>
+    {% if total_words_val %}
+    <div>
+        {% if show_icons_val %}<i class="fas fa-font"></i>{% endif %}
+        <strong>{{ total_words_val|natural_count:current_language.code }}</strong> {% trans "words" %}
+    </div>
+    {% endif %}
+    {% if last_update %}
+    <div>
+        {% if show_icons_val %}<i class="fas fa-clock"></i>{% endif %}
+        {% blocktrans with time=last_update|naturaltime %}Updated {{ time }}{% endblocktrans %}
+    </div>
+    {% endif %}
+    {% if total_views_val %}
+    <div>
+        {% if show_icons_val %}<i class="fas fa-eye"></i>{% endif %}
+        <strong>{{ total_views_val|intcomma }}</strong> {% blocktrans count counter=total_views_val %}view{% plural %}views{% endblocktrans %}
+    </div>
+    {% endif %}
+</div>
+
+{% endwith %}

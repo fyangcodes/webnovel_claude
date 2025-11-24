@@ -1,3 +1,5 @@
+{% load i18n %}
+{% load reader_extras %}
 {% comment %}
 Book Card Partial
 Parameters:
@@ -7,6 +9,7 @@ Parameters:
 - show_section: (Optional) Whether to show section badge (default True)
 {% endcomment %}
 
+{% enrich_book_meta book as book_meta %}
 {% with card_section=book.bookmaster.section card_section_name=book.section_localized_name card_genres=book.enriched_genres card_tags=book.tags_by_category %}
 
 <div class="book-card">
@@ -18,12 +21,15 @@ Parameters:
         <div class="book-card-image-wrapper">
             <img src="{{ book.effective_cover_image }}" alt="{{ book.title }}" class="book-card-image">
 
-            <!-- Status Badge -->
-            {% if book.progress == 'ongoing' %}
-                <span class="badge bg-primary position-absolute top-0 end-0 m-1">Ongoing</span>
-            {% elif book.progress == 'completed' %}
-                <span class="badge bg-success position-absolute top-0 end-0 m-1">Completed</span>
-            {% endif %}
+            <!-- Status Badge and New Chapters Badge -->
+            <div class="position-absolute top-0 end-0 m-1 d-flex align-items-end gap-1">
+                {% if book.progress != 'draft' %}
+                    {% include "reader/partials/book_status_badge.html" with status=book.progress %}
+                {% endif %}
+                {% if book_meta.new_chapters_count > 0 %}
+                    <span class="badge rounded-pill bg-danger new-chapters-badge">{{ book_meta.new_chapters_count }}</span>
+                {% endif %}
+            </div>
 
             <!-- Stats (bottom left corner) -->
             <div class="book-card-stats">
@@ -52,8 +58,8 @@ Parameters:
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="bookModalLabel{{ book.id }}">Book Details</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <h5 class="modal-title" id="bookModalLabel{{ book.id }}">{% trans "Book Details" %}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{% trans 'Close' %}"></button>
             </div>
             <div class="modal-body">
                 <div class="row">
@@ -69,8 +75,9 @@ Parameters:
                         <h4 class="fw-bold modal-book-title">{{ book.title }}</h4>
                         {% if book.bookmaster.author %}
                         <p class="modal-book-author mb-3">
-                            by <a href="{% url 'reader:section_author_detail' current_language.code book.bookmaster.section.slug book.bookmaster.author.slug %}" class="text-decoration-none">
-                                {{ book.bookmaster.author.name }}
+                            {% trans "by" %}
+                            <a href="{% url 'reader:section_author_detail' current_language.code book.bookmaster.section.slug book.bookmaster.author.slug %}" class="text-decoration-none">
+                                {{ book.author_localized_name }}
                             </a>
                         </p>
                         {% elif book.author %}
@@ -79,51 +86,27 @@ Parameters:
                         </p>
                         {% endif %}
 
+                        <div class="book-stats mb-3">
+                            {% include "reader/partials/book_stats.html" with book=book total_chapters=book.published_chapters_count total_words=book.effective_count total_chapter_views=book.total_chapter_views current_language=current_language %}
+                        </div>
+
                         {% if book.description %}
                         <div class="mb-3">
                             <p class="modal-book-description">{{ book.description|striptags }}</p>
                         </div>
                         {% endif %}
-
-                        <div class="book-stats">
-                            <div class="row g-3">
-                                <div class="col-6">
-                                    <div class="stat-item">
-                                        <i class="fas fa-list me-2" style="color: var(--color-primary);"></i>
-                                        <span class="stat-label">Chapters:</span>
-                                        <span class="stat-value">{{ book.published_chapters_count }}</span>
-                                    </div>
-                                </div>
-                                <div class="col-6">
-                                    <div class="stat-item">
-                                        <i class="fas fa-signal me-2" style="color: var(--color-primary);"></i>
-                                        <span class="stat-label">Status:</span>
-                                        <span class="stat-value">{{ book.get_progress_display }}</span>
-                                    </div>
-                                </div>
-                                {% if book.total_chapter_views %}
-                                <div class="col-6">
-                                    <div class="stat-item">
-                                        <i class="fas fa-eye me-2" style="color: var(--color-primary);"></i>
-                                        <span class="stat-label">Total Views:</span>
-                                        <span class="stat-value">{{ book.total_chapter_views|default:0 }}</span>
-                                    </div>
-                                </div>
-                                {% endif %}
-                            </div>
-                        </div>
                     </div>
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-outline-primary-custom" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-outline-primary-custom" data-bs-dismiss="modal">{% trans "Close" %}</button>
                 {% if modal_section %}
                     <a href="{% url 'reader:section_book_detail' current_language.code modal_section.slug book.slug %}" class="btn btn-primary-custom">
-                        Read Now
+                        {% trans "Read Now" %}
                     </a>
                 {% else %}
                     <a href="{% url 'reader:book_detail' current_language.code book.slug %}" class="btn btn-primary-custom">
-                        Read Now
+                        {% trans "Read Now" %}
                     </a>
                 {% endif %}
             </div>

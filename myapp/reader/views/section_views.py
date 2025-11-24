@@ -78,6 +78,9 @@ class SectionHomeView(BaseBookListView):
         # Add section to context with localized name
         context["section"] = section
         context["section_localized_name"] = section.get_localized_name(language_code)
+        context["section_localized_description"] = section.get_localized_description(
+            language_code
+        )
 
         # Get genres for this section with localized names
         section_genres = cache.get_cached_genres_flat(section_id=section.id)
@@ -293,15 +296,31 @@ class SectionBookDetailView(BaseBookDetailView):
             context["author"] = author
             context["author_localized_name"] = author.get_localized_name(language_code)
 
-        # Get all published chapters
-        all_chapters = (
-            self.object.chapters.filter(is_public=True)
-            .select_related("chaptermaster")
-            .order_by("chaptermaster__chapter_number")
-        )
+        # Get all published chapters with sorting
+        sort_param = self.request.GET.get('sort', 'oldest')
+
+        all_chapters = self.object.chapters.filter(is_public=True).select_related("chaptermaster")
+
+        if sort_param == 'latest':
+            # Sort by published date, newest first
+            all_chapters = all_chapters.order_by("-published_at", "-chaptermaster__chapter_number")
+        elif sort_param == 'new':
+            # Filter to show ONLY new chapters (within NEW_CHAPTER_DAYS)
+            from django.utils import timezone
+            from datetime import timedelta
+            from django.conf import settings
+
+            new_chapter_days = getattr(settings, 'NEW_CHAPTER_DAYS', 14)
+            cutoff_date = timezone.now() - timedelta(days=new_chapter_days)
+
+            all_chapters = all_chapters.filter(
+                published_at__gte=cutoff_date
+            ).order_by("-published_at", "chaptermaster__chapter_number")
+        else:  # oldest (default)
+            all_chapters = all_chapters.order_by("chaptermaster__chapter_number")
 
         # Pagination for chapters
-        paginator = Paginator(all_chapters, 20)  # 2 chapters per page
+        paginator = Paginator(all_chapters, 20)  # 20 chapters per page
         page_number = self.request.GET.get("page")
         page_obj = paginator.get_page(page_number)
 
@@ -326,6 +345,13 @@ class SectionBookDetailView(BaseBookDetailView):
         from books.stats import StatsService
         view_event = StatsService.track_book_view(self.object, self.request)
         context["view_event_id"] = view_event.id if view_event else None
+
+        # Add new chapter cutoff date for highlighting new chapters
+        from django.utils import timezone
+        from datetime import timedelta
+        from django.conf import settings
+        new_chapter_days = getattr(settings, 'NEW_CHAPTER_DAYS', 14)
+        context["new_chapter_cutoff"] = timezone.now() - timedelta(days=new_chapter_days)
 
         return context
 

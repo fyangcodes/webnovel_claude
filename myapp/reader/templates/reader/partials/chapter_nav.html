@@ -1,3 +1,4 @@
+{% load i18n %}
 {% load reader_extras %}
 
 <!-- Chapter Navigation -->
@@ -10,20 +11,20 @@
                    class="btn btn-primary-custom w-100"
                    title="{{ previous_chapter.title }}">
                     <i class="fas fa-arrow-left"></i>
-                    <span class="d-none d-md-inline ms-2">Previous</span>
+                    <span class="d-none d-md-inline ms-2">{% trans "Previous" %}</span>
                 </a>
             {% else %}
                 <a href="{% url 'reader:chapter_detail' current_language.code book.slug previous_chapter.slug %}"
                    class="btn btn-primary-custom w-100"
                    title="{{ previous_chapter.title }}">
                     <i class="fas fa-arrow-left"></i>
-                    <span class="d-none d-md-inline ms-2">Previous</span>
+                    <span class="d-none d-md-inline ms-2">{% trans "Previous" %}</span>
                 </a>
             {% endif %}
         {% else %}
             <button class="btn btn-outline-secondary w-100" disabled>
                 <i class="fas fa-arrow-left"></i>
-                <span class="d-none d-md-inline ms-2">Previous</span>
+                <span class="d-none d-md-inline ms-2">{% trans "Previous" %}</span>
             </button>
         {% endif %}
     </div>
@@ -34,7 +35,7 @@
            class="btn btn-outline-secondary w-100"
            title="{{ book.title }}">
             <i class="fas fa-list"></i>
-            <span class="ms-2">Index</span>
+            <span class="ms-2">{% trans "Index" %}</span>
         </a>
     </div>
 
@@ -45,20 +46,20 @@
                 <a href="{% url 'reader:section_chapter_detail' current_language.code book.bookmaster.section.slug book.slug next_chapter.slug %}"
                    class="btn btn-primary-custom w-100"
                    title="{{ next_chapter.title }}">
-                    <span class="me-2">Next</span>
+                    <span class="me-2">{% trans "Next" %}</span>
                     <i class="fas fa-arrow-right"></i>
                 </a>
             {% else %}
                 <a href="{% url 'reader:chapter_detail' current_language.code book.slug next_chapter.slug %}"
                    class="btn btn-primary-custom w-100"
                    title="{{ next_chapter.title }}">
-                    <span class="d-none d-md-inline me-2">Next</span>
+                    <span class="d-none d-md-inline me-2">{% trans "Next" %}</span>
                     <i class="fas fa-arrow-right"></i>
                 </a>
             {% endif %}
         {% else %}
             <button class="btn btn-outline-secondary w-100" disabled>
-                <span class="me-2">Next</span>
+                <span class="me-2">{% trans "Next" %}</span>
                 <i class="fas fa-arrow-right"></i>
             </button>
         {% endif %}

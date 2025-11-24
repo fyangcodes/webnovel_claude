@@ -1,3 +1,4 @@
+{% load i18n %}
 {% comment %}
 Book Grid Partial
 Parameters:
@@ -17,7 +18,7 @@ Parameters:
         </h2>
         {% if section %}
         <a href="{% url 'reader:section_book_list' current_language.code section.slug %}" class="view-all-link">
-            View All <i class="fas fa-arrow-right ms-1"></i>
+            {% trans "View All" %} <i class="fas fa-arrow-right ms-1"></i>
         </a>
         {% endif %}
     </div>

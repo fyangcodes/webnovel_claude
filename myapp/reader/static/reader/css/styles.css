@@ -963,3 +963,119 @@ footer.footer {
         font-size: 0.9rem;
     }
 }
+
+/* ========================================
+   Book Cover Styling
+   ======================================== */
+
+/* Book cover container */
+.book-cover-container {
+    width: 100%;
+    overflow: hidden;
+}
+
+/* Book cover image - max height with maintained aspect ratio */
+.book-cover-image {
+    width: 100%;
+    max-height: 400px;
+    object-fit: contain;
+    background-color: var(--bs-body-bg);
+    display: block;
+}
+
+/* Responsive adjustments for book cover */
+@media (max-width: 768px) {
+    .book-cover-image {
+        max-height: 350px;
+    }
+}
+
+@media (max-width: 576px) {
+    .book-cover-image {
+        max-height: 300px;
+    }
+}
+
+/* ========================================
+   Form Controls - Theme Aware
+   ======================================== */
+
+/* Override Bootstrap form-control to use theme colors */
+.form-control,
+.form-control-sm,
+.form-select,
+.form-select-sm {
+    background-color: var(--bs-body-bg) !important;
+    color: var(--bs-body-color) !important;
+    border-color: var(--bs-border-color) !important;
+}
+
+/* Focus state */
+.form-control:focus,
+.form-control-sm:focus,
+.form-select:focus,
+.form-select-sm:focus {
+    background-color: var(--bs-body-bg) !important;
+    color: var(--bs-body-color) !important;
+    border-color: var(--color-primary) !important;
+    box-shadow: 0 0 0 0.25rem rgba(255, 107, 53, 0.25) !important;
+}
+
+/* Placeholder text */
+.form-control::placeholder,
+.form-control-sm::placeholder {
+    color: var(--bs-secondary-color) !important;
+    opacity: 0.7;
+}
+
+/* Disabled state */
+.form-control:disabled,
+.form-control-sm:disabled,
+.form-select:disabled,
+.form-select-sm:disabled {
+    background-color: var(--bs-secondary-bg) !important;
+    color: var(--bs-secondary-color) !important;
+    opacity: 0.6;
+}
+
+/* Input group styling */
+.input-group .form-control,
+.input-group .form-control-sm {
+    background-color: var(--bs-body-bg) !important;
+    color: var(--bs-body-color) !important;
+}
+
+/* Dark theme adjustments for focus state */
+[data-theme="dark"] .form-control:focus,
+[data-theme="dark"] .form-control-sm:focus,
+[data-theme="dark"] .form-select:focus,
+[data-theme="dark"] .form-select-sm:focus,
+[data-bs-theme="dark"] .form-control:focus,
+[data-bs-theme="dark"] .form-control-sm:focus,
+[data-bs-theme="dark"] .form-select:focus,
+[data-bs-theme="dark"] .form-select-sm:focus {
+    box-shadow: 0 0 0 0.25rem rgba(255, 150, 112, 0.25) !important;
+}
+
+/* ============================================================================
+   NEW CHAPTER INDICATORS
+   ============================================================================ */
+
+/* Red dot indicator for new chapters in chapter list */
+.new-chapter-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    background-color: #dc3545;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+/* New chapters badge on book card */
+.new-chapters-badge {
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}

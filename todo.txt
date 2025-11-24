@@ -1,7 +1,3 @@
-
-improve reader views design
-- i18n
-
 SEO
 
 delete unused views in reade apps

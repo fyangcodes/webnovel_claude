@@ -1,9 +1,10 @@
 {% extends "reader/base.html" %}
+{% load i18n %}
 {% load books_extras %}
 {% load reader_extras %}
 {% load static %}
 
-{% block title %}Welcome{% endblock %}
+{% block title %}{% trans "Welcome" %}{% endblock %}
 
 {% block content %}
     <!-- Featured Books Hero Carousel -->
@@ -23,7 +24,7 @@
                 <h3 class="h5 mb-0">{{ section_data.section.localized_name }}</h3>
                 <a href="?{% query_transform request section=section_data.section.slug %}"
                    class="btn btn-sm btn-outline-primary-custom">
-                    All {{ section_data.section.localized_name }}
+                    {% blocktrans with section=section_data.section.localized_name %}All {{ section }}{% endblocktrans %}
                 </a>
             </div>
 
@@ -49,9 +50,9 @@
     <div id="continueReadingSection" style="display: none;" class="mt-2 mb-4">
         <div class="section-header">
             <h2 class="section-title">
-                Continue Reading  
+                {% trans "Continue Reading" %}
             </h2>
-            <a href="#" class="view-all-link" id="clearHistoryLink">Clear History</a>
+            <a href="#" class="view-all-link" id="clearHistoryLink">{% trans "Clear History" %}</a>
         </div>
         <div class="book-grid" id="continueReadingGrid">
             <!-- Books will be dynamically inserted here from localStorage -->
@@ -60,12 +61,12 @@
 
     <!-- Recently Updated Grid -->
     <section>
-        {% include "reader/partials/book_grid.html" with books=recently_updated title="Recently Updated" %}
+        {% include "reader/partials/book_grid.html" with books=recently_updated title=_("Recently Updated") %}
     </section>
 
     <!-- New Arrivals Grid -->
     <section>
-        {% include "reader/partials/book_grid.html" with books=new_arrivals title="New Arrivals" %}
+        {% include "reader/partials/book_grid.html" with books=new_arrivals title=_("New Arrivals") %}
     </section>
 
     
@@ -90,7 +91,7 @@
                     <div class="book-card-image-wrapper">
                         <img src="${coverImage}" alt="${reading.bookTitle}" class="book-card-image">
                         <div class="book-card-genres">
-                            <span class="badge bg-dark text-light position-absolute bottom-0 start-0 m-2">Chapter ${reading.chapterNumber}</span>
+                            <span class="badge bg-primary-custom text-light position-absolute bottom-0 end-0 m-2"><i class="fa fa-play"></i> ${reading.chapterNumber}.</span>
                         </div>
                     </div>
                     <h3 class="book-card-title">${reading.bookTitle}</h3>
@@ -126,7 +127,7 @@
     if (clearHistoryLink) {
         clearHistoryLink.addEventListener('click', function(e) {
             e.preventDefault();
-            if (confirm('Are you sure you want to clear your reading history?')) {
+            if (confirm('{% trans "Are you sure you want to clear your reading history?" %}')) {
                 localStorage.removeItem('readingHistory');
                 continueReadingSection.style.display = 'none';
             }

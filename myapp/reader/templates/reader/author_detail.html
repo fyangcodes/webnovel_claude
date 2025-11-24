@@ -1,4 +1,5 @@
 {% extends "reader/base.html" %}
+{% load i18n %}
 {% load humanize %}
 {% load books_extras %}
 
@@ -41,7 +42,7 @@
         </div>
 
         <!-- Books by Author -->
-        <h3 class="mb-4">Books by {{ author_name }}</h3>
+        <h3 class="mb-4">{% blocktrans with name=author_name %}Books by {{ name }}{% endblocktrans %}</h3>
 
         {% if books %}
         <div class="row">
@@ -55,8 +56,8 @@
         <!-- No Books State -->
         <div class="text-center py-5">
             <div class="display-3 text-muted mb-3">📚</div>
-            <h5 class="text-muted">No published books</h5>
-            <p class="text-muted">This author doesn't have any published books available in this language yet.</p>
+            <h5 class="text-muted">{% trans "No published books" %}</h5>
+            <p class="text-muted">{% trans "This author doesn't have any published books available in this language yet." %}</p>
         </div>
         {% endif %}
     </div>

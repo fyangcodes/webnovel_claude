@@ -1,0 +1,332 @@
+# Simplified Chinese (zh-Hans) translations for webnovel reader app
+# Copyright (C) 2025
+# This file is distributed under the same license as the PACKAGE package.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: 1.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2025-11-24 07:33+0000\n"
+"PO-Revision-Date: 2025-11-23 19:33+0000\n"
+"Last-Translator: Claude Code\n"
+"Language-Team: Chinese\n"
+"Language: zh-Hans\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+
+#: reader/templates/reader/author_detail.html:45
+#, python-format
+msgid "Books by %(name)s"
+msgstr "%(name)s的作品"
+
+#: reader/templates/reader/author_detail.html:59
+msgid "No published books"
+msgstr "暂无已出版作品"
+
+#: reader/templates/reader/author_detail.html:60
+msgid ""
+"This author doesn't have any published books available in this language yet."
+msgstr "该作者暂无该语言版本的已出版作品。"
+
+#: reader/templates/reader/base.html:58 reader/templates/reader/base.html:77
+#, python-format
+msgid "Search in %(section)s"
+msgstr "在%(section)s中搜索"
+
+#: reader/templates/reader/base.html:58 reader/templates/reader/base.html:77
+msgid "Search all books"
+msgstr "搜索所有书籍"
+
+#: reader/templates/reader/base.html:100
+msgid "Dark"
+msgstr "深色"
+
+#: reader/templates/reader/base.html:104
+msgid "Light"
+msgstr "浅色"
+
+#: reader/templates/reader/base.html:137 reader/templates/reader/base.html:174
+msgid "Home"
+msgstr "首页"
+
+#: reader/templates/reader/base.html:162
+msgid "Sections"
+msgstr "分类"
+
+#: reader/templates/reader/base.html:163
+#: reader/templates/reader/partials/book_card.html:57
+#: reader/templates/reader/partials/book_card.html:97
+msgid "Close"
+msgstr "关闭"
+
+#: reader/templates/reader/base.html:199
+msgid "Select language"
+msgstr "选择语言"
+
+#: reader/templates/reader/book_detail.html:29
+#: reader/templates/reader/partials/book_card.html:73
+msgid "by"
+msgstr "作者："
+
+#: reader/templates/reader/book_detail.html:35
+#, python-format
+msgid "by %(author)s"
+msgstr "作者：%(author)s"
+
+#: reader/templates/reader/book_detail.html:67
+msgid "Chapters"
+msgstr "章节列表"
+
+#: reader/templates/reader/book_list.html:7
+msgid "All Books"
+msgstr "所有书籍"
+
+#: reader/templates/reader/book_list.html:27
+#: reader/templates/reader/search.html:78
+#: reader/templates/reader/section_home.html:54
+msgid "All Genres"
+msgstr "所有类型"
+
+#: reader/templates/reader/book_list.html:46
+msgid "All Subgenres"
+msgstr "所有子类型"
+
+#: reader/templates/reader/chapter_detail.html:22
+msgid "Back to Top"
+msgstr "回到顶部"
+
+#: reader/templates/reader/chapter_detail.html:45
+#, python-format
+msgid "Chapter %(number)s"
+msgstr "第 %(number)s 章"
+
+#: reader/templates/reader/chapter_detail.html:65
+msgid "You've reached the end!"
+msgstr "已读完本书！"
+
+#: reader/templates/reader/chapter_detail.html:66
+#, python-format
+msgid "Thanks for reading %(title)s!"
+msgstr "感谢阅读《%(title)s》！"
+
+#: reader/templates/reader/chapter_detail.html:69
+#, python-format
+msgid "Explore More %(section)s Books"
+msgstr "探索更多%(section)s作品"
+
+#: reader/templates/reader/partials/book_card.html:56
+msgid "Book Details"
+msgstr "书籍详情"
+
+#: reader/templates/reader/partials/book_card.html:100
+#: reader/templates/reader/partials/book_card.html:104
+#: reader/templates/reader/partials/hero_carousel.html:29
+msgid "Read Now"
+msgstr "立即阅读"
+
+#: reader/templates/reader/partials/book_grid.html:21
+#: reader/templates/reader/section_home.html:65
+msgid "View All"
+msgstr "查看全部"
+
+#: reader/templates/reader/partials/book_stats.html:32
+msgid "Chapters:"
+msgstr "章节数："
+
+#: reader/templates/reader/partials/book_stats.html:38
+msgid "Status:"
+msgstr "状态："
+
+#: reader/templates/reader/partials/book_stats.html:46
+msgid "Total Views:"
+msgstr "总阅读量："
+
+#: reader/templates/reader/partials/book_stats.html:55
+msgid "Words:"
+msgstr "字数："
+
+#: reader/templates/reader/partials/book_stats.html:66
+msgid "chapter"
+msgid_plural "chapters"
+msgstr[0] "章"
+msgstr[1] "章"
+
+#: reader/templates/reader/partials/book_stats.html:71
+msgid "words"
+msgstr "字"
+
+#: reader/templates/reader/partials/book_stats.html:77
+msgid "view"
+msgid_plural "views"
+msgstr[0] "次阅读"
+msgstr[1] "次阅读"
+
+#: reader/templates/reader/partials/book_stats.html:86
+#, python-format
+msgid "Updated %(time)s"
+msgstr "更新于 %(time)s"
+
+#: reader/templates/reader/search.html:139
+msgid "All Status"
+msgstr "全部状态"
+
+#: reader/templates/reader/partials/book_status_badge.html:24
+msgid "Draft"
+msgstr "草稿"
+
+#: reader/templates/reader/partials/book_status_badge.html:29
+msgid "Ongoing"
+msgstr "连载中"
+
+#: reader/templates/reader/partials/book_status_badge.html:34
+msgid "Completed"
+msgstr "已完结"
+
+#: reader/templates/reader/partials/chapter_list.html:86
+msgid "No chapters published yet"
+msgstr "暂无已出版章节"
+
+#: reader/templates/reader/partials/chapter_list.html:87
+msgid "This book doesn't have any published chapters available for reading."
+msgstr "本书暂无可阅读的已出版章节。"
+
+#: reader/templates/reader/partials/chapter_nav.html:14
+#: reader/templates/reader/partials/chapter_nav.html:21
+#: reader/templates/reader/partials/chapter_nav.html:27
+msgid "Previous"
+msgstr "上一章"
+
+#: reader/templates/reader/partials/chapter_nav.html:38
+msgid "Index"
+msgstr "目录"
+
+#: reader/templates/reader/partials/chapter_nav.html:49
+#: reader/templates/reader/partials/chapter_nav.html:56
+#: reader/templates/reader/partials/chapter_nav.html:62
+msgid "Next"
+msgstr "下一章"
+
+#: reader/templates/reader/search.html:7 reader/templates/reader/search.html:24
+msgid "Search"
+msgstr "搜索"
+
+#: reader/templates/reader/search.html:20
+msgid "Search by section, genre, tag, or character..."
+msgstr "按分类、类型、标签或角色搜索..."
+
+#: reader/templates/reader/search.html:48
+#, python-format
+msgid "%(counter)s result"
+msgid_plural "%(counter)s results"
+msgstr[0] "%(counter)s 个结果"
+msgstr[1] "%(counter)s 个结果"
+
+#: reader/templates/reader/search.html:50
+msgid "matching:"
+msgstr "匹配："
+
+#: reader/templates/reader/search.html:55
+#, python-format
+msgid "+%(more)s more"
+msgstr "还有 %(more)s 个"
+
+#: reader/templates/reader/search.html:59
+#, python-format
+msgid "Search completed in %(time)sms"
+msgstr "搜索耗时 %(time)s 毫秒"
+
+#: reader/templates/reader/search.html:63
+msgid "Clear Search"
+msgstr "清除搜索"
+
+#: reader/templates/reader/section_home.html:53
+msgid "Browse by Genre"
+msgstr "按类型浏览"
+
+#: reader/templates/reader/section_home.html:62
+msgid "Recent Updates"
+msgstr "最近更新"
+
+#: reader/templates/reader/section_home.html:81
+msgid "No books available in this section yet."
+msgstr "该分类下暂无可用书籍。"
+
+#: reader/templates/reader/welcome.html:7
+msgid "Welcome"
+msgstr "欢迎"
+
+#: reader/templates/reader/welcome.html:27
+#, python-format
+msgid "All %(section)s"
+msgstr "所有%(section)s"
+
+#: reader/templates/reader/welcome.html:54
+msgid "Continue Reading"
+msgstr "继续阅读"
+
+#: reader/templates/reader/welcome.html:56
+msgid "Clear History"
+msgstr "清除历史"
+
+#: reader/templates/reader/welcome.html:65
+msgid "Recently Updated"
+msgstr "最近更新"
+
+#: reader/templates/reader/welcome.html:70
+msgid "New Arrivals"
+msgstr "新书上架"
+
+#: reader/templates/reader/welcome.html:131
+msgid "Are you sure you want to clear your reading history?"
+msgstr "确定要清除阅读历史吗？"
+
+#: reader/templates/reader/search.html:206
+#, python-format
+msgid "No results found for \"%(query)s\""
+msgstr "未找到\"%(query)s\"的相关结果"
+
+#: reader/templates/reader/search.html:207
+msgid "Try different keywords or remove some filters"
+msgstr "请尝试使用其他关键词或移除部分筛选条件"
+
+#: reader/templates/reader/search.html:218
+msgid "Search for Books"
+msgstr "搜索书籍"
+
+#: reader/templates/reader/search.html:220
+msgid "Search by section, genre, tag, character name, or any keyword"
+msgstr "按分区、类型、标签、角色名或任何关键词搜索"
+
+#: reader/templates/reader/partials/book_results.html:32
+msgid "%(counter)s match found"
+msgid_plural "%(counter)s matches found"
+msgstr[0] "找到%(counter)s个匹配结果"
+
+#: reader/templates/reader/partials/book_results.html:45
+msgid "Page navigation"
+msgstr "页面导航"
+
+#: reader/templates/reader/partials/book_results.html:76
+msgid "No books available"
+msgstr "暂无书籍"
+
+#: reader/templates/reader/partials/book_results.html:80
+msgid "There are no published books available in this section yet."
+msgstr "本分区暂无已出版的书籍。"
+
+#: reader/templates/reader/partials/chapter_list.html:27
+#: reader/templates/reader/partials/chapter_list.html:34
+msgid "Oldest"
+msgstr "最旧"
+
+#: reader/templates/reader/partials/chapter_list.html:23
+#: reader/templates/reader/partials/chapter_list.html:40
+msgid "Latest"
+msgstr "最新"
+
+#: reader/templates/reader/partials/chapter_list.html:25
+#: reader/templates/reader/partials/chapter_list.html:46
+msgid "New"
+msgstr "新章节"

@@ -1,0 +1,38 @@
+{% load i18n %}
+{% comment %}
+Book Status Badge Partial
+
+Displays a badge with icon and text for book progress status.
+
+Parameters:
+- status: Book progress status (draft, ongoing, completed)
+- show_text: (Optional) Whether to show text label (default: True)
+- show_icon: (Optional) Whether to show icon (default: True)
+- size: (Optional) Badge size - 'sm' or 'md' (default: 'md')
+
+Usage:
+{% include "reader/partials/book_status_badge.html" with status=book.progress %}
+{% include "reader/partials/book_status_badge.html" with status=book.progress show_text=True show_icon=True %}
+{% include "reader/partials/book_status_badge.html" with status=book.progress size="sm" %}
+{% endcomment %}
+
+{% with show_text_val=show_text|default:True show_icon_val=show_icon|default:True size_val=size|default:"md" %}
+
+{% if status == "draft" %}
+    <span class="badge bg-secondary{% if size_val == 'sm' %} badge-sm{% endif %}">
+        {% if show_icon_val %}<i class="fas fa-pencil-square me-1"></i>{% endif %}
+        {% if show_text_val %}{% trans "Draft" %}{% endif %}
+    </span>
+{% elif status == "ongoing" %}
+    <span class="badge bg-primary{% if size_val == 'sm' %} badge-sm{% endif %}">
+        {% if show_icon_val %}<i class="fas fa-hourglass-half me-1"></i>{% endif %}
+        {% if show_text_val %}{% trans "Ongoing" %}{% endif %}
+    </span>
+{% elif status == "completed" %}
+    <span class="badge bg-success{% if size_val == 'sm' %} badge-sm{% endif %}">
+        {% if show_icon_val %}<i class="fas fa-check-circle me-1"></i>{% endif %}
+        {% if show_text_val %}{% trans "Completed" %}{% endif %}
+    </span>
+{% endif %}
+
+{% endwith %}

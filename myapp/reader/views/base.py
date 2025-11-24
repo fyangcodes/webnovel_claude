@@ -177,6 +177,7 @@ class BaseReaderView:
         - Published chapters count (cached)
         - Total chapter views (cached)
         - Localized section name
+        - Localized author name
         - Localized genres with parent hierarchy
         - Localized tags grouped by category
         - Localized entities grouped by type
@@ -199,6 +200,12 @@ class BaseReaderView:
             book.section_localized_name = book.bookmaster.section.get_localized_name(language_code)
         else:
             book.section_localized_name = None
+
+        # Add localized author name if author exists
+        if hasattr(book.bookmaster, 'author') and book.bookmaster.author:
+            book.author_localized_name = book.bookmaster.author.get_localized_name(language_code)
+        else:
+            book.author_localized_name = None
 
         # Add localized names to each genre (including parent) and store on book
         genres = list(book.bookmaster.genres.all())

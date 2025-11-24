@@ -1,0 +1,90 @@
+{% load i18n %}
+{% load reader_extras %}
+{% comment %}
+Book Results Partial
+
+Displays a grid of books with pagination and empty states.
+
+Parameters:
+- books: List/queryset of book objects
+- current_language: Current language object
+- is_paginated: (Optional) Boolean indicating if results are paginated
+- page_obj: (Optional) Django Paginator page object
+- empty_state_icon: (Optional) Icon for empty state (default: "📚")
+- empty_state_title: (Optional) Title for empty state
+- empty_state_message: (Optional) Message for empty state
+- show_count: (Optional) Whether to show result count (default: False)
+- paginator: (Optional) Paginator object for count
+
+Context variables used:
+- request: Django request object (for query_transform in pagination)
+
+Usage:
+{% include "reader/partials/book_results.html" with books=books current_language=current_language is_paginated=is_paginated page_obj=page_obj %}
+{% endcomment %}
+
+{% with show_count_val=show_count|default:False empty_icon=empty_state_icon|default:"📚" %}
+
+{% if books %}
+    <!-- Count (optional) -->
+    {% if show_count_val and paginator %}
+    <div class="my-2">
+        <p><strong>{% blocktrans count counter=paginator.count %}{{ counter }} match found{% plural %}{{ counter }} matches found{% endblocktrans %}</strong></p>
+    </div>
+    {% endif %}
+
+    <!-- Results Grid -->
+    <div class="book-grid" {% if enable_infinite_scroll %}data-infinite-scroll="true"{% endif %}>
+    {% for book in books %}
+        {% include "reader/partials/book_card.html" with book=book current_language=current_language %}
+    {% endfor %}
+    </div>
+
+    <!-- Pagination -->
+    {% if is_paginated %}
+    <nav aria-label="{% trans 'Page navigation' %}" class="mt-4">
+        <div class="d-flex justify-content-center">
+            <div class="btn-group" role="group">
+                {% if page_obj.has_previous %}
+                    <a href="?{% query_transform request page=1 %}" class="btn btn-outline-secondary btn-sm">1</a>
+                    {% if page_obj.previous_page_number > 2 %}
+                        {% if page_obj.previous_page_number > 3 %}
+                            <span class="btn btn-outline-secondary btn-sm disabled">...</span>
+                        {% endif %}
+                        <a href="?{% query_transform request page=page_obj.previous_page_number %}" class="btn btn-outline-secondary btn-sm">{{ page_obj.previous_page_number }}</a>
+                    {% endif %}
+                {% endif %}
+
+                <span class="btn btn-primary btn-sm">{{ page_obj.number }}</span>
+
+                {% if page_obj.has_next %}
+                    {% if page_obj.next_page_number < page_obj.paginator.num_pages %}
+                        <a href="?{% query_transform request page=page_obj.next_page_number %}" class="btn btn-outline-secondary btn-sm">{{ page_obj.next_page_number }}</a>
+                        {% if page_obj.next_page_number < page_obj.paginator.num_pages|add:"-1" %}
+                            <span class="btn btn-outline-secondary btn-sm disabled">...</span>
+                        {% endif %}
+                    {% endif %}
+                    <a href="?{% query_transform request page=page_obj.paginator.num_pages %}" class="btn btn-outline-secondary btn-sm">{{ page_obj.paginator.num_pages }}</a>
+                {% endif %}
+            </div>
+        </div>
+    </nav>
+    {% endif %}
+{% else %}
+    <!-- Empty State -->
+    <div class="text-center py-5">
+        <div class="display-1 mb-3">{{ empty_icon }}</div>
+        {% if empty_state_title %}
+            <h3>{{ empty_state_title }}</h3>
+        {% else %}
+            <h3>{% trans "No books available" %}</h3>
+        {% endif %}
+        {% if empty_state_message %}
+            <p class="text-muted">{{ empty_state_message }}</p>
+        {% else %}
+            <p class="text-muted">{% trans "There are no published books available in this section yet." %}</p>
+        {% endif %}
+    </div>
+{% endif %}
+
+{% endwith %}

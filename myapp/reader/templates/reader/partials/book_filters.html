@@ -1,0 +1,87 @@
+{% load i18n %}
+{% load reader_extras %}
+{% comment %}
+Book Filters Partial
+
+Displays genre hierarchy and status filters for book browsing.
+
+Parameters:
+- primary_genres: List of primary genre objects
+- primary_genre: (Optional) Currently selected primary genre
+- secondary_genres: (Optional) List of sub-genres for selected primary genre
+- show_status_filter: (Optional) Whether to show status filter (default: True)
+
+Context variables used:
+- request: Django request object (for query_transform)
+
+Usage:
+{% include "reader/partials/book_filters.html" with primary_genres=primary_genres primary_genre=primary_genre secondary_genres=secondary_genres %}
+{% endcomment %}
+
+{% with show_status_val=show_status_filter|default:True %}
+
+<!-- Genre Filter with Hierarchy -->
+<div class="d-flex gap-2 mb-3">
+    <div class="flex-shrink-0">
+        <a href="?{% query_transform request genre=None page=None %}"
+           class="btn btn-sm btn-min-width-lg fw-bold {% if not request.GET.genre %}btn-primary-custom{% else %}btn-outline-primary-custom{% endif %}">
+            {% trans "All Genres" %}
+        </a>
+    </div>
+    <div class="d-flex flex-wrap gap-2 flex-grow-1">
+        {% for genre in primary_genres %}
+        <a href="?{% query_transform request genre=genre.slug page=None %}"
+           class="btn btn-sm btn-min-width {% if primary_genre and primary_genre.id == genre.id %}btn-primary-custom{% else %}btn-outline-primary-custom{% endif %}">
+            {{ genre.localized_name }}
+        </a>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Sub-genres Section (only show when primary_genre is set) -->
+{% if primary_genre %}
+<div class="d-flex gap-2 mb-3">
+    <div class="flex-shrink-0">
+        <a href="?{% query_transform request genre=primary_genre.slug page=None %}"
+           class="btn btn-sm btn-min-width-lg fw-bold {% if primary_genre.is_active_selection %}btn-primary-custom{% else %}btn-outline-primary-custom{% endif %}">
+            {% trans "All Subgenres" %}
+        </a>
+    </div>
+    <div class="d-flex flex-wrap gap-2 flex-grow-1">
+        {% for genre in secondary_genres %}
+        <a href="?{% query_transform request genre=genre.slug page=None %}"
+           class="btn btn-sm btn-min-width {% if genre.is_active_selection %}btn-primary-custom{% else %}btn-outline-primary-custom{% endif %}">
+            {{ genre.localized_name }}
+        </a>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<!-- Status Filter -->
+{% if show_status_val %}
+<div class="d-flex gap-2">
+    <div class="flex-shrink-0">
+        <a href="?{% query_transform request status=None page=None %}"
+           class="btn btn-sm btn-min-width-lg fw-bold {% if not request.GET.status %}btn-primary-custom{% else %}btn-outline-primary-custom{% endif %}">
+            {% trans "All Status" %}
+        </a>
+    </div>
+    <div class="d-flex flex-wrap gap-2 flex-grow-1">
+        <a href="?{% query_transform request status='draft' page=None %}"
+           class="btn btn-sm btn-min-width {% if request.GET.status == 'draft' %}btn-primary-custom{% else %}btn-outline-primary-custom{% endif %}">
+            {% trans "Draft" %}
+        </a>
+        <a href="?{% query_transform request status='ongoing' page=None %}"
+           class="btn btn-sm btn-min-width {% if request.GET.status == 'ongoing' %}btn-primary-custom{% else %}btn-outline-primary-custom{% endif %}">
+            {% trans "Ongoing" %}
+        </a>
+        <a href="?{% query_transform request status='completed' page=None %}"
+           class="btn btn-sm btn-min-width {% if request.GET.status == 'completed' %}btn-primary-custom{% else %}btn-outline-primary-custom{% endif %}">
+            {% trans "Completed" %}
+        </a>
+    </div>
+</div>
+{% endif %}
+
+{% endwith %}

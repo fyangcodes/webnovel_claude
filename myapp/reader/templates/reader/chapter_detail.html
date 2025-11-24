@@ -1,4 +1,5 @@
 {% extends "reader/base.html" %}
+{% load i18n %}
 {% load books_extras %}
 {% load humanize %}
 {% load reader_extras %}
@@ -18,7 +19,7 @@
 <div class="reading-progress-bar" id="readingProgressBar"></div>
 
 <!-- Back to Top Button -->
-<button id="backToTopBtn" title="Back to Top">
+<button id="backToTopBtn" title="{% trans 'Back to Top' %}">
     <i class="fas fa-arrow-up"></i>
 </button>
 
@@ -41,7 +42,7 @@
                 <h1 class="display-6 mb-0">{{ chapter.title }}</h1>
             </div>
             <div class="chapter-header-stats">
-                <span class="chapter-number">Chapter {{ chapter.chaptermaster.chapter_number }}</span>
+                <span class="chapter-number">{% blocktrans with number=chapter.chaptermaster.chapter_number %}Chapter {{ number }}{% endblocktrans %}</span>
                 {% if chapter.published_at %}
                 <span class="chapter-time">{{ chapter.published_at|naturaltime }}</span>
                 {% endif %}
@@ -61,11 +62,11 @@
         <!-- End of Book Message -->
         {% if not next_chapter %}
         <div class="text-center mt-5 p-4 rounded">
-            <h5 >🎉 You've reached the end!</h5>
-            <p class="mb-3">Thanks for reading {{ book.title }}!</p>
+            <h5>{% trans "You've reached the end!" %}</h5>
+            <p class="mb-3">{% blocktrans with title=book.title %}Thanks for reading {{ title }}!{% endblocktrans %}</p>
             <a href="{% url 'reader:section_book_list' current_language.code book.bookmaster.section.slug %}"
                class="btn btn-primary-custom">
-                Explore More {{ book.section_localized_name }} Books
+                {% blocktrans with section=book.section_localized_name %}Explore More {{ section }} Books{% endblocktrans %}
             </a>
         </div>
         {% endif %}

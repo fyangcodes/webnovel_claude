@@ -1,4 +1,5 @@
 {% load static %}
+{% load i18n %}
 {% load books_extras %}
 {# Hero carousel partial - displays featured books in a carousel with captions #}
 {# Parameters: books (queryset), current_language (Language object) #}
@@ -25,7 +26,7 @@
           {% endif %}
         </div>
         <div class="d-none d-md-block">
-          <a href="{% url 'reader:book_detail' current_language.code book.slug %}" class="btn btn-outline-primary-custom">Read Now</a>
+          <a href="{% url 'reader:book_detail' current_language.code book.slug %}" class="btn btn-outline-primary-custom">{% trans "Read Now" %}</a>
         </div>
       </div>
     </div>

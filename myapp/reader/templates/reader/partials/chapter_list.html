@@ -1,4 +1,6 @@
 {% load humanize %}
+{% load i18n %}
+{% load reader_extras %}
 {% comment %}
 Chapter List Partial - HTMX Ready
 
@@ -8,26 +10,69 @@ Context variables required:
 - is_paginated: Boolean for pagination
 - page_obj: Django Paginator page object
 - current_language: Language object
+- new_chapter_cutoff: (Optional) Cutoff datetime for new chapters
 {% endcomment %}
 
+<!-- Chapters Header with Sort Controls -->
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h3 class="mb-0">{% trans "Chapters" %}</h3>
+    <div class="btn-group">
+        <button type="button" class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+            <i class="bi bi-sort-down me-1"></i>
+            {% if request.GET.sort == 'latest' %}
+                <i class="fa fa-arrow-up-wide-short"></i> {% trans "Latest" %}
+            {% elif request.GET.sort == 'new' %}
+                <i class="fa fa-bolt"></i> {% trans "New" %}
+            {% else %}
+                <i class="fa fa-arrow-down-short-wide"></i> {% trans "Oldest" %}
+            {% endif %}
+        </button>
+        <ul class="dropdown-menu dropdown-menu-end">
+            <li>
+                <a class="dropdown-item {% if not request.GET.sort or request.GET.sort == 'oldest' %}active{% endif %}"
+                   href="?{% query_transform request sort='oldest' page=None %}">
+                    <i class="bi bi-sort-down me-2"></i>{% trans "Oldest" %}
+                </a>
+            </li>
+            <li>
+                <a class="dropdown-item {% if request.GET.sort == 'latest' %}active{% endif %}"
+                   href="?{% query_transform request sort='latest' page=None %}">
+                    <i class="bi bi-sort-up me-2"></i>{% trans "Latest" %}
+                </a>
+            </li>
+            <li>
+                <a class="dropdown-item {% if request.GET.sort == 'new' %}active{% endif %}"
+                   href="?{% query_transform request sort='new' page=None %}">
+                    <i class="bi bi-stars me-2"></i>{% trans "New" %}
+                </a>
+            </li>
+        </ul>
+    </div>
+</div>
+
 {% if chapters %}
-<div class="row">
+
+<div class="list-group list-group-flush">
     {% for chapter in chapters %}
-    <div class="col-lg-3 col-md-4 col-sm-6 mb-3">
         {% if book.bookmaster.section %}
             <a href="{% url 'reader:section_chapter_detail' current_language.code book.bookmaster.section.slug book.slug chapter.slug %}"
-               class="btn btn-outline-primary-custom w-100 text-start p-3"
-               style="min-height: 60px; display: flex; align-items: center;">
-                <span class="fw-medium">{{ chapter.title }}</span>
+               class="list-group-item list-group-item-action d-flex align-items-center py-2 px-3">
+                <span class="flex-grow-1">{{ chapter.title }}</span>
+                {% if new_chapter_cutoff and chapter.published_at and chapter.published_at >= new_chapter_cutoff %}
+                    <span class="new-chapter-dot me-2"></span>
+                {% endif %}
+                <i class="bi bi-chevron-right text-muted small"></i>
             </a>
         {% else %}
             <a href="{% url 'reader:chapter_detail' current_language.code book.slug chapter.slug %}"
-               class="btn btn-outline-primary-custom w-100 text-start p-3"
-               style="min-height: 60px; display: flex; align-items: center;">
-                <span class="fw-medium">{{ chapter.title }}</span>
+               class="list-group-item list-group-item-action d-flex align-items-center py-2 px-3">
+                <span class="flex-grow-1">{{ chapter.title }}</span>
+                {% if new_chapter_cutoff and chapter.published_at and chapter.published_at >= new_chapter_cutoff %}
+                    <span class="new-chapter-dot me-2"></span>
+                {% endif %}
+                <i class="bi bi-chevron-right text-muted small"></i>
             </a>
         {% endif %}
-    </div>
     {% endfor %}
 </div>
 
@@ -82,7 +127,7 @@ Context variables required:
 <!-- No Chapters State -->
 <div class="text-center py-5">
     <div class="display-3 text-muted mb-3">📄</div>
-    <h5 class="text-muted">No chapters published yet</h5>
-    <p class="text-muted">This book doesn't have any published chapters available for reading.</p>
+    <h5 class="text-muted">{% trans "No chapters published yet" %}</h5>
+    <p class="text-muted">{% trans "This book doesn't have any published chapters available for reading." %}</p>
 </div>
 {% endif %}

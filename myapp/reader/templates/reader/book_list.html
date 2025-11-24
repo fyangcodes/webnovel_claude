@@ -1,9 +1,10 @@
 {% extends "reader/base.html" %}
+{% load i18n %}
 {% load books_extras %}
 {% load reader_extras %}
 {% load static %}
 
-{% block title %}{% if section %}{{ section_localized_name }} - {% endif %}All Books{% endblock %}
+{% block title %}{% if section %}{{ section_localized_name }} - {% endif %}{% trans "All Books" %}{% endblock %}
 
 {% block extra_css %}
 <!-- Section-specific meta tags for JavaScript -->
@@ -18,98 +19,14 @@
 <section class="col-lg-9">
     <div class="card">
         <div class="card-body">
-            <!-- Genre Filter with Hierarchy -->
-            <div class="d-flex gap-2 mb-3">
-                <div class="flex-shrink-0">
-                    <a href="?{% query_transform request genre=None page=None %}"
-                       class="btn btn-sm btn-min-width-lg fw-bold {% if not request.GET.genre %}btn-primary-custom{% else %}btn-outline-primary-custom{% endif %}">
-                        All Genres
-                    </a>
-                </div>
-                <div class="d-flex flex-wrap gap-2 flex-grow-1">
-                    {% for genre in primary_genres %}
-                    <a href="?{% query_transform request genre=genre.slug page=None %}"
-                       class="btn btn-sm btn-min-width {% if primary_genre and primary_genre.id == genre.id %}btn-primary-custom{% else %}btn-outline-primary-custom{% endif %}">
-                        {{ genre.localized_name }}
-                    </a>
-                    {% endfor %}
-                </div>
-            </div>
-
-            <!-- Sub-genres Section (only show when primary_genre is set) -->
-            {% if primary_genre %}
-            <div class="d-flex gap-2 mb-3">
-                <div class="flex-shrink-0">
-                    <a href="?{% query_transform request genre=primary_genre.slug page=None %}"
-                       class="btn btn-sm btn-min-width-lg fw-bold {% if primary_genre.is_active_selection %}btn-primary-custom{% else %}btn-outline-primary-custom{% endif %}">
-                        All Subgenres
-                    </a>
-                </div>
-                <div class="d-flex flex-wrap gap-2 flex-grow-1">
-                    {% for genre in secondary_genres %}
-                    <a href="?{% query_transform request genre=genre.slug page=None %}"
-                       class="btn btn-sm btn-min-width {% if genre.is_active_selection %}btn-primary-custom{% else %}btn-outline-primary-custom{% endif %}">
-                        {{ genre.localized_name }}
-                    </a>
-                    {% endfor %}
-                </div>
-            </div>
-            {% endif %}
-
-            <!-- Status Filter -->
-            <div class="d-flex gap-2">
-                <div class="flex-shrink-0">
-                    <a href="?{% query_transform request status=None page=None %}"
-                       class="btn btn-sm btn-min-width-lg fw-bold {% if not request.GET.status %}btn-primary-custom{% else %}btn-outline-primary-custom{% endif %}">
-                        All Status
-                    </a>
-                </div>
-                <div class="d-flex flex-wrap gap-2 flex-grow-1">
-                    <a href="?{% query_transform request status='ongoing' page=None %}"
-                       class="btn btn-sm btn-min-width {% if request.GET.status == 'ongoing' %}btn-primary-custom{% else %}btn-outline-primary-custom{% endif %}">
-                        Ongoing
-                    </a>
-                    <a href="?{% query_transform request status='completed' page=None %}"
-                       class="btn btn-sm btn-min-width {% if request.GET.status == 'completed' %}btn-primary-custom{% else %}btn-outline-primary-custom{% endif %}">
-                        Completed
-                    </a>
-                </div>
-            </div>
+            {% include "reader/partials/book_filters.html" with primary_genres=primary_genres primary_genre=primary_genre secondary_genres=secondary_genres %}
         </div>
-    </div>
-    <!-- Count -->
-    <div class="my-2">
-        {% if books %}
-            <p><strong>{{ paginator.count }} matches found</strong><p>
-        {% else %}
-            <p><strong>No matches found</strong><p>
-        {% endif %}
     </div>
 </section>
 
 <!-- Book List Section -->
 <section>
-    {% if books %}
-        <div class="book-grid" data-infinite-scroll="true">
-        {% for book in books %}
-            {% include "reader/partials/book_card.html" with book=book current_language=current_language %}
-        {% endfor %}
-        </div>
-    {% else %}
-        <!-- Empty State -->
-        <div class="text-center py-5">
-            <div class="display-1 mb-3">📚</div>
-            <h3>No books available</h3>
-            <p>
-                There are no published books in {{ current_language.name }} yet.
-            </p>
-            {% if section %}
-            <a href="{% url 'reader:section_book_list' current_language.code section.slug %}" class="btn btn-outline-primary-custom">
-                Refresh Page
-            </a>
-            {% endif %}
-        </div>
-    {% endif %}
+    {% include "reader/partials/book_results.html" with books=books current_language=current_language is_paginated=is_paginated page_obj=page_obj paginator=paginator show_count=True enable_infinite_scroll=True %}
 </section>
 {% endblock %}
 

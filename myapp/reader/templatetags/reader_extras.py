@@ -385,3 +385,64 @@ def canonical_url(request):
         Absolute URL for the current page
     """
     return request.build_absolute_uri(request.path)
+
+
+@register.filter
+def localized_name(obj, language_code):
+    """
+    Get localized name for objects with LocalizationModel.
+
+    Usage in templates:
+        {{ author|localized_name:current_language.code }}
+        {{ genre|localized_name:"zh-hans" }}
+
+    Args:
+        obj: Object with get_localized_name method (Author, Section, Genre, Tag, etc.)
+        language_code: Language code string
+
+    Returns:
+        Localized name or original name as fallback
+    """
+    if obj is None:
+        return ""
+    if hasattr(obj, 'get_localized_name'):
+        return obj.get_localized_name(language_code)
+    # Fallback to name attribute if method doesn't exist
+    return getattr(obj, 'name', str(obj))
+
+
+@register.simple_tag
+def enrich_book_meta(book):
+    """
+    Enrich book object with additional metadata like new chapters count.
+
+    Usage in templates:
+        {% enrich_book_meta book as book_meta %}
+        {% if book_meta.new_chapters_count > 0 %}
+            <span class="badge bg-danger">{{ book_meta.new_chapters_count }}</span>
+        {% endif %}
+
+    Args:
+        book: Book object
+
+    Returns:
+        Dictionary with enriched metadata
+    """
+    from django.utils import timezone
+    from datetime import timedelta
+    from django.conf import settings
+
+    new_chapter_days = getattr(settings, 'NEW_CHAPTER_DAYS', 14)
+    cutoff_date = timezone.now() - timedelta(days=new_chapter_days)
+
+    # Count chapters published within the new chapter window
+    new_chapters_count = book.chapters.filter(
+        is_public=True,
+        published_at__gte=cutoff_date
+    ).count()
+
+    return {
+        'book': book,
+        'new_chapters_count': new_chapters_count,
+        'new_chapter_cutoff': cutoff_date,
+    }
