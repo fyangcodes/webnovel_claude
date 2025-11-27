@@ -1,11 +1,9 @@
-SEO
+opitmize sql query
 
-delete unused views in reade apps
+cache for enrichbook, and meta tags
 
 container flower
 
 deployment
 
 reader UI htmx for genres, pagination, infinite scroll in chapter detail view?
-
-multilanguage view (book detail, book card modal)

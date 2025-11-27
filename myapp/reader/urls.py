@@ -129,10 +129,10 @@ urlpatterns = [
         views.SectionTagBookListView.as_view(),
         name="section_tag_book_list",
     ),
-    # Section search
+    # Section search (uses BookSearchView with section from URL path)
     path(
         "<str:language_code>/<slug:section_slug>/search/",
-        views.SectionSearchView.as_view(),
+        views.BookSearchView.as_view(),
         name="section_search",
     ),
     # Section book detail
@@ -146,50 +146,6 @@ urlpatterns = [
         "<str:language_code>/<slug:section_slug>/book/<uslug:book_slug>/<uslug:chapter_slug>/",
         views.SectionChapterDetailView.as_view(),
         name="section_chapter_detail",
-    ),
-    # Section author detail
-    path(
-        "<str:language_code>/<slug:section_slug>/author/<slug:author_slug>/",
-        views.SectionAuthorDetailView.as_view(),
-        name="section_author_detail",
-    ),
-
-    # ============================================================================
-    # LEGACY URLS (BACKWARD COMPATIBILITY)
-    # ============================================================================
-    # These URLs maintain backward compatibility and redirect to section URLs
-    # Will be kept indefinitely for bookmarks and external links
-
-    # REMOVED: Cross-section routes (migrated to fully section-scoped architecture)
-    # These routes have been removed as part of navigation refactoring
-    # All browsing is now section-scoped: /<language>/<section>/books/
-    #
-    # path(
-    #     "<str:language_code>/genre/<slug:genre_slug>/",
-    #     views.GenreBookListView.as_view(),
-    #     name="genre_book_list",
-    # ),
-    # path(
-    #     "<str:language_code>/tag/<slug:tag_slug>/",
-    #     views.TagBookListView.as_view(),
-    #     name="tag_book_list",
-    # ),
-    # path(
-    #     "<str:language_code>/books/",
-    #     views.BookListView.as_view(),
-    #     name="book_list",
-    # ),
-    # Book detail page (legacy - redirects to section book detail)
-    path(
-        "<str:language_code>/book/<uslug:book_slug>/",
-        views.LegacyBookDetailRedirectView.as_view(),
-        name="legacy_book_detail",
-    ),
-    # Chapter reading page (legacy - redirects to section chapter)
-    path(
-        "<str:language_code>/book/<uslug:book_slug>/<uslug:chapter_slug>/",
-        views.LegacyChapterDetailRedirectView.as_view(),
-        name="legacy_chapter_detail",
     ),
 
     # ============================================================================

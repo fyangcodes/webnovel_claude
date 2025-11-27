@@ -28,3 +28,17 @@ def stats_context(request):
     return {
         'view_event_id': getattr(request, 'view_event_id', None),
     }
+
+
+def analytics_context(request):
+    """
+    Make Google Analytics measurement ID available in templates.
+
+    The GA4_MEASUREMENT_ID is configured in settings.py from the environment variable.
+    If not set, analytics will not be loaded in templates.
+    """
+    from django.conf import settings
+
+    return {
+        'GA4_MEASUREMENT_ID': settings.GA4_MEASUREMENT_ID,
+    }

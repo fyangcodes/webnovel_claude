@@ -6,6 +6,13 @@
 
 {% block title %}{% trans "Welcome" %}{% endblock %}
 
+{% block extra_css %}
+<!-- Structured Data - WebSite Schema with SearchAction -->
+{% with search_url=request.scheme|add:'://'|add:request.get_host|add:'/'|add:current_language.code|add:'/search/?q={search_term_string}' %}
+{% structured_data 'website' site_name='wereadly' url=request.build_absolute_uri search_url=search_url %}
+{% endwith %}
+{% endblock %}
+
 {% block content %}
     <!-- Featured Books Hero Carousel -->
     {% if featured_books %}
@@ -81,15 +88,17 @@
     const clearHistoryLink = document.getElementById('clearHistoryLink');
 
     function createBookCard(reading) {
-        const chapterUrl = `/${reading.languageCode}/book/${reading.bookSlug}/${reading.chapterSlug}/`;
-        const bookUrl = `/${reading.languageCode}/book/${reading.bookSlug}/`;
+        // Use new section-scoped URL structure
+        const sectionSlug = reading.sectionSlug || 'fiction'; // Fallback for old localStorage entries
+        const chapterUrl = `/${reading.languageCode}/${sectionSlug}/book/${reading.bookSlug}/${reading.chapterSlug}/`;
+        const bookUrl = `/${reading.languageCode}/${sectionSlug}/book/${reading.bookSlug}/`;
         const coverImage = reading.coverImage || '/static/reader/images/default-cover.jpg';
 
         return `
             <div class="book-card">
                 <a href="${chapterUrl}" class="book-card-link">
                     <div class="book-card-image-wrapper">
-                        <img src="${coverImage}" alt="${reading.bookTitle}" class="book-card-image">
+                        <img src="${coverImage}" alt="${reading.bookTitle}" class="book-card-image" loading="lazy">
                         <div class="book-card-genres">
                             <span class="badge bg-primary-custom text-light position-absolute bottom-0 end-0 m-2"><i class="fa fa-play"></i> ${reading.chapterNumber}.</span>
                         </div>

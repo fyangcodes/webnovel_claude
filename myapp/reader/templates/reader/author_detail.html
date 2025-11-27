@@ -67,7 +67,7 @@
         {% if author.avatar %}
         <div class="card mb-4">
             <img src="{{ author.avatar.url }}" class="card-img-top" alt="{{ author_name }}"
-                 style="max-height: 400px; object-fit: cover;">
+                 style="max-height: 400px; object-fit: cover;" loading="eager" fetchpriority="high">
         </div>
         {% endif %}
 

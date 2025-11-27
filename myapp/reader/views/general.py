@@ -8,10 +8,11 @@ This module contains all list-based views:
 """
 
 from django.conf import settings
+from django.views.generic import DetailView
 
-from books.models import Book, Genre, Section, Tag, BookGenre
+from books.models import Book, Genre, Section, Author
 from reader import cache
-from .base import BaseBookListView, BaseSearchView
+from .base import BaseReaderView, BaseBookListView, BaseSearchView
 
 
 class WelcomeView(BaseBookListView):
@@ -92,166 +93,38 @@ class WelcomeView(BaseBookListView):
         return context
 
 
-class BookListView(BaseBookListView):
-    """
-    Reader-friendly book listing page with section/genre/tag filtering.
-
-    Supports query parameter filtering:
-    - ?section=<slug> - Filter by section
-    - ?genre=<slug> - Filter by genre
-    - ?tag=<slug> - Filter by tag
-    - ?status=<draft|ongoing|completed> - Filter by progress status
-
-    Provides breadcrumb navigation based on active filters.
-    """
-
-    template_name = "reader/book_list.html"
-    model = Book
-
-    def get_queryset(self):
-        language = self.get_language()
-        queryset = Book.objects.filter(language=language, is_public=True)
-
-        # Filter by section if specified
-        section_slug = self.request.GET.get("section")
-        if section_slug:
-            section = Section.objects.filter(slug=section_slug).first()
-            if section:
-                queryset = queryset.filter(bookmaster__section=section)
-
-        # Filter by genre if specified
-        genre_slug = self.request.GET.get("genre")
-        if genre_slug:
-            genre = Genre.objects.filter(slug=genre_slug).first()
-            if genre:
-                # Get bookmaster IDs that have this genre
-                bookmaster_ids = BookGenre.objects.filter(genre=genre).values_list(
-                    "bookmaster_id", flat=True
-                )
-                queryset = queryset.filter(bookmaster_id__in=bookmaster_ids)
-
-        # Filter by tag if specified
-        tag_slug = self.request.GET.get("tag")
-        if tag_slug:
-            tag = Tag.objects.filter(slug=tag_slug).first()
-            if tag:
-                # Get bookmaster IDs that have this tag
-                from books.models import BookTag
-                bookmaster_ids = BookTag.objects.filter(tag=tag).values_list(
-                    "bookmaster_id", flat=True
-                )
-                queryset = queryset.filter(bookmaster_id__in=bookmaster_ids)
-
-        # Filter by progress/status if specified
-        progress = self.request.GET.get("status")
-        if progress and progress in ["draft", "ongoing", "completed"]:
-            queryset = queryset.filter(progress=progress)
-
-        return (
-            queryset.select_related("bookmaster", "bookmaster__section", "language")
-            .prefetch_related("chapters", "bookmaster__genres", "bookmaster__genres__section", "bookmaster__tags")
-            .order_by("-published_at", "-created_at")
-        )
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        language_code = self.kwargs.get("language_code")
-
-        # Add current filter values to context
-        context["selected_section"] = self.request.GET.get("section", "")
-        context["selected_genre"] = self.request.GET.get("genre", "")
-        context["selected_tag"] = self.request.GET.get("tag", "")
-        context["selected_status"] = self.request.GET.get("status", "")
-
-        # Add breadcrumb data
-        breadcrumbs = []
-
-        # Section breadcrumb
-        section_slug = self.request.GET.get("section")
-        if section_slug:
-            section = Section.objects.filter(slug=section_slug).first()
-            if section:
-                context["current_section"] = section
-                context["current_section_localized_name"] = section.get_localized_name(language_code)
-                breadcrumbs.append({
-                    'type': 'section',
-                    'name': section.get_localized_name(language_code),
-                    'slug': section.slug,
-                    'url': f"?section={section.slug}"
-                })
-
-        # Genre breadcrumb
-        genre_slug = self.request.GET.get("genre")
-        if genre_slug:
-            genre = Genre.objects.select_related('section', 'parent').filter(slug=genre_slug).first()
-            if genre:
-                context["current_genre"] = genre
-                context["current_genre_localized_name"] = genre.get_localized_name(language_code)
-
-                # Build genre breadcrumb with hierarchy
-                genre_crumb = {
-                    'type': 'genre',
-                    'name': genre.get_localized_name(language_code),
-                    'slug': genre.slug,
-                    'url': f"?genre={genre.slug}"
-                }
-
-                # Add section if genre has section
-                if genre.section and not section_slug:
-                    breadcrumbs.append({
-                        'type': 'section',
-                        'name': genre.section.get_localized_name(language_code),
-                        'slug': genre.section.slug,
-                        'url': f"?section={genre.section.slug}"
-                    })
-
-                # Add parent genre if exists
-                if genre.parent:
-                    breadcrumbs.append({
-                        'type': 'genre',
-                        'name': genre.parent.get_localized_name(language_code),
-                        'slug': genre.parent.slug,
-                        'url': f"?genre={genre.parent.slug}",
-                        'is_parent': True
-                    })
-
-                breadcrumbs.append(genre_crumb)
-
-        # Tag breadcrumb
-        tag_slug = self.request.GET.get("tag")
-        if tag_slug:
-            tag = Tag.objects.filter(slug=tag_slug).first()
-            if tag:
-                context["current_tag"] = tag
-                context["current_tag_localized_name"] = tag.get_localized_name(language_code)
-                breadcrumbs.append({
-                    'type': 'tag',
-                    'name': tag.get_localized_name(language_code),
-                    'slug': tag.slug,
-                    'url': f"?tag={tag.slug}",
-                    'category': tag.get_category_display()
-                })
-
-        context["breadcrumbs"] = breadcrumbs
-
-        return context
-
-
 class BookSearchView(BaseSearchView):
     """
-    Global keyword search across all sections.
+    Keyword search with optional section scoping.
 
-    URL: /<language_code>/search/?q=<query>&section=<slug>&genre=<slug>...
+    Global URL: /<language_code>/search/?q=<query>&section=<slug>&genre=<slug>...
+    Section URL: /<language_code>/<section>/search/?q=<query>&genre=<slug>...
 
     Uses BookSearchService for weighted keyword search across sections, genres, tags,
     and entities. Supports all standard filters (section, genre, tag, status).
+
+    When accessed via section URL, section is required from URL path.
+    When accessed via global URL, section is optional from query parameter.
     """
 
     def get_section_for_search(self):
-        """Get section from query parameter (optional filter)."""
+        """
+        Get section from URL path (section-scoped) or query parameter (global).
+
+        Priority:
+        1. URL path section (/<language>/<section>/search/)
+        2. Query parameter (?section=<slug>)
+        """
+        # Try to get section from URL path first (section-scoped URL)
+        section = self.get_section()
+        if section:
+            return section
+
+        # Fall back to query parameter (global URL)
         section_slug = self.request.GET.get('section')
         if section_slug:
             return Section.objects.filter(slug=section_slug).first()
+
         return None
 
     def get_context_data(self, **kwargs):
@@ -259,20 +132,27 @@ class BookSearchView(BaseSearchView):
         context.update(self.get_search_context())
 
         language_code = self.kwargs.get("language_code")
+        section = self.get_section_for_search()
 
-        # Global search specific context
+        # Check if this is a section-scoped URL (has section in URL path)
+        is_section_scoped = 'section_slug' in self.kwargs
+
+        # Context differs based on whether this is section-scoped or global
         context['show_section_nav'] = True
-        context['show_section'] = True  # Show section badges on book cards
 
-        # Section filter
-        section_slug = self.request.GET.get('section')
-        if section_slug:
-            section = Section.objects.filter(slug=section_slug).first()
-            if section:
-                context["section"] = section
-                context["section_localized_name"] = section.get_localized_name(language_code)
-                # Add genre hierarchy for this section
-                self._add_genre_hierarchy_context(context, section, language_code)
+        if is_section_scoped and section:
+            # Section-scoped: hide section badges (we're already in this section)
+            context['show_section'] = False
+        else:
+            # Global: show section badges on book cards
+            context['show_section'] = True
+
+        # Section context
+        if section:
+            context["section"] = section
+            context["section_localized_name"] = section.get_localized_name(language_code)
+            # Add genre hierarchy for this section
+            self._add_genre_hierarchy_context(context, section, language_code)
         else:
             # No section filter - show all primary genres from all sections
             all_genres = cache.get_cached_genres_flat()
@@ -285,7 +165,7 @@ class BookSearchView(BaseSearchView):
                     primary_genres.append(g)
             context["primary_genres"] = primary_genres
 
-        context["selected_section"] = section_slug or ""
+        context["selected_section"] = self.request.GET.get('section', '') if not is_section_scoped else ""
 
         return context
 
@@ -346,3 +226,61 @@ class BookSearchView(BaseSearchView):
 
         context["primary_genre"] = primary_genre
         context["secondary_genres"] = secondary_genres
+
+
+class AuthorDetailView(BaseReaderView, DetailView):
+    """
+    Author detail page showing author info and their books.
+
+    URL: /<language>/author/<slug>/
+    Example: /en/author/er-gen/
+
+    Displays:
+    - Author information (name, description, avatar)
+    - List of ALL books by this author across all sections
+
+    Note: Authors can write across sections (Fiction, BL, GL, etc.),
+    so this view is intentionally NOT section-scoped.
+    """
+
+    template_name = "reader/author_detail.html"
+    model = Author
+    context_object_name = "author"
+    slug_field = "slug"
+    slug_url_kwarg = "author_slug"
+
+    def get_object(self, queryset=None):
+        """Use cached author lookup by slug."""
+        from django.http import Http404
+
+        slug = self.kwargs.get(self.slug_url_kwarg)
+        author = cache.get_cached_author_by_slug(slug)
+        if author is None:
+            raise Http404("Author not found")
+        return author
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        language = self.get_language()
+        language_code = language.code
+
+        # Localized author info
+        context["author_name"] = self.object.get_localized_name(language_code)
+        context["author_description"] = self.object.get_localized_description(
+            language_code
+        )
+
+        # Get author's books (published in current language, ALL sections)
+        books = list(
+            Book.objects.filter(
+                bookmaster__author=self.object, language=language, is_public=True
+            )
+            .select_related("bookmaster", "bookmaster__section", "language")
+            .prefetch_related("bookmaster__genres", "bookmaster__genres__section")
+            .order_by("-created_at")
+        )
+
+        # Enrich books with metadata using inherited method from BaseReaderView
+        context["books"] = self.enrich_books_with_metadata(books, language_code)
+
+        return context

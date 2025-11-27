@@ -96,6 +96,7 @@ TEMPLATES = [
                 "django.contrib.messages.context_processors.messages",
                 "books.context_processors.breadcrumb_context",
                 "books.context_processors.stats_context",
+                "books.context_processors.analytics_context",
             ],
         },
     },
@@ -216,6 +217,15 @@ ANALYSIS_TEMPERATURE = 0.1  # Low temperature for consistent structured output
 TRANSLATION_MODEL = AI_MODEL
 TRANSLATION_MAX_TOKENS = 16000  # Increased from 4000 - GPT-4o-mini supports up to 16K output
 TRANSLATION_TEMPERATURE = 0.3  # Slightly higher for more natural translations
+
+# ==============================================================================
+# GOOGLE ANALYTICS CONFIGURATION
+# ==============================================================================
+
+# Google Analytics 4 Measurement ID
+# Set GA4_MEASUREMENT_ID in your environment variables to enable analytics:
+# GA4_MEASUREMENT_ID=G-XXXXXXXXXX
+GA4_MEASUREMENT_ID = os.getenv('GA4_MEASUREMENT_ID', None)
 
 # Login/Logout
 LOGIN_URL = "/accounts/login/"

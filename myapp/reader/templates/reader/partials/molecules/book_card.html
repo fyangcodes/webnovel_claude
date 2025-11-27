@@ -19,7 +19,7 @@ Parameters:
         <a href="{% url 'reader:book_detail' current_language.code book.slug %}" class="book-card-link">
     {% endif %}
         <div class="book-card-image-wrapper">
-            <img src="{{ book.effective_cover_image }}" alt="{{ book.title }}" class="book-card-image">
+            <img src="{{ book.effective_cover_image }}" alt="{{ book.title }}" class="book-card-image" loading="lazy">
 
             <!-- Status Badge and New Chapters Badge -->
             <div class="position-absolute top-0 end-0 m-1 d-flex align-items-end gap-1">
@@ -63,7 +63,7 @@ Parameters:
                 <div class="row">
                     <!-- Left: Book Cover and Taxonomy -->
                     <div class="col-md-4">
-                        <img src="{{ book.effective_cover_image }}" alt="{{ book.title }}" class="img-fluid mb-3">
+                        <img src="{{ book.effective_cover_image }}" alt="{{ book.title }}" class="img-fluid mb-3" loading="lazy">
 
                         <!-- Taxonomy Section (using book_meta partial) -->
                         {% include "reader/partials/molecules/book_meta.html" with section=modal_section section_localized_name=modal_section_name genres=modal_genres tags_by_category=book.tags_by_category entities_by_type=book.entities_by_type show_section=True show_tags=True show_entities=True compact=False %}
@@ -74,7 +74,7 @@ Parameters:
                         {% if book.bookmaster.author %}
                         <p class="modal-book-author mb-3">
                             {% trans "by" %}
-                            <a href="{% url 'reader:section_author_detail' current_language.code book.bookmaster.section.slug book.bookmaster.author.slug %}" class="text-decoration-none">
+                            <a href="{% url 'reader:author_detail' current_language.code book.bookmaster.author.slug %}" class="text-decoration-none">
                                 {{ book.author_localized_name }}
                             </a>
                         </p>

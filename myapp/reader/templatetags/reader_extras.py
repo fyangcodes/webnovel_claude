@@ -225,9 +225,9 @@ def seo_meta_tags(page_type, **kwargs):
     Generate SEO meta tags for different page types.
 
     Usage:
-        {% seo_meta_tags 'book' book=book language=current_language %}
-        {% seo_meta_tags 'section' section=section language=current_language %}
-        {% seo_meta_tags 'chapter' chapter=chapter book=book language=current_language %}
+        {% seo_meta_tags 'book' book=book language=current_language request=request %}
+        {% seo_meta_tags 'section' section=section language=current_language request=request %}
+        {% seo_meta_tags 'chapter' chapter=chapter book=book language=current_language request=request %}
 
     Args:
         page_type: Type of page ('book', 'section', 'chapter', 'home')
@@ -236,59 +236,84 @@ def seo_meta_tags(page_type, **kwargs):
     Returns:
         HTML meta tags as safe string
     """
+    from django.utils.html import escape
+
     tags = []
+    request = kwargs.get('request')
 
     if page_type == 'book':
         book = kwargs.get('book')
         language = kwargs.get('language')
         if book:
-            title = f"{book.title} - {language.local_name if language else ''}"
-            description = book.description[:160] if book.description else f"Read {book.title} online"
+            title = escape(f"{book.title} - {language.local_name if language else ''}")
+
+            # Book description is already language-specific (Book is per-language)
+            # No need for localization since each Book instance is in a specific language
+            description = escape(book.description[:160] if book.description else f"Read {book.title} online")
+
             image = book.effective_cover_image if book.effective_cover_image else ''
 
             tags.append(f'<meta name="description" content="{description}">')
-            tags.append(f'<meta name="keywords" content="{book.author}, webnovel, {book.title}">')
+            tags.append(f'<meta name="keywords" content="{escape(book.bookmaster.author.get_localized_name(language.code))}, webnovel, {escape(book.title)}">')
 
             # Open Graph
             tags.append(f'<meta property="og:type" content="book">')
             tags.append(f'<meta property="og:title" content="{title}">')
             tags.append(f'<meta property="og:description" content="{description}">')
             if image:
-                tags.append(f'<meta property="og:image" content="{image}">')
-            tags.append(f'<meta property="book:author" content="{book.author}">')
+                tags.append(f'<meta property="og:image" content="{escape(image)}">')
+            if request:
+                tags.append(f'<meta property="og:url" content="{escape(request.build_absolute_uri())}">')
+            if language:
+                tags.append(f'<meta property="og:locale" content="{escape(language.code)}">')
+            tags.append(f'<meta property="book:author" content="{escape(book.author)}">')
 
             # Twitter Card
             tags.append(f'<meta name="twitter:card" content="summary_large_image">')
             tags.append(f'<meta name="twitter:title" content="{title}">')
             tags.append(f'<meta name="twitter:description" content="{description}">')
             if image:
-                tags.append(f'<meta name="twitter:image" content="{image}">')
+                tags.append(f'<meta name="twitter:image" content="{escape(image)}">')
 
     elif page_type == 'section':
         section = kwargs.get('section')
         language = kwargs.get('language')
         if section:
-            title = f"{section.get_localized_name(language.code)} - {language.local_name}"
-            description = section.description or f"Browse {section.get_localized_name(language.code)} books"
+            title = escape(f"{section.get_localized_name(language.code)} - {language.local_name}")
+
+            # Use localized description
+            localized_desc = section.get_localized_description(language.code) if language else section.description
+            description = escape(localized_desc or f"Browse {section.get_localized_name(language.code)} books")
 
             tags.append(f'<meta name="description" content="{description}">')
             tags.append(f'<meta property="og:type" content="website">')
             tags.append(f'<meta property="og:title" content="{title}">')
             tags.append(f'<meta property="og:description" content="{description}">')
+            if request:
+                tags.append(f'<meta property="og:url" content="{escape(request.build_absolute_uri())}">')
+            if language:
+                tags.append(f'<meta property="og:locale" content="{escape(language.code)}">')
 
     elif page_type == 'chapter':
         chapter = kwargs.get('chapter')
         book = kwargs.get('book')
         language = kwargs.get('language')
         if chapter and book:
-            title = f"{chapter.title} - {book.title}"
-            description = chapter.excerpt or f"Read {chapter.title} from {book.title}"
+            title = escape(f"{chapter.title} - {book.title}")
+
+            # Chapter excerpt is already language-specific (Chapter is per-language)
+            # No need for localization since each Chapter instance is in a specific language
+            description = escape(chapter.excerpt or f"Read {chapter.title} from {book.title}")
 
             tags.append(f'<meta name="description" content="{description}">')
             tags.append(f'<meta property="og:type" content="article">')
             tags.append(f'<meta property="og:title" content="{title}">')
             tags.append(f'<meta property="og:description" content="{description}">')
-            tags.append(f'<meta property="article:author" content="{book.author}">')
+            if request:
+                tags.append(f'<meta property="og:url" content="{escape(request.build_absolute_uri())}">')
+            if language:
+                tags.append(f'<meta property="og:locale" content="{escape(language.code)}">')
+            tags.append(f'<meta property="article:author" content="{escape(book.author)}">')
 
     return mark_safe('\n'.join(tags))
 
@@ -353,6 +378,67 @@ def structured_data(data_type, **kwargs):
                 "itemListElement": item_list
             }
 
+    elif data_type == 'article':
+        chapter = kwargs.get('chapter')
+        book = kwargs.get('book')
+        url = kwargs.get('url')
+        if chapter and book:
+            schema = {
+                "@context": "https://schema.org",
+                "@type": "Article",
+                "headline": chapter.title,
+                "author": {
+                    "@type": "Person",
+                    "name": book.author
+                },
+                "publisher": {
+                    "@type": "Organization",
+                    "name": "wereadly"
+                },
+                "inLanguage": book.language.code if hasattr(book, 'language') else 'en',
+                "url": url
+            }
+
+            if chapter.published_at:
+                schema["datePublished"] = chapter.published_at.isoformat()
+
+            if chapter.updated_at:
+                schema["dateModified"] = chapter.updated_at.isoformat()
+
+            if hasattr(chapter, 'word_count') and chapter.word_count:
+                schema["wordCount"] = chapter.word_count
+
+            if chapter.excerpt:
+                schema["description"] = chapter.excerpt
+
+            # Link to parent book
+            schema["isPartOf"] = {
+                "@type": "Book",
+                "name": book.title
+            }
+
+    elif data_type == 'website':
+        site_name = kwargs.get('site_name', 'wereadly')
+        url = kwargs.get('url')
+        search_url = kwargs.get('search_url')
+
+        schema = {
+            "@context": "https://schema.org",
+            "@type": "WebSite",
+            "name": site_name,
+            "url": url
+        }
+
+        if search_url:
+            schema["potentialAction"] = {
+                "@type": "SearchAction",
+                "target": {
+                    "@type": "EntryPoint",
+                    "urlTemplate": search_url
+                },
+                "query-input": "required name=search_term_string"
+            }
+
     elif data_type == 'organization':
         site_name = kwargs.get('site_name', 'wereadly')
         url = kwargs.get('url')
@@ -385,6 +471,148 @@ def canonical_url(request):
         Absolute URL for the current page
     """
     return request.build_absolute_uri(request.path)
+
+
+@register.simple_tag(takes_context=True)
+def hreflang_tags(context):
+    """
+    Generate hreflang tags for all available languages.
+
+    This tag is context-aware and generates correct URLs based on the page type:
+    - For book pages: Uses BookMaster to get slugs for each language
+    - For chapter pages: Uses ChapterMaster to get slugs for each language
+    - For other pages: Simple language code replacement in URL
+
+    Usage in templates:
+        {% hreflang_tags %}
+
+    Returns:
+        HTML link tags with hreflang attributes as safe string
+    """
+    from django.urls import reverse
+    from books.models import Book, Chapter
+
+    request = context.get('request')
+    languages = context.get('languages')
+    current_language = context.get('current_language')
+
+    if not request or not languages or not current_language:
+        return ''
+
+    tags = []
+    view_name = request.resolver_match.url_name if request.resolver_match else None
+
+    # Get public languages only
+    public_languages = [lang for lang in languages if lang.is_public or (hasattr(request, 'user') and request.user.is_staff)]
+
+    # Handle book detail pages
+    if view_name in ('book_detail', 'section_book_detail'):
+        book = context.get('book')
+        if book and hasattr(book, 'bookmaster'):
+            bookmaster = book.bookmaster
+            section_slug = bookmaster.section.slug
+
+            # Get all books for this BookMaster in different languages
+            related_books = Book.objects.filter(
+                bookmaster=bookmaster,
+                language__in=public_languages,
+                is_public=True
+            ).select_related('language')
+
+            # Create a mapping of language_code -> book_slug
+            book_slugs = {b.language.code: b.slug for b in related_books}
+
+            for lang in public_languages:
+                if lang.code in book_slugs:
+                    url = reverse('reader:section_book_detail', kwargs={
+                        'language_code': lang.code,
+                        'section_slug': section_slug,
+                        'book_slug': book_slugs[lang.code]
+                    })
+                    absolute_url = request.build_absolute_uri(url)
+                    tags.append(f'<link rel="alternate" hreflang="{lang.code}" href="{absolute_url}">')
+
+            # Add x-default for English if available
+            if 'en' in book_slugs:
+                url = reverse('reader:section_book_detail', kwargs={
+                    'language_code': 'en',
+                    'section_slug': section_slug,
+                    'book_slug': book_slugs['en']
+                })
+                absolute_url = request.build_absolute_uri(url)
+                tags.append(f'<link rel="alternate" hreflang="x-default" href="{absolute_url}">')
+
+    # Handle chapter detail pages
+    elif view_name in ('chapter_detail', 'section_chapter_detail'):
+        chapter = context.get('chapter')
+        book = context.get('book')
+
+        if chapter and book and hasattr(chapter, 'chaptermaster') and hasattr(book, 'bookmaster'):
+            chaptermaster = chapter.chaptermaster
+            bookmaster = book.bookmaster
+            section_slug = bookmaster.section.slug
+
+            # Get all chapters for this ChapterMaster in different languages
+            related_chapters = Chapter.objects.filter(
+                chaptermaster=chaptermaster,
+                book__language__in=public_languages,
+                is_public=True
+            ).select_related('book', 'book__language')
+
+            # Create a mapping of language_code -> (book_slug, chapter_slug)
+            chapter_data = {
+                c.book.language.code: (c.book.slug, c.slug)
+                for c in related_chapters
+            }
+
+            for lang in public_languages:
+                if lang.code in chapter_data:
+                    book_slug, chapter_slug = chapter_data[lang.code]
+                    url = reverse('reader:section_chapter_detail', kwargs={
+                        'language_code': lang.code,
+                        'section_slug': section_slug,
+                        'book_slug': book_slug,
+                        'chapter_slug': chapter_slug
+                    })
+                    absolute_url = request.build_absolute_uri(url)
+                    tags.append(f'<link rel="alternate" hreflang="{lang.code}" href="{absolute_url}">')
+
+            # Add x-default for English if available
+            if 'en' in chapter_data:
+                book_slug, chapter_slug = chapter_data['en']
+                url = reverse('reader:section_chapter_detail', kwargs={
+                    'language_code': 'en',
+                    'section_slug': section_slug,
+                    'book_slug': book_slug,
+                    'chapter_slug': chapter_slug
+                })
+                absolute_url = request.build_absolute_uri(url)
+                tags.append(f'<link rel="alternate" hreflang="x-default" href="{absolute_url}">')
+
+    # Handle all other pages (section home, search, etc.) - simple language code replacement
+    else:
+        current_path = request.path
+        language_code_pattern = request.resolver_match.kwargs.get('language_code') if request.resolver_match else None
+
+        for lang in public_languages:
+            if language_code_pattern:
+                alternate_path = current_path.replace(f'/{language_code_pattern}/', f'/{lang.code}/', 1)
+            else:
+                alternate_path = f'/{lang.code}{current_path}'
+
+            absolute_url = request.build_absolute_uri(alternate_path)
+            tags.append(f'<link rel="alternate" hreflang="{lang.code}" href="{absolute_url}">')
+
+        # Add x-default for English
+        if language_code_pattern:
+            default_path = current_path.replace(f'/{language_code_pattern}/', '/en/', 1)
+        else:
+            default_path = f'/en{current_path}'
+
+        default_url = request.build_absolute_uri(default_path)
+        tags.append(f'<link rel="alternate" hreflang="x-default" href="{default_url}">')
+
+    return mark_safe('\n'.join(tags))
 
 
 @register.filter

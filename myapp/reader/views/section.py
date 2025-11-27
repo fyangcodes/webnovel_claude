@@ -8,9 +8,10 @@ Views:
 - SectionBookListView: Books filtered by section
 - SectionBookDetailView: Book detail with section validation
 - SectionChapterDetailView: Chapter reading with section validation
-- SectionSearchView: Search within a section
 - SectionGenreBookListView: Redirect to section book list with genre filter
 - SectionTagBookListView: Redirect to section book list with tag filter
+
+Note: Section search uses BookSearchView from list_views.py (supports both global and section-scoped URLs)
 """
 
 from django.shortcuts import get_object_or_404, redirect
@@ -20,7 +21,7 @@ from django.core.paginator import Paginator
 from django.views import View
 from django.views.generic import DetailView
 
-from books.models import Book, Chapter, Genre, Tag, BookGenre, Author
+from books.models import Book, Chapter, Genre, Tag, BookGenre
 from reader import cache
 from .base import BaseBookListView, BaseBookDetailView, BaseReaderView, BaseSearchView
 
@@ -441,103 +442,6 @@ class SectionChapterDetailView(BaseReaderView, DetailView):
         return context
 
 
-class SectionSearchView(BaseSearchView):
-    """
-    Search within a specific section.
-
-    URL: /<language>/<section>/search/?q=<query>&genre=<slug>&tag=<slug>...
-    Example: /en/fiction/search/?q=cultivation&genre=fantasy
-
-    Scoped to a specific section from URL path.
-    """
-
-    def get_section_for_search(self):
-        """Get section from URL path (required)."""
-        section = self.get_section()
-        if not section:
-            raise Http404("Section required")
-        return section
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context.update(self.get_search_context())
-
-        section = self.get_section_for_search()
-        language_code = self.kwargs.get("language_code")
-
-        # Section-scoped specific context
-        context['show_section_nav'] = True
-
-        # Hide section badge on book cards (we're already in this section)
-        context['show_section'] = False
-
-        context["section"] = section
-        context["section_localized_name"] = section.get_localized_name(language_code)
-
-        # Add genre hierarchy context
-        self._add_genre_hierarchy_context(context, section, language_code)
-
-        return context
-
-    def _add_genre_hierarchy_context(self, context, section, language_code):
-        """Add full genre hierarchy for section-scoped search."""
-        # Get all genres for this section
-        all_section_genres = cache.get_cached_genres_flat(section_id=section.id)
-
-        # Separate primary genres with localized names
-        primary_genres = []
-        for g in all_section_genres:
-            if g.is_primary:
-                g.localized_name = g.get_localized_name(language_code)
-                primary_genres.append(g)
-
-        context["primary_genres"] = primary_genres
-
-        # Genre hierarchy for sub-genres section
-        genre_slug = self.request.GET.get("genre")
-        primary_genre = None
-        secondary_genres = []
-
-        if genre_slug:
-            genre = Genre.objects.select_related('section', 'parent').filter(
-                slug=genre_slug, section=section
-            ).first()
-
-            if genre:
-                context["current_genre"] = genre
-                context["current_genre_localized_name"] = genre.get_localized_name(language_code)
-
-                # Determine primary genre and get sub-genres
-                if genre.is_primary:
-                    # Primary genre selected
-                    primary_genre = genre
-                    primary_genre.localized_name = genre.get_localized_name(language_code)
-                    primary_genre.is_active_selection = (genre_slug == genre.slug)
-
-                    # Get all sub-genres for this primary
-                    for g in all_section_genres:
-                        if not g.is_primary and g.parent_id == genre.id:
-                            g.localized_name = g.get_localized_name(language_code)
-                            g.is_active_selection = False  # None selected yet
-                            secondary_genres.append(g)
-                else:
-                    # Sub-genre selected
-                    primary_genre = genre.parent
-                    if primary_genre:
-                        primary_genre.localized_name = primary_genre.get_localized_name(language_code)
-                        primary_genre.is_active_selection = False  # Parent not directly selected
-
-                        # Get all sibling sub-genres
-                        for g in all_section_genres:
-                            if not g.is_primary and g.parent_id == primary_genre.id:
-                                g.localized_name = g.get_localized_name(language_code)
-                                g.is_active_selection = (genre_slug == g.slug)
-                                secondary_genres.append(g)
-
-        context["primary_genre"] = primary_genre
-        context["secondary_genres"] = secondary_genres
-
-
 class SectionGenreBookListView(View):
     """
     Redirect genre-based URLs to section book list with genre filter.
@@ -572,69 +476,3 @@ class SectionTagBookListView(View):
         # Build URL with query parameters
         url = reverse("reader:section_book_list", args=[language_code, section_slug])
         return redirect(f"{url}?tag={tag_slug}")
-
-
-class SectionAuthorDetailView(BaseReaderView, DetailView):
-    """
-    Author detail page with section validation.
-
-    URL: /<language>/<section>/author/<slug>/
-    Example: /en/fiction/author/er-gen/
-
-    Displays:
-    - Author information (name, description, avatar)
-    - List of books by this author in this section
-    """
-
-    template_name = "reader/author_detail.html"
-    model = Author
-    context_object_name = "author"
-    slug_field = "slug"
-    slug_url_kwarg = "author_slug"
-
-    def get_object(self, queryset=None):
-        """Use cached author lookup by slug."""
-        slug = self.kwargs.get(self.slug_url_kwarg)
-        author = cache.get_cached_author_by_slug(slug)
-        if author is None:
-            raise Http404("Author not found")
-        return author
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        language = self.get_language()
-        section = self.get_section()
-        language_code = language.code
-
-        if not section:
-            raise Http404("Section required")
-
-        # Show section nav
-        context['show_section_nav'] = True
-
-        # Hide section badge on book cards (we're already in this section)
-        context['show_section'] = False
-
-        context['section'] = section
-        context['section_localized_name'] = section.get_localized_name(language_code)
-
-        # Localized author info
-        context['author_name'] = self.object.get_localized_name(language_code)
-        context['author_description'] = self.object.get_localized_description(language_code)
-
-        # Get author's books (published in current language and section)
-        books = list(Book.objects.filter(
-            bookmaster__author=self.object,
-            bookmaster__section=section,
-            language=language,
-            is_public=True
-        ).select_related(
-            'bookmaster', 'bookmaster__section', 'language'
-        ).prefetch_related(
-            'bookmaster__genres', 'bookmaster__genres__section'
-        ).order_by('-created_at'))
-
-        # Enrich books with metadata using inherited method from BaseReaderView
-        context['books'] = self.enrich_books_with_metadata(books, language_code)
-
-        return context

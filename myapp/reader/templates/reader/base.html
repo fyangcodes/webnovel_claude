@@ -11,6 +11,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}{% endblock %} | wereadly</title>
 
+    <!-- Resource Hints for Performance -->
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+    <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
+    <link rel="dns-prefetch" href="https://cdnjs.cloudflare.com">
+
     <!-- Favicon -->
     <link rel="icon" type="image/x-icon" href="{% static 'reader/favicon.ico' %}">
 
@@ -23,6 +29,25 @@
     <!-- Reader App Styles -->
     <link href="{% static 'reader/css/styles.css' %}" rel="stylesheet">
 
+    <!-- hreflang tags for multi-language SEO -->
+    {% hreflang_tags %}
+
+    <!-- Google Analytics 4 -->
+    {% if GA4_MEASUREMENT_ID %}
+    <script async src="https://www.googletagmanager.com/gtag/js?id={{ GA4_MEASUREMENT_ID }}"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+
+        gtag('config', '{{ GA4_MEASUREMENT_ID }}', {
+            {% if current_language %}'language': '{{ current_language.code }}',{% endif %}
+            {% if section %}'content_group': '{{ section.slug }}',{% else %}'content_group': 'home',{% endif %}
+            'cookie_flags': 'SameSite=None;Secure'
+        });
+    </script>
+    {% endif %}
+
     {% block extra_css %}{% endblock %}
 </head>
 
@@ -30,19 +55,33 @@
     <!-- Navigation -->
     <nav class="navbar shadow-sm">
         <div class="container">
-            <!-- Left side: Hamburger + Logo -->
+            <!-- Left side: Logo + Section Toggle -->
             <div class="d-flex align-items-center gap-2">
-                {% if sections and current_language and show_section_nav %}
-                <!-- Offcanvas for section navigation (Mobile only) -->
-                <button class="btn btn-nav d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#genreOffcanvas">
-                    <i class="fa fa-bars"></i>
-                </button>
-                {% endif %}
-
                 <!-- Logo -->
-                <a class="navbar-brand m-0" href="{% if current_language %}{% url 'reader:welcome' current_language.code %}{% else %}/{% endif %}">
+                <a class="navbar-brand me-2" href="{% if current_language %}{% url 'reader:welcome' current_language.code %}{% else %}/{% endif %}">
                     <span class="logo-we">we</span><span class="logo-readly">readly</span>
                 </a>
+
+                {% if sections and current_language and show_section_nav %}
+                <!-- Section Toggle Button (Mobile only) -->
+                {% with btn_color=section|style_color btn_icon=section|style_icon %}
+                <button class="section-nav-btn rounded-pill active d-md-none"
+                        type="button"
+                        data-bs-toggle="offcanvas"
+                        data-bs-target="#genreOffcanvas"
+                        {% if btn_color %}style="border-color: {{ btn_color }}; color: white; background-color: {{ btn_color }};" data-section-color="true"
+                        {% else %}style="border-color: var(--color-primary); color: white; background-color: var(--color-primary);" data-section-color="true"{% endif %}>
+                    {% if section %}
+                        {% if btn_icon %}<i class="{{ btn_icon }} me-1"></i>{% endif %}
+                        <span class="section-name">{{ section_localized_name }}</span>
+                    {% else %}
+                        <i class="fas fa-home me-1"></i>
+                        <span class="section-name">{% trans "Home" %}</span>
+                    {% endif %}
+                    <i class="fas fa-chevron-down ms-1"></i>
+                </button>
+                {% endwith %}
+                {% endif %}
             </div>
 
             <!-- Right side: Search + Settings -->

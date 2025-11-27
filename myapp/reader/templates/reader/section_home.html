@@ -11,7 +11,7 @@
 <meta name="language-code" content="{{ current_language.code }}">
 
 <!-- SEO Meta Tags -->
-{% seo_meta_tags 'section' section=section language=current_language %}
+{% seo_meta_tags 'section' section=section language=current_language request=request %}
 
 <!-- Canonical URL -->
 <link rel="canonical" href="{% canonical_url request %}">

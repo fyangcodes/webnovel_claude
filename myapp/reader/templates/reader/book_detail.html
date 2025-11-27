@@ -8,7 +8,7 @@
 
 {% block extra_css %}
 <!-- SEO Meta Tags -->
-{% seo_meta_tags 'book' book=book language=current_language %}
+{% seo_meta_tags 'book' book=book language=current_language request=request %}
 
 <!-- Canonical URL -->
 <link rel="canonical" href="{% canonical_url request %}">
@@ -27,7 +27,7 @@
             {% if author %}
             <p class="lead mb-3">
                 {% trans "by" %}
-                <a href="{% url 'reader:section_author_detail' current_language.code book.bookmaster.section.slug author.slug %}" class="text-decoration-none">
+                <a href="{% url 'reader:author_detail' current_language.code author.slug %}" class="text-decoration-none">
                     {{ author_localized_name }}
                 </a>
             </p>
@@ -54,7 +54,7 @@
     <!-- Sidebar -->
     <div class="col-lg-4">
         <div class="book-cover-container mb-4">
-            <img src="{{ book.effective_cover_image }}" class="book-cover-image" alt="{{ book.title }} book cover">
+            <img src="{{ book.effective_cover_image }}" class="book-cover-image" alt="{{ book.title }} book cover" loading="eager" fetchpriority="high">
         </div>
     </div>
 </div>
