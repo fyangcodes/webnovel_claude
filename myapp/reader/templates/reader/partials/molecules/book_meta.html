@@ -19,7 +19,7 @@ Optional Context (passed via include):
 - show_hierarchy: bool (default True)
 
 Usage:
-{% include "reader/partials/book_meta.html" with show_section=False compact=True %}
+{% include "reader/partials/molecules/book_meta.html" with show_section=False compact=True %}
 {% endcomment %}
 
 {% with show_section_val=show_section|default:True show_genres_val=show_genres|default:True show_tags_val=show_tags|default:True show_entities_val=show_entities|default:False compact_val=compact|default:False show_hierarchy_val=show_hierarchy|default:True %}

@@ -24,7 +24,7 @@ Parameters:
     </div>
     <div class="book-grid">
         {% for book in books %}
-            {% include "reader/partials/book_card.html" with book=book current_language=current_language %}
+            {% include "reader/partials/molecules/book_card.html" with book=book current_language=current_language %}
         {% endfor %}
     </div>
 </div>

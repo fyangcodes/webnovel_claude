@@ -33,7 +33,7 @@
     <div class="col-12 col-lg-8">
         <!-- Chapter Navigation (Top) -->
         <div class="mb-3">
-            {% include "reader/partials/chapter_nav.html" %}
+            {% include "reader/partials/organisms/chapter_nav.html" %}
         </div>
 
         <!-- Chapter Header -->
@@ -44,7 +44,7 @@
             <div class="chapter-header-stats">
                 <span class="chapter-number">{% blocktrans with number=chapter.chaptermaster.chapter_number %}Chapter {{ number }}{% endblocktrans %}</span>
                 {% if chapter.published_at %}
-                <span class="chapter-time">{{ chapter.published_at|naturaltime }}</span>
+                <span class="chapter-time">{{ chapter.published_at|naturalday }}</span>
                 {% endif %}
             </div>
         </div>
@@ -56,7 +56,7 @@
 
         <!-- Chapter Navigation (Bottom) -->
         <div class="mt-5 pt-4">
-            {% include "reader/partials/chapter_nav.html" %}
+            {% include "reader/partials/organisms/chapter_nav.html" %}
         </div>
 
         <!-- End of Book Message -->

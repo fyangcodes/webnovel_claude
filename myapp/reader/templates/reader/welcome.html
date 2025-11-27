@@ -10,7 +10,7 @@
     <!-- Featured Books Hero Carousel -->
     {% if featured_books %}
     <section class="mt-2">
-        {% include "reader/partials/hero_carousel.html" with books=featured_books section_id="featured" %}
+        {% include "reader/partials/sections/hero_carousel.html" with books=featured_books section_id="featured" %}
     </section>
     {% endif %}
 
@@ -61,12 +61,12 @@
 
     <!-- Recently Updated Grid -->
     <section>
-        {% include "reader/partials/book_grid.html" with books=recently_updated title=_("Recently Updated") %}
+        {% include "reader/partials/organisms/book_grid.html" with books=recently_updated title=_("Recently Updated") %}
     </section>
 
     <!-- New Arrivals Grid -->
     <section>
-        {% include "reader/partials/book_grid.html" with books=new_arrivals title=_("New Arrivals") %}
+        {% include "reader/partials/organisms/book_grid.html" with books=new_arrivals title=_("New Arrivals") %}
     </section>
 
     

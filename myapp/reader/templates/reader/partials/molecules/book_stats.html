@@ -16,14 +16,14 @@ Parameters:
 - show_icons: (Optional) Whether to show icons (default: True)
 
 Usage:
-{% include "reader/partials/book_stats.html" with book=book current_language=current_language %}
+{% include "reader/partials/molecules/book_stats.html" with book=book current_language=current_language %}
 {% endcomment %}
 
 {% with total_chapters_val=total_chapters|default:book.published_chapters_count total_words_val=total_words|default:book.total_words total_views_val=total_chapter_views|default:book.total_chapter_views show_icons_val=show_icons|default:True %}
 
 <div class="d-flex flex-wrap gap-3 mb-4" style="font-size: 0.95rem;">
     <div>
-        {% include "reader/partials/book_status_badge.html" with status=book.progress %}
+        {% include "reader/partials/atoms/book_status_badge.html" with status=book.progress show_text=True show_icon=True %}
     </div>
     <div>
         {% if show_icons_val %}<i class="fas fa-list"></i>{% endif %}
@@ -38,7 +38,7 @@ Usage:
     {% if last_update %}
     <div>
         {% if show_icons_val %}<i class="fas fa-clock"></i>{% endif %}
-        {% blocktrans with time=last_update|naturaltime %}Updated {{ time }}{% endblocktrans %}
+        {% blocktrans with time=last_update|naturalday %}Updated {{ time }}{% endblocktrans %}
     </div>
     {% endif %}
     {% if total_views_val %}

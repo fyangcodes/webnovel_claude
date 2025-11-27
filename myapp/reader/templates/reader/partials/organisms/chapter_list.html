@@ -18,32 +18,31 @@ Context variables required:
     <h3 class="mb-0">{% trans "Chapters" %}</h3>
     <div class="btn-group">
         <button type="button" class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
-            <i class="bi bi-sort-down me-1"></i>
             {% if request.GET.sort == 'latest' %}
-                <i class="fa fa-arrow-up-wide-short"></i> {% trans "Latest" %}
+                <i class="fa fa-arrow-up-wide-short me-2"></i> {% trans "Latest" %}
             {% elif request.GET.sort == 'new' %}
-                <i class="fa fa-bolt"></i> {% trans "New" %}
+                <i class="fa fa-bolt me-2"></i> {% trans "New" %}
             {% else %}
-                <i class="fa fa-arrow-down-short-wide"></i> {% trans "Oldest" %}
+                <i class="fa fa-arrow-down-short-wide me-2"></i> {% trans "Oldest" %}
             {% endif %}
         </button>
         <ul class="dropdown-menu dropdown-menu-end">
             <li>
                 <a class="dropdown-item {% if not request.GET.sort or request.GET.sort == 'oldest' %}active{% endif %}"
                    href="?{% query_transform request sort='oldest' page=None %}">
-                    <i class="bi bi-sort-down me-2"></i>{% trans "Oldest" %}
+                    <i class="fa fa-arrow-down-short-wide me-2"></i>{% trans "Oldest" %}
                 </a>
             </li>
             <li>
                 <a class="dropdown-item {% if request.GET.sort == 'latest' %}active{% endif %}"
                    href="?{% query_transform request sort='latest' page=None %}">
-                    <i class="bi bi-sort-up me-2"></i>{% trans "Latest" %}
+                    <i class="fa fa-arrow-up-wide-short me-2"></i>{% trans "Latest" %}
                 </a>
             </li>
             <li>
                 <a class="dropdown-item {% if request.GET.sort == 'new' %}active{% endif %}"
                    href="?{% query_transform request sort='new' page=None %}">
-                    <i class="bi bi-stars me-2"></i>{% trans "New" %}
+                    <i class="fa fa-bolt me-2"></i>{% trans "New" %}
                 </a>
             </li>
         </ul>

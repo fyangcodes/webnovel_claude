@@ -20,7 +20,7 @@ Context variables used:
 - request: Django request object (for query_transform in pagination)
 
 Usage:
-{% include "reader/partials/book_results.html" with books=books current_language=current_language is_paginated=is_paginated page_obj=page_obj %}
+{% include "reader/partials/organisms/book_results.html" with books=books current_language=current_language is_paginated=is_paginated page_obj=page_obj %}
 {% endcomment %}
 
 {% with show_count_val=show_count|default:False empty_icon=empty_state_icon|default:"📚" %}
@@ -36,7 +36,7 @@ Usage:
     <!-- Results Grid -->
     <div class="book-grid" {% if enable_infinite_scroll %}data-infinite-scroll="true"{% endif %}>
     {% for book in books %}
-        {% include "reader/partials/book_card.html" with book=book current_language=current_language %}
+        {% include "reader/partials/molecules/book_card.html" with book=book current_language=current_language %}
     {% endfor %}
     </div>
 

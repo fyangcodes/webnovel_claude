@@ -23,9 +23,7 @@ Parameters:
 
             <!-- Status Badge and New Chapters Badge -->
             <div class="position-absolute top-0 end-0 m-1 d-flex align-items-end gap-1">
-                {% if book.progress != 'draft' %}
-                    {% include "reader/partials/book_status_badge.html" with status=book.progress %}
-                {% endif %}
+                {% include "reader/partials/atoms/book_status_badge.html" with status=book.progress show_text=False show_icon=True %}
                 {% if book_meta.new_chapters_count > 0 %}
                     <span class="badge rounded-pill bg-danger new-chapters-badge">{{ book_meta.new_chapters_count }}</span>
                 {% endif %}
@@ -39,14 +37,14 @@ Parameters:
                 <span class="book-card-stat-item"><i class="fa fa-list"></i> {{ book.published_chapters_count }}</span>
             </div>
 
-            <button class="book-card-info-btn" data-bs-toggle="modal" data-bs-target="#bookModal{{ book.id }}" onclick="event.preventDefault(); event.stopPropagation();">
+            <button class="book-card-info-btn" data-bs-toggle="modal" data-bs-target="#bookModal{{ book.id }}" title="{% trans 'Book Details' %}" data-bs-custom-tooltip="true" onclick="event.preventDefault(); event.stopPropagation();">
                 <i class="fas fa-info"></i>
             </button>
         </div>
         <h3 class="book-card-title">{{ book.title }}</h3>
 
         <!-- Section, Genre, and Tags (using book_meta partial) -->
-        {% include "reader/partials/book_meta.html" with section=card_section section_localized_name=card_section_name genres=card_genres tags_by_category=card_tags show_section=show_section|default:True show_tags=True show_entities=False max_genres=2 max_tags=3 compact=True show_hierarchy=False %}
+        {% include "reader/partials/molecules/book_meta.html" with section=card_section section_localized_name=card_section_name genres=card_genres tags_by_category=card_tags show_section=show_section|default:True show_tags=True show_entities=False max_genres=2 max_tags=3 compact=True show_hierarchy=False %}
     </a>
 </div>
 
@@ -68,7 +66,7 @@ Parameters:
                         <img src="{{ book.effective_cover_image }}" alt="{{ book.title }}" class="img-fluid mb-3">
 
                         <!-- Taxonomy Section (using book_meta partial) -->
-                        {% include "reader/partials/book_meta.html" with section=modal_section section_localized_name=modal_section_name genres=modal_genres tags_by_category=book.tags_by_category entities_by_type=book.entities_by_type show_section=True show_tags=True show_entities=True compact=False %}
+                        {% include "reader/partials/molecules/book_meta.html" with section=modal_section section_localized_name=modal_section_name genres=modal_genres tags_by_category=book.tags_by_category entities_by_type=book.entities_by_type show_section=True show_tags=True show_entities=True compact=False %}
                     </div>
                     <!-- Right: Book Info -->
                     <div class="col-md-8">
@@ -87,7 +85,7 @@ Parameters:
                         {% endif %}
 
                         <div class="book-stats mb-3">
-                            {% include "reader/partials/book_stats.html" with book=book total_chapters=book.published_chapters_count total_words=book.effective_count total_chapter_views=book.total_chapter_views current_language=current_language %}
+                            {% include "reader/partials/molecules/book_stats.html" with book=book total_chapters=book.published_chapters_count total_words=book.effective_count total_chapter_views=book.total_chapter_views current_language=current_language %}
                         </div>
 
                         {% if book.description %}

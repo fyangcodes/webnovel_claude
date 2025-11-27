@@ -30,6 +30,15 @@ msgid ""
 "This author doesn't have any published books available in this language yet."
 msgstr "该作者暂无该语言版本的已出版作品。"
 
+#: reader/templates/reader/author_detail.html:78
+msgid "Author Stats"
+msgstr "作者统计"
+
+#: reader/templates/reader/author_detail.html:82
+msgid "book"
+msgid_plural "books"
+msgstr[0] "本作品"
+
 #: reader/templates/reader/base.html:58 reader/templates/reader/base.html:77
 #, python-format
 msgid "Search in %(section)s"

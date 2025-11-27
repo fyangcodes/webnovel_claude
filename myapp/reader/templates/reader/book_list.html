@@ -19,14 +19,14 @@
 <section class="col-lg-9">
     <div class="card">
         <div class="card-body">
-            {% include "reader/partials/book_filters.html" with primary_genres=primary_genres primary_genre=primary_genre secondary_genres=secondary_genres %}
+            {% include "reader/partials/organisms/book_filters.html" with primary_genres=primary_genres primary_genre=primary_genre secondary_genres=secondary_genres %}
         </div>
     </div>
 </section>
 
 <!-- Book List Section -->
 <section>
-    {% include "reader/partials/book_results.html" with books=books current_language=current_language is_paginated=is_paginated page_obj=page_obj paginator=paginator show_count=True enable_infinite_scroll=True %}
+    {% include "reader/partials/organisms/book_results.html" with books=books current_language=current_language is_paginated=is_paginated page_obj=page_obj paginator=paginator show_count=True enable_infinite_scroll=True %}
 </section>
 {% endblock %}
 

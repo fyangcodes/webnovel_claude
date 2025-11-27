@@ -70,7 +70,7 @@
     <!-- Filters Card -->
     <div class="card">
         <div class="card-body">
-            {% include "reader/partials/book_filters.html" with primary_genres=primary_genres primary_genre=primary_genre secondary_genres=secondary_genres %}
+            {% include "reader/partials/organisms/book_filters.html" with primary_genres=primary_genres primary_genre=primary_genre secondary_genres=secondary_genres %}
         </div>
     </div>
 </section>
@@ -78,7 +78,7 @@
 <!-- Results Section -->
 <section>
     {% if books %}
-        {% include "reader/partials/book_results.html" with books=books current_language=current_language is_paginated=is_paginated page_obj=page_obj %}
+        {% include "reader/partials/organisms/book_results.html" with books=books current_language=current_language is_paginated=is_paginated page_obj=page_obj %}
     {% elif search_query %}
         <!-- No Results State (only show when there was a search query) -->
         <div class="text-center py-5">

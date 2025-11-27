@@ -57,24 +57,7 @@
 
     <!-- Recent Books -->
     {% if books %}
-    <div class="mb-5">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-            <h2 class="h4 mb-0">{% trans "Recent Updates" %}</h2>
-            <a href="{% url 'reader:section_book_list' current_language.code section.slug %}"
-               class="btn-view-all">
-                {% trans "View All" %}
-                <i class="fas fa-arrow-right ms-1"></i>
-            </a>
-        </div>
-
-        <div class="row g-4">
-            {% for book in books %}
-            <div class="col-lg-2 col-md-3 col-sm-4 col-6">
-                {% include "reader/partials/book_card.html" with book=book %}
-            </div>
-            {% endfor %}
-        </div>
-    </div>
+    {% include "reader/partials/organisms/book_grid.html" with books=books title=_("Recent Updates") section=section current_language=current_language %}
     {% else %}
     <div class="alert alert-info">
         <i class="fas fa-info-circle me-2"></i>
@@ -84,16 +67,7 @@
 
     <!-- Featured Books (if configured) -->
     {% if featured_books %}
-    <div class="mb-5">
-        <h2 class="h4 mb-3">Featured</h2>
-        <div class="row g-4">
-            {% for book in featured_books %}
-            <div class="col-lg-2 col-md-3 col-sm-4 col-6">
-                {% include "reader/partials/book_card.html" with book=book %}
-            </div>
-            {% endfor %}
-        </div>
-    </div>
+    {% include "reader/partials/organisms/book_grid.html" with books=featured_books title=_("Featured") section=section current_language=current_language %}
     {% endif %}
 </div>
 {% endblock %}

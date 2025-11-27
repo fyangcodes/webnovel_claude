@@ -15,7 +15,7 @@ Context variables used:
 - request: Django request object (for query_transform)
 
 Usage:
-{% include "reader/partials/book_filters.html" with primary_genres=primary_genres primary_genre=primary_genre secondary_genres=secondary_genres %}
+{% include "reader/partials/organisms/book_filters.html" with primary_genres=primary_genres primary_genre=primary_genre secondary_genres=secondary_genres %}
 {% endcomment %}
 
 {% with show_status_val=show_status_filter|default:True %}

@@ -36,7 +36,7 @@
             {% endif %}
             
             <!-- Book Stats -->
-            {% include "reader/partials/book_stats.html" with book=book total_chapters=total_chapters total_words=total_words total_chapter_views=total_chapter_views last_update=last_update current_language=current_language %}
+            {% include "reader/partials/molecules/book_stats.html" with book=book total_chapters=total_chapters total_words=total_words total_chapter_views=total_chapter_views last_update=last_update current_language=current_language %}
 
             {% if book.description %}
             <div class="mb-4">
@@ -46,7 +46,7 @@
 
             <!-- Taxonomy: Section, Genres, Tags, and Entities -->
             <div class="mb-4">
-                {% include "reader/partials/book_meta.html" with section=book.bookmaster.section section_localized_name=section_localized_name genres=genres tags_by_category=tags_by_category entities_by_type=entities_by_type show_tags=True show_entities=True %}
+                {% include "reader/partials/molecules/book_meta.html" with section=book.bookmaster.section section_localized_name=section_localized_name genres=genres tags_by_category=tags_by_category entities_by_type=entities_by_type show_tags=True show_entities=True %}
             </div>
         </div>
     </div>
@@ -64,7 +64,7 @@
     <div class="col-12">
         <!-- Chapter list container (HTMX target for future Ajax pagination) -->
         <div id="chapter-list-container">
-            {% include "reader/partials/chapter_list.html" with book=book chapters=chapters is_paginated=is_paginated page_obj=page_obj current_language=current_language new_chapter_cutoff=new_chapter_cutoff %}
+            {% include "reader/partials/organisms/chapter_list.html" with book=book chapters=chapters is_paginated=is_paginated page_obj=page_obj current_language=current_language new_chapter_cutoff=new_chapter_cutoff %}
         </div>
     </div>
 </div>

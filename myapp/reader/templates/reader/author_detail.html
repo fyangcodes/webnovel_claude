@@ -48,7 +48,7 @@
         <div class="row">
             {% for book in books %}
             <div class="col-lg-3 col-md-4 col-sm-6 mb-4">
-                {% include "reader/partials/book_card.html" %}
+                {% include "reader/partials/molecules/book_card.html" %}
             </div>
             {% endfor %}
         </div>
@@ -75,11 +75,11 @@
         {% if books %}
         <div class="card mb-4">
             <div class="card-body">
-                <h6 class="card-title text-muted mb-3">Author Stats</h6>
+                <h6 class="card-title text-muted mb-3">{% trans "Author Stats" %}</h6>
                 <div class="d-flex flex-column gap-2">
                     <div>
                         <i class="fas fa-book me-2"></i>
-                        <strong>{{ books|length }}</strong> book{{ books|length|pluralize }}
+                        <strong>{{ books|length }}</strong> {% blocktrans count counter=books|length %}book{% plural %}books{% endblocktrans %}
                     </div>
                 </div>
             </div>
