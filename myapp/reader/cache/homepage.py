@@ -39,9 +39,7 @@ def get_cached_featured_books(language_code, featured_bookmaster_ids):
                 bookmaster_id__in=featured_bookmaster_ids,
                 language__code=language_code,
                 is_public=True,
-            )
-            .select_related("bookmaster", "bookmaster__section", "language")
-            .prefetch_related("chapters", "bookmaster__genres", "bookmaster__genres__section")
+            ).with_card_relations()
         )
         cache.set(cache_key, books, timeout=TIMEOUT_HOMEPAGE)
 
@@ -69,8 +67,7 @@ def get_cached_recently_updated(language_code, limit=6):
     if books is None:
         books = list(
             Book.objects.filter(language__code=language_code, is_public=True)
-            .select_related("bookmaster", "bookmaster__section", "language")
-            .prefetch_related("chapters", "bookmaster__genres", "bookmaster__genres__section")
+            .with_card_relations()
             .annotate(latest_chapter=Max("chapters__published_at"))
             .order_by("-latest_chapter")[:limit]
         )
@@ -100,8 +97,7 @@ def get_cached_new_arrivals(language_code, limit=6):
     if books is None:
         books = list(
             Book.objects.filter(language__code=language_code, is_public=True)
-            .select_related("bookmaster", "bookmaster__section", "language")
-            .prefetch_related("chapters", "bookmaster__genres", "bookmaster__genres__section")
+            .with_card_relations()
             .order_by("-published_at")[:limit]
         )
         cache.set(cache_key, books, timeout=TIMEOUT_HOMEPAGE)

@@ -1,0 +1,41 @@
+# Core Django and dependencies
+Django==5.2.5
+asgiref==3.9.1
+sqlparse==0.5.3
+
+# Database
+psycopg2-binary==2.9.10
+dj-database-url==3.0.1
+
+# Environment variables
+python-dotenv==1.1.1
+
+# Static files and media
+whitenoise==6.9.0
+pillow==11.3.0
+boto3==1.40.25
+botocore==1.40.25
+django-storages==1.14.6
+
+# Forms
+crispy-bootstrap5==2025.6
+django-crispy-forms==2.4
+
+# AI/Translation
+openai==1.102.0
+
+# Stats and analytics
+redis>=5.0.0
+django-redis>=5.4.0
+celery>=5.3.0
+django-celery-beat>=2.6.0
+flower>=2.0.0
+hiredis>=2.2.0
+
+# Internationalization
+django-rosetta>=0.10.0
+
+# Utilities
+python-dateutil==2.9.0.post0
+tabulate>=0.9.0
+tqdm==4.67.1

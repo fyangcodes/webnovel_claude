@@ -34,13 +34,24 @@ urlpatterns = [
 
 # Development tools - must come BEFORE reader URLs to avoid language code matching
 if settings.DEBUG:
-    import debug_toolbar
+    # Only import and add URLs if apps are installed (IS_DEVELOPMENT=True)
+    if "debug_toolbar" in settings.INSTALLED_APPS:
+        import debug_toolbar
+        urlpatterns += [
+            path("__debug__/", include(debug_toolbar.urls)),
+        ]
 
+    if "silk" in settings.INSTALLED_APPS:
+        urlpatterns += [
+            path("silk/", include("silk.urls", namespace="silk")),
+        ]
+
+    # Rosetta i18n translation management
     urlpatterns += [
-        path("__debug__/", include(debug_toolbar.urls)),
-        path("rosetta/", include("rosetta.urls")),  # i18n translation management
+        path("rosetta/", include("rosetta.urls")),
     ]
 
+    # Media files in development
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
 # Reader app URLs (catch-all, must be last)

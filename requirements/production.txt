@@ -1,0 +1,8 @@
+# Install base requirements
+-r base.txt
+
+# Production server
+gunicorn==23.0.0
+
+# Production monitoring (optional - uncomment when needed)
+# sentry-sdk>=1.38.0

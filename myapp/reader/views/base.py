@@ -45,6 +45,10 @@ class BaseReaderView:
         Raises:
             Http404: If language doesn't exist or user doesn't have permission
         """
+        # Cache the language object on the view instance to avoid repeated queries
+        if hasattr(self, '_cached_language'):
+            return self._cached_language
+
         language_code = self.kwargs.get("language_code")
         language = get_object_or_404(Language, code=language_code)
 
@@ -56,6 +60,8 @@ class BaseReaderView:
             # Non-staff users cannot access private languages
             raise Http404("Language not found")
 
+        # Cache for subsequent calls
+        self._cached_language = language
         return language
 
     def get_section(self):
@@ -189,11 +195,20 @@ class BaseReaderView:
         Returns:
             The enriched book object (modified in-place)
         """
-        # Use cached chapter count (eliminates N+1 query)
-        book.published_chapters_count = cache.get_cached_chapter_count(book.id)
+        # Use bulk-calculated values if available (from enrich_books_with_metadata)
+        # Otherwise fall back to individual cached queries
+        if hasattr(book, '_bulk_chapter_count'):
+            book.published_chapters_count = book._bulk_chapter_count
+        else:
+            book.published_chapters_count = cache.get_cached_chapter_count(book.id)
 
-        # Add total chapter views (eliminates N+1 query)
-        book.total_chapter_views = cache.get_cached_total_chapter_views(book.id)
+        # Skip total_chapter_views in list context (expensive, not shown in cards)
+        if hasattr(book, '_is_list_context') and book._is_list_context:
+            book.total_chapter_views = 0
+        elif hasattr(book, '_bulk_total_views'):
+            book.total_chapter_views = book._bulk_total_views
+        else:
+            book.total_chapter_views = cache.get_cached_total_chapter_views(book.id)
 
         # Add localized section name if section exists
         if hasattr(book.bookmaster, 'section') and book.bookmaster.section:
@@ -234,9 +249,14 @@ class BaseReaderView:
         book.tags_by_category = tags_by_category
 
         # Add entities grouped by type (exclude default order 999)
-        entities = book.bookmaster.entities.exclude(order=999)
+        # Use .all() to leverage prefetch, then filter in Python
+        all_entities = book.bookmaster.entities.all()
         entities_by_type = {}
-        for entity in entities:
+        for entity in all_entities:
+            # Skip entities with default order 999
+            if entity.order == 999:
+                continue
+
             # Get localized name from translations or fall back to source_name
             entity.localized_name = entity.translations.get(language_code, entity.source_name)
             entity_type_display = entity.get_entity_type_display()
@@ -251,7 +271,8 @@ class BaseReaderView:
         """
         Add metadata to multiple books (list view helper).
 
-        Calls enrich_book_with_metadata() for each book.
+        Calls enrich_book_with_metadata() for each book and adds bulk-calculated
+        new chapters count.
 
         Args:
             books: Queryset or list of Book objects
@@ -260,11 +281,86 @@ class BaseReaderView:
         Returns:
             List of enriched book objects
         """
+        # Convert to list if queryset
+        books_list = list(books) if hasattr(books, 'model') else books
+
+        if not books_list:
+            return books_list
+
+        # First, bulk calculate new chapters count for all books
+        books_list = self.enrich_books_with_new_chapters(books_list)
+
+        # Bulk fetch chapter counts (eliminates N+1 queries)
+        book_ids = [book.id for book in books_list]
+        chapter_counts = cache.get_cached_chapter_counts_bulk(book_ids)
+
+        # Skip total_views for list views - it's expensive and not critical for cards
+        # (requires accessing book.chapters through BookStats which triggers queries)
+
+        # Then enrich each book with other metadata
         enriched_books = []
-        for book in books:
+        for book in books_list:
+            # Pre-attach bulk-calculated chapter count
+            book._bulk_chapter_count = chapter_counts.get(book.id, 0)
+            # Mark that we're in list context (skip expensive calculations)
+            book._is_list_context = True
+
             self.enrich_book_with_metadata(book, language_code)
             enriched_books.append(book)
         return enriched_books
+
+    def enrich_books_with_new_chapters(self, books):
+        """
+        Bulk calculate new chapters count for multiple books.
+
+        This replaces N individual queries (one per book) with a single
+        bulk query using GROUP BY.
+
+        Args:
+            books: Queryset or list of Book objects
+
+        Returns:
+            List of books with new_chapters_count attribute attached
+        """
+        from django.utils import timezone
+        from datetime import timedelta
+        from django.conf import settings
+        from django.db.models import Count, Q
+        from books.models import Chapter
+
+        # Convert to list if queryset
+        books_list = list(books) if hasattr(books, 'model') else books
+
+        if not books_list:
+            return books_list
+
+        # Calculate cutoff date for "new" chapters
+        new_chapter_days = getattr(settings, 'NEW_CHAPTER_DAYS', 14)
+        cutoff_date = timezone.now() - timedelta(days=new_chapter_days)
+
+        # Get all book IDs
+        book_ids = [book.id for book in books_list]
+
+        # Bulk query: Count new chapters for all books in one query
+        new_chapters_data = (
+            Chapter.objects
+            .filter(
+                book_id__in=book_ids,
+                is_public=True,
+                published_at__gte=cutoff_date
+            )
+            .values('book_id')
+            .annotate(count=Count('id'))
+        )
+
+        # Create lookup dictionary: book_id -> new_chapters_count
+        new_chapters_lookup = {item['book_id']: item['count'] for item in new_chapters_data}
+
+        # Attach new_chapters_count to each book
+        for book in books_list:
+            book.new_chapters_count = new_chapters_lookup.get(book.id, 0)
+
+        return books_list
 
     def get_context_data(self, **kwargs):
         """
@@ -309,6 +405,73 @@ class BaseReaderView:
             for tag in tags:
                 tag.localized_name = tag.get_localized_name(language_code)
         context["all_tags_by_category"] = all_tags_by_category
+
+        # Prefetch styles for all taxonomy objects to avoid N+1 queries in templates
+        context = self._prefetch_styles_for_context(context)
+
+        return context
+
+    def _prefetch_styles_for_context(self, context):
+        """
+        Prefetch StyleConfig for all objects in context.
+
+        This eliminates N+1 queries from style-related template tags:
+        - get_style
+        - has_style
+        - style_color
+        - style_icon
+
+        Instead of 20-40 individual queries, we make 2-3 bulk queries.
+
+        Args:
+            context: Template context dict
+
+        Returns:
+            Modified context with prefetched styles
+        """
+        from reader.utils import get_styles_for_queryset
+
+        # Prefetch styles for sections (always in navigation)
+        sections = context.get('sections', [])
+        if sections:
+            section_styles = get_styles_for_queryset(sections)
+            context['section_styles'] = section_styles
+
+            # Also attach styles directly to objects for filter compatibility
+            for section in sections:
+                section._cached_style = section_styles.get(section.pk)
+
+        # Prefetch styles for genres in hierarchical structure
+        genres_hierarchical = context.get('genres_hierarchical', {})
+        if genres_hierarchical:
+            # Collect all genres from hierarchical structure
+            all_hierarchical_genres = []
+            for section_id, section_data in genres_hierarchical.items():
+                all_hierarchical_genres.extend(section_data['primary_genres'])
+                for parent_id, sub_genres in section_data['sub_genres'].items():
+                    all_hierarchical_genres.extend(sub_genres)
+
+            if all_hierarchical_genres:
+                hierarchical_genre_styles = get_styles_for_queryset(all_hierarchical_genres)
+                context['hierarchical_genre_styles'] = hierarchical_genre_styles
+
+        # Prefetch styles for flat genre list (backward compatibility)
+        genres = context.get('genres', [])
+        if genres:
+            genre_styles = get_styles_for_queryset(genres)
+            context['genre_styles'] = genre_styles
+
+        # Prefetch styles for tags (grouped by category)
+        all_tags_by_category = context.get('all_tags_by_category', {})
+        if all_tags_by_category:
+            # Collect all tags from all categories
+            all_tags = []
+            for category, tags in all_tags_by_category.items():
+                all_tags.extend(tags)
+
+            if all_tags:
+                tag_styles = get_styles_for_queryset(all_tags)
+                context['tag_styles'] = tag_styles
 
         return context
 
@@ -449,11 +612,8 @@ class BaseSearchView(BaseBookListView):
         if not book_ids:
             return Book.objects.none()
 
-        queryset = Book.objects.filter(id__in=book_ids).select_related(
-            "bookmaster", "bookmaster__section", "language"
-        ).prefetch_related(
-            "chapters", "bookmaster__genres", "bookmaster__genres__section", "bookmaster__tags"
-        )
+        # Use optimized relations for search results (book cards)
+        queryset = Book.objects.filter(id__in=book_ids).with_card_relations()
 
         # Preserve search ranking order
         preserved_order = Case(*[When(id=pk, then=pos) for pos, pk in enumerate(book_ids)])

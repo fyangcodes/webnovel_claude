@@ -20,6 +20,7 @@ from django.http import Http404
 from django.core.paginator import Paginator
 from django.views import View
 from django.views.generic import DetailView
+from django.db.models import Prefetch
 
 from books.models import Book, Chapter, Genre, Tag, BookGenre
 from reader import cache
@@ -52,7 +53,7 @@ class SectionHomeView(BaseBookListView):
         if not section:
             raise Http404("Section required")
 
-        # Return recent public books from this section
+        # Return recent public books from this section with optimized relations
         queryset = Book.objects.filter(
             language=language,
             is_public=True,
@@ -60,8 +61,7 @@ class SectionHomeView(BaseBookListView):
         )
 
         return (
-            queryset.select_related("bookmaster", "bookmaster__section", "language")
-            .prefetch_related("chapters", "bookmaster__genres", "bookmaster__genres__section", "bookmaster__tags")
+            queryset.with_card_relations()
             .order_by("-published_at", "-created_at")[:12]
         )
 
@@ -151,9 +151,9 @@ class SectionBookListView(BaseBookListView):
         if progress and progress in ["draft", "ongoing", "completed"]:
             queryset = queryset.filter(progress=progress)
 
+        # Use optimized relations for book cards
         return (
-            queryset.select_related("bookmaster", "bookmaster__section", "language")
-            .prefetch_related("chapters", "bookmaster__genres", "bookmaster__genres__section", "bookmaster__tags")
+            queryset.with_card_relations()
             .order_by("-published_at", "-created_at")
         )
 
@@ -267,6 +267,13 @@ class SectionBookDetailView(BaseBookDetailView):
             raise Http404("Section required")
 
         # Ensure book belongs to this section
+        # Create optimized prefetch for hreflang tags (all public language versions)
+        hreflang_prefetch = Prefetch(
+            'bookmaster__books',
+            queryset=Book.objects.filter(is_public=True).select_related('language'),
+            to_attr='hreflang_books_list'
+        )
+
         return (
             Book.objects.filter(
                 language=language,
@@ -279,11 +286,50 @@ class SectionBookDetailView(BaseBookDetailView):
                 "bookmaster__genres",
                 "bookmaster__genres__parent",
                 "bookmaster__genres__section",
-                "bookmaster__tags"
+                "bookmaster__tags",
+                # Prefetch for hreflang tags (all public language versions)
+                hreflang_prefetch,
             )
         )
 
     def get_context_data(self, **kwargs):
+        """
+        Build context data for book detail view with optimized chapter stats.
+
+        Optimizations implemented:
+        1. Single aggregation query for chapter stats (Count + Sum + Max)
+           - Replaces 3 separate queries (.count() + sum() + .first())
+           - Reduces chapter stats from 3 queries → 1 query
+
+        2. Hreflang prefetch from queryset
+           - Uses prefetched hreflang_books_list (to_attr pattern)
+           - Eliminates 1 additional query for alternate language versions
+
+        3. Language-aware word count calculation
+           - Database-level Sum() for word_count or character_count
+           - No memory overhead from loading all chapters
+
+        Context includes:
+        - chapters: Paginated chapter list (sorted by user preference)
+        - total_chapters: Total published chapter count (aggregated)
+        - total_words: Total word/character count (language-aware)
+        - last_update: Last published chapter date (aggregated)
+        - total_chapter_views: Total views across all chapters (cached)
+        - author: Author object with localized name
+        - hreflang_books: Alternate language versions (prefetched)
+        - new_chapter_cutoff: Date cutoff for "new" badge highlighting
+
+        Args:
+            **kwargs: Additional context from parent classes
+
+        Returns:
+            dict: Template context with optimized chapter statistics
+        """
+        from django.utils import timezone
+        from datetime import timedelta
+        from django.conf import settings
+        from django.db.models import Count, Sum, Max
+
         context = super().get_context_data(**kwargs)
         section = self.get_section()
         language_code = self.kwargs.get("language_code")
@@ -297,9 +343,17 @@ class SectionBookDetailView(BaseBookDetailView):
             context["author"] = author
             context["author_localized_name"] = author.get_localized_name(language_code)
 
+        # Prefetch hreflang data (all language versions of this book)
+        # Use prefetched data from queryset (hreflang_books_list) to avoid additional queries
+        # This uses the Prefetch with to_attr='hreflang_books_list' from get_queryset()
+        context["hreflang_books"] = self.object.bookmaster.hreflang_books_list
+
         # Get all published chapters with sorting
         sort_param = self.request.GET.get('sort', 'oldest')
+        new_chapter_days = getattr(settings, 'NEW_CHAPTER_DAYS', 14)
+        cutoff_date = timezone.now() - timedelta(days=new_chapter_days)
 
+        # Base queryset for chapters
         all_chapters = self.object.chapters.filter(is_public=True).select_related("chaptermaster")
 
         if sort_param == 'latest':
@@ -307,13 +361,6 @@ class SectionBookDetailView(BaseBookDetailView):
             all_chapters = all_chapters.order_by("-published_at", "-chaptermaster__chapter_number")
         elif sort_param == 'new':
             # Filter to show ONLY new chapters (within NEW_CHAPTER_DAYS)
-            from django.utils import timezone
-            from datetime import timedelta
-            from django.conf import settings
-
-            new_chapter_days = getattr(settings, 'NEW_CHAPTER_DAYS', 14)
-            cutoff_date = timezone.now() - timedelta(days=new_chapter_days)
-
             all_chapters = all_chapters.filter(
                 published_at__gte=cutoff_date
             ).order_by("-published_at", "chaptermaster__chapter_number")
@@ -329,17 +376,28 @@ class SectionBookDetailView(BaseBookDetailView):
         context["is_paginated"] = page_obj.has_other_pages()
         context["page_obj"] = page_obj
 
-        # Reading progress context (use all chapters for stats, not just current page)
-        context["total_chapters"] = all_chapters.count()
-        context["total_words"] = sum(
-            chapter.effective_count for chapter in all_chapters
+        # OPTIMIZATION: Get chapter stats with a single aggregation query
+        # instead of .count() + sum() + .first() which triggers 3 separate queries
+        chapter_stats = self.object.chapters.filter(is_public=True).aggregate(
+            total_chapters=Count('id'),
+            total_words=Sum('word_count'),
+            total_characters=Sum('character_count'),
+            last_update=Max('published_at')
         )
 
-        # Last update from most recently published chapter
-        latest_chapter = all_chapters.order_by("-published_at").first()
-        context["last_update"] = latest_chapter.published_at if latest_chapter else None
+        # Use aggregated stats (1 query instead of 3)
+        context["total_chapters"] = chapter_stats['total_chapters'] or 0
 
-        # Add total chapter views from cache
+        # Calculate total effective count based on language
+        # For word-based languages use total_words, for character-based use total_characters
+        if self.object.language.count_units == 'WORDS':
+            context["total_words"] = chapter_stats['total_words'] or 0
+        else:
+            context["total_words"] = chapter_stats['total_characters'] or 0
+
+        context["last_update"] = chapter_stats['last_update']
+
+        # Add total chapter views from cache (already optimized)
         context["total_chapter_views"] = cache.get_cached_total_chapter_views(self.object.id)
 
         # Create ViewEvent immediately for tracking (before template renders)
@@ -348,11 +406,7 @@ class SectionBookDetailView(BaseBookDetailView):
         context["view_event_id"] = view_event.id if view_event else None
 
         # Add new chapter cutoff date for highlighting new chapters
-        from django.utils import timezone
-        from datetime import timedelta
-        from django.conf import settings
-        new_chapter_days = getattr(settings, 'NEW_CHAPTER_DAYS', 14)
-        context["new_chapter_cutoff"] = timezone.now() - timedelta(days=new_chapter_days)
+        context["new_chapter_cutoff"] = cutoff_date
 
         return context
 

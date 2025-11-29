@@ -51,15 +51,15 @@ def get_style_for_object(obj):
         return None
 
 
-def get_styles_for_queryset(queryset):
+def get_styles_for_queryset(queryset_or_list):
     """
-    Efficiently prefetch styles for a queryset of objects.
+    Efficiently prefetch styles for a queryset or list of objects.
 
     This function optimizes database queries when you need styles for
     multiple objects at once (e.g., displaying a list of sections).
 
     Args:
-        queryset: Django QuerySet
+        queryset_or_list: Django QuerySet or list of model instances
 
     Returns:
         dict mapping object.pk to StyleConfig
@@ -76,14 +76,23 @@ def get_styles_for_queryset(queryset):
             if style:
                 print(f"{section.name}: {style.color}")
     """
-    if not queryset:
+    if not queryset_or_list:
         return {}
 
     try:
-        model_class = queryset.model
-        content_type = ContentType.objects.get_for_model(model_class)
+        # Handle both queryset and list
+        if isinstance(queryset_or_list, list):
+            # It's a list - get model class from first item
+            if not queryset_or_list:
+                return {}
+            model_class = queryset_or_list[0].__class__
+            object_ids = [obj.pk for obj in queryset_or_list]
+        else:
+            # It's a queryset
+            model_class = queryset_or_list.model
+            object_ids = list(queryset_or_list.values_list('pk', flat=True))
 
-        object_ids = list(queryset.values_list('pk', flat=True))
+        content_type = ContentType.objects.get_for_model(model_class)
         styles = StyleConfig.objects.filter(
             content_type=content_type,
             object_id__in=object_ids

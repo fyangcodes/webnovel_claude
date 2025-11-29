@@ -2,6 +2,25 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Documentation Structure
+
+All project documentation is organized in the `doc/` folder:
+
+### Reference Documentation (Use These)
+- **[doc/OPTIMIZATION_SUMMARY.md](doc/OPTIMIZATION_SUMMARY.md)** - Quick reference for query optimization patterns (use this first!)
+- **[doc/optimization/MASTER_OPTIMIZATION_PLAN.md](doc/optimization/MASTER_OPTIMIZATION_PLAN.md)** - Complete optimization roadmap
+- **[doc/DEVELOPMENT_TOOLS_SETUP.md](doc/DEVELOPMENT_TOOLS_SETUP.md)** - Silk and Locust setup guide
+- **[doc/DOCKER_SETUP.md](doc/DOCKER_SETUP.md)** - Docker configuration and commands
+- **[doc/RELATIONSHIPS_DIAGRAM.md](doc/RELATIONSHIPS_DIAGRAM.md)** - Database relationships overview
+- **[doc/TEMPLATE_TAG_QUERY_MIGRATION.md](doc/TEMPLATE_TAG_QUERY_MIGRATION.md)** - Template tag optimization guide
+
+### Historical Documentation (Reference Only)
+- `doc/optimization/` - Original optimization planning documents
+- `doc/reports/` - Completion reports from optimization work (Week 1-3)
+- `doc/features/` - SEO implementation documentation
+
+**When working on optimization tasks, always consult [doc/OPTIMIZATION_SUMMARY.md](doc/OPTIMIZATION_SUMMARY.md) first for current best practices.**
+
 ## Project Overview
 
 This is a Django web application for translating webnovels using OpenAI API. The project is structured as a standard Django application with apps for user management and book/translation functionality.
@@ -175,8 +194,25 @@ All models are registered in Django admin with comprehensive interfaces:
 The application expects these environment variables:
 - `DJANGO_SECRET_KEY` - Django secret key (required)
 - `DJANGO_DEBUG` - Set to "TRUE" for debug mode (defaults to True)
+- `ENVIRONMENT` - Set to "development" or "production" (controls development tools like Silk and Debug Toolbar)
 - `DJANGO_ALLOWED_HOSTS` - Comma-separated list of allowed hosts (defaults to localhost,127.0.0.1)
 - `DISABLE_CACHE` - Set to "True" to disable Redis cache layer and always hit database (useful for development to avoid stale data confusion)
+
+### Development vs Production
+
+The project uses the `ENVIRONMENT` variable to control which tools are loaded:
+
+**Development Mode** (`ENVIRONMENT=development`):
+- Enables Django Silk for request profiling and query analysis
+- Enables Django Debug Toolbar
+- Both tools are automatically disabled when `ENVIRONMENT=production`
+
+**Production Mode** (`ENVIRONMENT=production`):
+- All development tools disabled
+- Enhanced security settings enabled
+- System checks prevent accidental development tool deployment
+
+See [DEVELOPMENT_TOOLS_SETUP.md](doc/DEVELOPMENT_TOOLS_SETUP.md) for detailed setup instructions.
 
 ## Working Directory
 
@@ -396,3 +432,409 @@ Test coverage includes:
 - BookMaster validation (section changes, genre compatibility)
 - Search functionality (keyword matching, filtering)
 - Integration workflows (complete book setup, section changes)
+
+## Query Optimization Patterns
+
+The reader app has been extensively optimized to minimize database queries and maximize performance. All new code should follow these established patterns.
+
+### Performance Achievements
+
+| View | Baseline | Optimized | Reduction | Time |
+|------|----------|-----------|-----------|------|
+| Homepage | 74 queries | 11 queries | 85.1% | 21ms |
+| Section Home | 74 queries | 18 queries | 75.7% | 46ms |
+| Book Detail | 74 queries | 33 queries | 55.4% | 98ms |
+
+**Key Optimizations**:
+- All N+1 patterns eliminated
+- Redis cache enabled (90%+ hit rate)
+- Optimized prefetch patterns throughout
+- Bulk operations instead of per-item queries
+
+### 1. Using Optimized QuerySets
+
+**Location**: `books/models/core.py` (Lines 215-480)
+
+The `Book` model has a custom manager with optimized querysets. **Always use these methods instead of basic queryset operations.**
+
+#### For List Views (Book Cards)
+
+```python
+# ✅ CORRECT - Use optimized queryset
+from books.models import Book
+
+books = Book.objects.for_list_display(language_code, section_slug)
+# Result: ~6-8 queries for any number of books (uses prefetch)
+
+# ❌ WRONG - Basic queryset causes N+1 queries
+books = Book.objects.filter(language__code=language_code).select_related('bookmaster')
+# Result: 20+ queries for 6 books (N+1 on genres, tags, stats)
+```
+
+**What `.for_list_display()` includes**:
+- BookMaster, Section, Author (select_related)
+- Genres with hierarchy (optimized Prefetch + select_related)
+- Tags (only needed fields)
+- Entities (only needed fields)
+- BookStats, ChapterStats (select_related, not prefetch)
+- Language (select_related)
+
+#### For Detail Views
+
+```python
+# ✅ CORRECT - Use detail queryset
+book = Book.objects.for_detail_display(language_code, section_slug).get(slug=slug)
+# Result: All related data prefetched, no additional queries in template
+
+# ❌ WRONG - Basic get() causes template queries
+book = Book.objects.get(slug=slug)
+# Result: Every {{ book.bookmaster.genres.all }} triggers new query
+```
+
+**What `.for_detail_display()` adds**:
+- Everything from `.for_list_display()`
+- Plus: Chapters with stats (for chapter list)
+- Plus: Full chapter navigation data
+
+#### For Card Relations Only
+
+```python
+# ✅ For views that ONLY need card data (no extra filtering)
+books = Book.objects.with_card_relations().filter(is_public=True)
+# Result: Optimized prefetch without language/section filters
+```
+
+### 2. View-Level Enrichment Patterns
+
+**Location**: `reader/views/base.py` (Lines 177-363)
+
+Views should enrich data ONCE and pass to templates. **Never let templates query the database.**
+
+#### Single Book Enrichment
+
+```python
+# In your view's get_context_data() or get()
+def get_context_data(self, **kwargs):
+    context = super().get_context_data(**kwargs)
+    language_code = self.kwargs.get("language_code")
+
+    # ✅ CORRECT - Enrich book once in view
+    book = self.object
+    self.enrich_book_with_metadata(book, language_code)
+    # Now book has: localized names, chapter counts, views, organized tags
+
+    context['book'] = book
+    return context
+
+# Template can now use {{ book.enriched_genres }}, {{ book.tags_by_category }} with 0 queries
+```
+
+#### Multiple Books Enrichment (List Views)
+
+```python
+# In your view's get_context_data()
+def get_context_data(self, **kwargs):
+    context = super().get_context_data(**kwargs)
+    language_code = self.kwargs.get("language_code")
+    books = context['object_list']  # From ListView
+
+    # ✅ CORRECT - Bulk enrichment (GROUP BY for new chapters)
+    enriched_books = self.enrich_books_with_metadata(books, language_code)
+    # Single bulk query for new chapters count across ALL books
+
+    context['object_list'] = enriched_books
+    return context
+
+# Template can access {{ book.new_chapters_count }} with 0 additional queries
+```
+
+**What enrichment adds**:
+- `book.published_chapters_count` - From cache
+- `book.total_chapter_views` - From cache
+- `book.new_chapters_count` - Bulk calculated
+- `book.enriched_genres` - List with localized names
+- `book.tags_by_category` - Dict grouped by category
+- `book.entities_by_type` - Dict grouped by type
+- `book.section_localized_name` - Localized section name
+- `book.author_localized_name` - Localized author name
+
+### 3. Aggregation Queries for Statistics
+
+**Location**: `reader/views/section.py` (Lines 295-379)
+
+Use Django's aggregation to replace multiple queries with single query.
+
+```python
+# ✅ CORRECT - Single aggregation query
+from django.db.models import Count, Sum, Max
+
+chapter_stats = book.chapters.filter(is_public=True).aggregate(
+    total_chapters=Count('id'),
+    total_words=Sum('word_count'),
+    total_characters=Sum('character_count'),
+    last_update=Max('published_at')
+)
+
+context['total_chapters'] = chapter_stats['total_chapters'] or 0
+context['total_words'] = chapter_stats['total_words'] or 0
+context['last_update'] = chapter_stats['last_update']
+# Result: 1 query for all statistics
+
+# ❌ WRONG - Multiple separate queries
+context['total_chapters'] = book.chapters.filter(is_public=True).count()  # Query 1
+context['total_words'] = sum(ch.word_count for ch in book.chapters.all())  # Query 2 + loads ALL chapters
+context['last_update'] = book.chapters.filter(is_public=True).order_by('-published_at').first()  # Query 3
+# Result: 3 queries + memory overhead
+```
+
+### 4. Prefetch with to_attr Pattern
+
+**Location**: `reader/views/section.py` (Lines 260-293)
+
+For data that needs zero-query access in templates, use `to_attr`.
+
+```python
+from django.db.models import Prefetch
+from books.models import Book
+
+# ✅ CORRECT - Prefetch with to_attr for zero-query access
+hreflang_prefetch = Prefetch(
+    'bookmaster__books',
+    queryset=Book.objects.filter(is_public=True).select_related('language'),
+    to_attr='hreflang_books_list'  # ← Stores as Python list attribute
+)
+
+queryset = Book.objects.prefetch_related(hreflang_prefetch)
+
+# In template or view:
+book.bookmaster.hreflang_books_list  # ← 0 queries (Python list)
+
+# ❌ WRONG - Without to_attr
+queryset = Book.objects.prefetch_related('bookmaster__books')
+book.bookmaster.books.all()  # ← May still trigger query if filtered
+```
+
+### 5. Template Tag Optimization
+
+**Location**: `reader/templatetags/reader_extras.py` (Lines 515-528)
+
+Template tags should use context data, not query database.
+
+```python
+# ✅ CORRECT - Context-aware template tag
+@register.simple_tag(takes_context=True)
+def hreflang_tags(context, bookmaster):
+    # Try to use prefetched data from view context first
+    hreflang_books = context.get('hreflang_books')
+
+    if hreflang_books is not None:
+        # Use prefetched data (0 queries)
+        related_books = hreflang_books
+    else:
+        # Fallback: Query database (backwards compatible)
+        related_books = Book.objects.filter(
+            bookmaster=bookmaster,
+            is_public=True
+        ).select_related('language')
+
+    return generate_hreflang_html(related_books)
+
+# ❌ WRONG - Always queries database
+@register.simple_tag
+def hreflang_tags(bookmaster):
+    # Every call triggers query, even if data is prefetched
+    books = Book.objects.filter(bookmaster=bookmaster)
+    return generate_hreflang_html(books)
+```
+
+### 6. StyleConfig Bulk Prefetch
+
+**Location**: `reader/views/base.py` (Lines 420-479)
+
+StyleConfig (colors, icons for sections/genres) must be bulk prefetched.
+
+```python
+# In view's get_context_data()
+def get_context_data(self, **kwargs):
+    context = super().get_context_data(**kwargs)
+
+    # ✅ CORRECT - Bulk prefetch ALL styles at once
+    context = self._prefetch_styles_for_context(context)
+    # Result: 2-3 bulk queries for ALL sections/genres/tags styles
+
+    return context
+
+# Template can now use filters with 0 queries:
+# {{ section|style_color }}  ← 0 queries (uses cached _cached_style)
+# {{ genre|style_icon }}     ← 0 queries
+
+# ❌ WRONG - Let template tags query individually
+# Result: 20-40 queries (1 per section/genre displayed)
+```
+
+### 7. Cache Usage Patterns
+
+**Location**: `reader/cache/` directory
+
+Use cache for data that rarely changes.
+
+```python
+from reader.cache import cache
+
+# ✅ CORRECT - Use cached functions
+languages = cache.get_cached_languages(user=request.user)  # 0 queries on 2nd call
+sections = cache.get_cached_sections(user=request.user)    # 0 queries on 2nd call
+genres = cache.get_cached_genres_flat()                    # 0 queries on 2nd call
+
+# Bulk cache operations
+chapter_counts = cache.get_cached_chapter_counts_bulk([1, 2, 3, 4, 5])  # 1 query for all
+
+# ❌ WRONG - Query database directly
+languages = Language.objects.filter(is_accessible=True)  # Always queries
+for book in books:
+    count = Chapter.objects.filter(book=book).count()  # N queries
+```
+
+**Cache TTLs** (configured in settings.py):
+- Navigation data (languages, sections, genres): 3600s (1 hour)
+- Metadata (chapter counts, views): 1800s (30 minutes)
+- Homepage carousels: 900s (15 minutes)
+- Taxonomy (tags, entities): 600s (10 minutes)
+
+### 8. Common Anti-Patterns to Avoid
+
+#### ❌ Anti-Pattern 1: Nested Prefetch Without Prefetch Objects
+
+```python
+# ❌ WRONG - Creates 3 separate queries
+books = Book.objects.prefetch_related(
+    'bookmaster__genres',
+    'bookmaster__genres__section',
+    'bookmaster__genres__parent'
+)
+# Result: Query 1: genres, Query 2: sections, Query 3: parents
+
+# ✅ CORRECT - Use Prefetch with select_related
+from django.db.models import Prefetch
+from books.models import Genre
+
+books = Book.objects.prefetch_related(
+    Prefetch(
+        'bookmaster__genres',
+        queryset=Genre.objects.select_related('section', 'parent')
+    )
+)
+# Result: 1 query with JOINs
+```
+
+#### ❌ Anti-Pattern 2: Using Prefetch for OneToOne
+
+```python
+# ❌ WRONG - Prefetch for OneToOne creates extra query
+books = Book.objects.prefetch_related('bookstats')
+
+# ✅ CORRECT - Use select_related for OneToOne/ForeignKey
+books = Book.objects.select_related('bookstats')
+```
+
+#### ❌ Anti-Pattern 3: Template Loops with .count()
+
+```django
+{# ❌ WRONG - Queries in template loop #}
+{% for book in books %}
+    {{ book.chapters.count }} chapters  {# ← N queries! #}
+{% endfor %}
+
+{# ✅ CORRECT - Use pre-calculated count #}
+{% for book in books %}
+    {{ book.published_chapters_count }} chapters  {# ← 0 queries (from enrichment) #}
+{% endfor %}
+```
+
+#### ❌ Anti-Pattern 4: Loading Full Objects When only() Suffices
+
+```python
+# ❌ WRONG - Loads all fields (more memory, slower)
+tags = Tag.objects.all()
+
+# ✅ CORRECT - Only load needed fields
+tags = Tag.objects.only('id', 'name', 'slug', 'category')
+# Result: 60% less memory, faster query
+```
+
+### 9. Adding New Views - Checklist
+
+When creating new views that display books:
+
+1. ✅ Use appropriate queryset method:
+   - List views: `.for_list_display(lang, section)`
+   - Detail views: `.for_detail_display(lang, section)`
+   - Simple cards: `.with_card_relations()`
+
+2. ✅ Enrich books in `get_context_data()`:
+   - Single book: `self.enrich_book_with_metadata(book, language_code)`
+   - Multiple books: `self.enrich_books_with_metadata(books, language_code)`
+
+3. ✅ Prefetch styles for sections/genres/tags:
+   - Call `context = self._prefetch_styles_for_context(context)`
+
+4. ✅ Use aggregation for statistics:
+   - Replace `.count()` + iteration with `.aggregate(Count, Sum, Max)`
+
+5. ✅ Test with Django Debug Toolbar:
+   - Check query count
+   - Look for "Similar queries" (N+1 patterns)
+   - Look for "Duplicate queries"
+   - Verify cache is being used
+
+### 10. Debugging Query Performance
+
+**Tools**:
+1. Django Debug Toolbar - Shows all queries for current request
+2. `DISABLE_CACHE=True` in .env - Bypass cache to see actual query count
+3. Shell testing - Verify prefetch works before deploying
+
+**Shell Testing Pattern**:
+```bash
+# Test in Django shell
+python manage.py shell
+```
+
+```python
+from django.test.utils import override_settings
+from django.db import connection
+from django.db import reset_queries
+
+# Reset query counter
+reset_queries()
+
+# Run your code
+from books.models import Book
+books = Book.objects.for_list_display('en', 'fiction')[:6]
+
+# Force evaluation
+list(books)
+
+# Check query count
+print(f"Queries: {len(connection.queries)}")
+
+# Check what was queried
+for query in connection.queries:
+    print(query['sql'][:100])
+```
+
+### Summary of Optimization Principles
+
+1. **Prefetch Everything**: Related data should be prefetched, not lazy-loaded
+2. **Enrich in Views**: Calculate/localize once, not per template access
+3. **Bulk Operations**: GROUP BY instead of N individual queries
+4. **Cache Aggressively**: Navigation/taxonomy data rarely changes
+5. **Use only()**: Don't load fields you won't use
+6. **Aggregate Statistics**: COUNT/SUM/MAX in database, not Python
+7. **Zero Template Queries**: Templates display data, never fetch it
+8. **Test with Toolbar**: Always verify query count before deploying
+
+**Reference Documentation**:
+- [MASTER_OPTIMIZATION_PLAN.md](doc/optimization/MASTER_OPTIMIZATION_PLAN.md) - Complete optimization roadmap
+- [OPTIMIZATION_SUMMARY.md](doc/OPTIMIZATION_SUMMARY.md) - Quick reference
+- [OPTIMIZED_BOOK_QUERYSET.py](OPTIMIZED_BOOK_QUERYSET.py) - BookQuerySet implementation details

@@ -254,7 +254,11 @@ def seo_meta_tags(page_type, **kwargs):
             image = book.effective_cover_image if book.effective_cover_image else ''
 
             tags.append(f'<meta name="description" content="{description}">')
-            tags.append(f'<meta name="keywords" content="{escape(book.bookmaster.author.get_localized_name(language.code))}, webnovel, {escape(book.title)}">')
+
+            # Build keywords (check if author exists)
+            author_name = book.bookmaster.author.get_localized_name(language.code) if book.bookmaster.author else ""
+            keywords = f"{escape(author_name)}, webnovel, {escape(book.title)}" if author_name else f"webnovel, {escape(book.title)}"
+            tags.append(f'<meta name="keywords" content="{keywords}">')
 
             # Open Graph
             tags.append(f'<meta property="og:type" content="book">')
@@ -512,12 +516,20 @@ def hreflang_tags(context):
             bookmaster = book.bookmaster
             section_slug = bookmaster.section.slug
 
-            # Get all books for this BookMaster in different languages
-            related_books = Book.objects.filter(
-                bookmaster=bookmaster,
-                language__in=public_languages,
-                is_public=True
-            ).select_related('language')
+            # OPTIMIZATION: Use prefetched hreflang_books from context (0 queries)
+            # Falls back to querying if context data not available (backwards compatible)
+            hreflang_books = context.get('hreflang_books')
+
+            if hreflang_books is not None:
+                # Use prefetched data from view context (OPTIMIZED)
+                related_books = hreflang_books
+            else:
+                # Fallback: Query database (backwards compatible for views that don't prefetch)
+                related_books = Book.objects.filter(
+                    bookmaster=bookmaster,
+                    language__in=public_languages,
+                    is_public=True
+                ).select_related('language')
 
             # Create a mapping of language_code -> book_slug
             book_slugs = {b.language.code: b.slug for b in related_books}
@@ -644,6 +656,9 @@ def enrich_book_meta(book):
     """
     Enrich book object with additional metadata like new chapters count.
 
+    OPTIMIZED: Uses pre-calculated new_chapters_count from view enrichment.
+    Falls back to database query only if not pre-calculated (backwards compatible).
+
     Usage in templates:
         {% enrich_book_meta book as book_meta %}
         {% if book_meta.new_chapters_count > 0 %}
@@ -651,7 +666,7 @@ def enrich_book_meta(book):
         {% endif %}
 
     Args:
-        book: Book object
+        book: Book object (should have new_chapters_count attribute from view)
 
     Returns:
         Dictionary with enriched metadata
@@ -663,11 +678,16 @@ def enrich_book_meta(book):
     new_chapter_days = getattr(settings, 'NEW_CHAPTER_DAYS', 14)
     cutoff_date = timezone.now() - timedelta(days=new_chapter_days)
 
-    # Count chapters published within the new chapter window
-    new_chapters_count = book.chapters.filter(
-        is_public=True,
-        published_at__gte=cutoff_date
-    ).count()
+    # Try to use pre-calculated value from view enrichment
+    if hasattr(book, 'new_chapters_count'):
+        new_chapters_count = book.new_chapters_count
+    else:
+        # Fallback: Query database (backwards compatible)
+        # This ensures the tag still works if enrichment wasn't done in view
+        new_chapters_count = book.chapters.filter(
+            is_public=True,
+            published_at__gte=cutoff_date
+        ).count()
 
     return {
         'book': book,

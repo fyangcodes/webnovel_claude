@@ -1,7 +1,3 @@
-opitmize sql query
-
-cache for enrichbook, and meta tags
-
 container flower
 
 deployment

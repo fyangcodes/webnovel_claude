@@ -13,6 +13,7 @@ This module contains the primary content hierarchy:
 
 from django.conf import settings
 from django.db import models
+from django.db.models import Prefetch
 from django.utils import timezone
 from django.utils.text import slugify
 
@@ -34,7 +35,7 @@ class Language(TimeStampModel):
     count_format_rules = models.JSONField(
         default=dict,
         blank=True,
-        help_text="Number formatting rules. Example: {6: 'M', 3: 'K'} for English, {8: '亿', 4: '万'} for Chinese"
+        help_text="Number formatting rules. Example: {6: 'M', 3: 'K'} for English, {8: '亿', 4: '万'} for Chinese",
     )
     # count_format_rules format:
     # Key: power of 10 (6 = million, 3 = thousand, 4 = 10k, 8 = 100M)
@@ -42,7 +43,7 @@ class Language(TimeStampModel):
     # Rules are applied in descending order of power
     is_public = models.BooleanField(
         default=True,
-        help_text="Whether this language is visible to readers in the reader app"
+        help_text="Whether this language is visible to readers in the reader app",
     )
 
     class Meta:
@@ -89,34 +90,34 @@ class BookMaster(TimeStampModel):
         related_name="original_books",
     )
     section = models.ForeignKey(
-        'Section',
+        "Section",
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        related_name='bookmasters',
-        help_text="Content section (Fiction, BL, GL, etc.)"
+        related_name="bookmasters",
+        help_text="Content section (Fiction, BL, GL, etc.)",
     )
     genres = models.ManyToManyField(
-        'Genre',
-        through='BookGenre',
+        "Genre",
+        through="BookGenre",
         related_name="bookmasters",
         blank=True,
         help_text="Book genres/categories",
     )
     tags = models.ManyToManyField(
-        'Tag',
-        through='BookTag',
-        related_name='bookmasters',
+        "Tag",
+        through="BookTag",
+        related_name="bookmasters",
         blank=True,
-        help_text="Book tags (protagonist type, tropes, themes, etc.)"
+        help_text="Book tags (protagonist type, tropes, themes, etc.)",
     )
     author = models.ForeignKey(
-        'Author',
+        "Author",
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        related_name='bookmasters',
-        help_text="Original author of the work"
+        related_name="bookmasters",
+        help_text="Original author of the work",
     )
 
     class Meta:
@@ -143,6 +144,7 @@ class BookMaster(TimeStampModel):
     def clean(self):
         """Validate taxonomy consistency"""
         from django.core.exceptions import ValidationError
+
         super().clean()
 
         # Validate that all assigned genres belong to the same section
@@ -150,18 +152,21 @@ class BookMaster(TimeStampModel):
             mismatched_genres = self.book_genres.exclude(genre__section=self.section)
             if mismatched_genres.exists():
                 # Get genre names for helpful error message
-                genre_names = ', '.join(
-                    bg.genre.name for bg in mismatched_genres.select_related('genre')[:3]
+                genre_names = ", ".join(
+                    bg.genre.name
+                    for bg in mismatched_genres.select_related("genre")[:3]
                 )
                 count = mismatched_genres.count()
                 if count > 3:
                     genre_names += f" and {count - 3} more"
 
-                raise ValidationError({
-                    'section': f"Cannot change section to '{self.section.name}' because "
-                               f"the following genres belong to different sections: {genre_names}. "
-                               f"Remove incompatible genres first or keep the current section."
-                })
+                raise ValidationError(
+                    {
+                        "section": f"Cannot change section to '{self.section.name}' because "
+                        f"the following genres belong to different sections: {genre_names}. "
+                        f"Remove incompatible genres first or keep the current section."
+                    }
+                )
 
     def validate_genres(self):
         """
@@ -205,6 +210,280 @@ class BookMaster(TimeStampModel):
             return self.hero_image.url
         else:
             return self.effective_cover_image
+
+
+class BookQuerySet(models.QuerySet):
+    """
+    Optimized querysets for Book model.
+
+    Key optimizations:
+    1. Prefetch objects with select_related (collapses 3 queries → 1)
+    2. OneToOne stats with select_related (not prefetch_related)
+    3. Reusable prefetch methods (DRY principle)
+    4. Context-specific querysets (card vs detail)
+    5. Memory optimization with only()
+    """
+
+    # ==================================================================
+    # PRIVATE HELPER METHODS - Reusable prefetch configurations
+    # ==================================================================
+
+    def _prefetch_genres_optimized(self):
+        """
+        Optimized genre prefetch using Prefetch + select_related.
+
+        Collapses 3 queries into 1:
+        - bookmaster__genres
+        - bookmaster__genres__section
+        - bookmaster__genres__parent
+
+        Returns:
+            Prefetch: Optimized genre prefetch object
+        """
+        from books.models import Genre
+
+        return Prefetch(
+            "bookmaster__genres",
+            queryset=Genre.objects.select_related(
+                "section",  # ← Collapses __section query
+                "parent",  # ← Collapses __parent query
+            )
+            # No need to specify ordering - it will use Genre model's default ordering
+            # ordering = ['section', '-is_primary', 'order', 'name']
+        )
+
+    def _prefetch_tags_optimized(self):
+        """
+        Optimized tag prefetch with only() to reduce memory.
+
+        Tags typically only need: id, name, slug, category for display.
+
+        Returns:
+            Prefetch: Optimized tag prefetch object
+        """
+        from books.models import Tag
+
+        return Prefetch(
+            "bookmaster__tags",
+            queryset=Tag.objects.only(
+                "id",
+                "name",
+                "slug",
+                "category",
+                "translations",  # For localization
+            ),
+        )
+
+    def _prefetch_entities_optimized(self):
+        """
+        Optimized entity prefetch with only() to reduce memory.
+
+        Entities typically only need: id, source_name, translations, entity_type, order.
+
+        Returns:
+            Prefetch: Optimized entity prefetch object
+        """
+        from books.models import BookEntity
+
+        return Prefetch(
+            "bookmaster__entities",
+            queryset=BookEntity.objects.filter(
+                # Exclude default order (999) as per enrichment logic
+                ~models.Q(order=999)
+            ).only(
+                "id",
+                "bookmaster_id",
+                "source_name",
+                "translations",
+                "entity_type",
+                "order",
+            ),
+        )
+
+    def _prefetch_chapters_with_stats(self):
+        """
+        Optimized chapter prefetch with stats select_related.
+
+        IMPORTANT: ChapterStats is OneToOneField with related_name="stats"
+        So we use select_related("stats"), not prefetch_related("chapterstats_set")
+
+        Returns:
+            Prefetch: Optimized chapter+stats prefetch object
+        """
+        return Prefetch(
+            "chapters",
+            queryset=Chapter.objects.select_related(
+                "stats",  # ← OneToOne relationship
+                "chaptermaster",  # ← Commonly accessed
+            ).only(
+                # Limit fields to reduce memory
+                "id",
+                "book_id",
+                "chaptermaster_id",
+                "slug",
+                "is_public",
+                "published_at",
+                "word_count",
+                "character_count",
+            ),
+        )
+
+    def _select_base_relations(self):
+        """
+        Base select_related for all book querysets.
+
+        These are OneToOne or ForeignKey relations that should
+        ALWAYS be joined in a single query.
+
+        Returns:
+            QuerySet: Self with base relations selected
+        """
+        return self.select_related(
+            "bookmaster",
+            "bookmaster__section",
+            "bookmaster__author",
+            "language",
+            "stats",  # ← OneToOne relationship (related_name="stats")
+        )
+
+    # ==================================================================
+    # PUBLIC API - Context-specific querysets
+    # ==================================================================
+
+    def with_card_relations(self):
+        """
+        Lightweight prefetch for book cards (homepage, lists).
+
+        Use this for:
+        - Homepage carousels (featured, recent, new)
+        - Section home recent books
+        - Book list pages
+        - Search results
+
+        Does NOT include:
+        - chapters (too heavy for list views)
+        - chapter stats (not needed for cards)
+
+        Query count: ~5 queries for any number of books
+        - 1 for books
+        - 1 for genres (with section + parent)
+        - 1 for tags
+        - 1 for entities
+        - 1 for bookstats (already in select_related)
+
+        Returns:
+            QuerySet: Optimized for card display
+        """
+        return self._select_base_relations().prefetch_related(
+            self._prefetch_genres_optimized(),
+            self._prefetch_tags_optimized(),
+            self._prefetch_entities_optimized(),
+        )
+
+    def with_full_relations(self):
+        """
+        Full prefetch including chapters (for detail-adjacent views).
+
+        Use this for:
+        - Views that need chapter data but not full detail
+        - Author book lists (might show chapter counts)
+        - Advanced search with chapter filtering
+
+        Query count: ~6-7 queries for any number of books
+        - 5 from with_card_relations()
+        - 1-2 for chapters (with stats and chaptermaster)
+
+        Returns:
+            QuerySet: Full relations prefetched
+        """
+        return self.with_card_relations().prefetch_related(
+            self._prefetch_chapters_with_stats(),
+        )
+
+    def for_list_display(self, language, section=None):
+        """
+        Optimized queryset for list views with language/section filter.
+
+        Use this for:
+        - SectionHomeView
+        - SectionBookListView
+        - Search results
+
+        This is the RECOMMENDED queryset for most list views.
+
+        Args:
+            language: Language object
+            section: Section object or None
+
+        Returns:
+            QuerySet: Filtered and optimized for list display
+        """
+        qs = self.filter(language=language, is_public=True)
+        if section:
+            qs = qs.filter(bookmaster__section=section)
+        return qs.with_card_relations()
+
+    def for_detail_display(self, language, slug, section=None):
+        """
+        Optimized queryset for book detail views.
+
+        Use this for:
+        - SectionBookDetailView
+        - BookDetailView (legacy)
+
+        Does NOT prefetch chapters because:
+        - Chapters use pagination (handled separately in view)
+        - Chapter list queries are isolated
+
+        Args:
+            language: Language object
+            slug: Book slug
+            section: Section object or None
+
+        Returns:
+            QuerySet: Optimized for detail display
+        """
+        qs = self.filter(language=language, slug=slug, is_public=True)
+        if section:
+            qs = qs.filter(bookmaster__section=section)
+
+        # Use card relations (no chapters)
+        # Chapters are handled separately with pagination in the view
+        return qs.with_card_relations()
+
+
+class BookManager(models.Manager):
+    """
+    Custom manager for Book model with optimized querysets.
+
+    Usage:
+        # In books/models/core.py, add to Book model:
+        objects = BookManager()
+
+        # Then use in views:
+        books = Book.objects.for_list_display(language, section)
+        book = Book.objects.for_detail_display(language, slug, section).first()
+    """
+
+    def get_queryset(self):
+        """Return custom BookQuerySet"""
+        return BookQuerySet(self.model, using=self._db)
+
+    def with_card_relations(self):
+        """Shortcut for with_card_relations()"""
+        return self.get_queryset().with_card_relations()
+
+    def with_full_relations(self):
+        """Shortcut for with_full_relations()"""
+        return self.get_queryset().with_full_relations()
+
+    def for_list_display(self, language, section=None):
+        """Shortcut for for_list_display()"""
+        return self.get_queryset().for_list_display(language, section)
+
+    def for_detail_display(self, language, slug, section=None):
+        """Shortcut for for_detail_display()"""
+        return self.get_queryset().for_detail_display(language, slug, section)
 
 
 class Book(TimeStampModel, SlugGeneratorMixin):
@@ -254,6 +533,10 @@ class Book(TimeStampModel, SlugGeneratorMixin):
     total_characters = models.PositiveIntegerField(
         default=0
     )  # for non-space-seperated text
+
+    # NOTE: Custom manager will be assigned after BookManager class is defined below
+    # Using default manager for now - will be replaced at end of file
+    objects = BookManager()
 
     class Meta:
         ordering = ["-created_at"]

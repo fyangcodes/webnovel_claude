@@ -1,0 +1,27 @@
+# Railway.toml - Multi-service configuration for Railway
+# This file defines multiple services for the Railway deployment
+
+# Django Web Service
+[web]
+build.command = "pip install -r requirements/production.txt"
+start.command = "bash scripts/start-web.sh"
+healthcheck.path = "/health/"
+healthcheck.timeout = 300
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 10
+
+# Celery Worker Service
+[celery_worker]
+build.command = "pip install -r requirements/production.txt"
+start.command = "bash scripts/start-celery-worker.sh"
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 10
+
+# Celery Beat Service (Scheduler)
+[celery_beat]
+build.command = "pip install -r requirements/production.txt"
+start.command = "bash scripts/start-celery-beat.sh"
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 10
+
+# Note: PostgreSQL and Redis should be added as Railway Plugins in the dashboard

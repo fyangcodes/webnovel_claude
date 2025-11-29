@@ -270,13 +270,12 @@ class AuthorDetailView(BaseReaderView, DetailView):
             language_code
         )
 
-        # Get author's books (published in current language, ALL sections)
+        # Get author's books (published in current language, ALL sections) with optimized relations
         books = list(
             Book.objects.filter(
                 bookmaster__author=self.object, language=language, is_public=True
             )
-            .select_related("bookmaster", "bookmaster__section", "language")
-            .prefetch_related("bookmaster__genres", "bookmaster__genres__section")
+            .with_card_relations()
             .order_by("-created_at")
         )
 

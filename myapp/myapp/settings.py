@@ -36,6 +36,9 @@ SECRET_KEY = os.getenv(
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv("DJANGO_DEBUG", "FALSE") == "True"
 
+# Explicit environment flag (more secure than DEBUG)
+IS_DEVELOPMENT = os.getenv("ENVIRONMENT", "production") == "development"
+
 ALLOWED_HOSTS = os.getenv("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
 
 CSRF_TRUSTED_ORIGINS = [f"https://{os.getenv('RAILWAY_PUBLIC_DOMAIN')}"]
@@ -59,8 +62,6 @@ INSTALLED_APPS = [
     "crispy_bootstrap5",
     "storages",
     "django_celery_beat",
-    # Development tools
-    "debug_toolbar",
     # i18n management
     "rosetta",
     # Local apps - simplified
@@ -68,10 +69,20 @@ INSTALLED_APPS = [
     "reader.apps.ReaderConfig",
 ]
 
+# ===============================================================================
+# DEVELOPMENT-ONLY APPS & MIDDLEWARE
+# These are ONLY added when IS_DEVELOPMENT=True to prevent production usage
+# ===============================================================================
+if IS_DEVELOPMENT:
+    INSTALLED_APPS += [
+        "silk",  # Request profiling and SQL query analysis
+        "debug_toolbar",  # Django Debug Toolbar
+    ]
+    print("🔧 Development mode: Silk and Debug Toolbar enabled")
+
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
-    "debug_toolbar.middleware.DebugToolbarMiddleware",  # Debug toolbar - early in middleware stack
     "django.contrib.sessions.middleware.SessionMiddleware",
     "reader.middleware.URLLanguageMiddleware",  # URL-based language activation for i18n
     "django.middleware.common.CommonMiddleware",
@@ -82,13 +93,19 @@ MIDDLEWARE = [
     "books.middleware.StatsTrackingMiddleware",  # Stats tracking
 ]
 
+# Add development middleware ONLY in development
+if IS_DEVELOPMENT:
+    # Insert at beginning for accurate profiling (after security/whitenoise)
+    MIDDLEWARE.insert(2, "silk.middleware.SilkyMiddleware")
+    MIDDLEWARE.insert(3, "debug_toolbar.middleware.DebugToolbarMiddleware")
+
 ROOT_URLCONF = "myapp.urls"
 
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
         "DIRS": [],
-        "APP_DIRS": True,
+        "APP_DIRS": False,  # Must be False when using custom loaders
         "OPTIONS": {
             "context_processors": [
                 "django.template.context_processors.request",
@@ -97,6 +114,21 @@ TEMPLATES = [
                 "books.context_processors.breadcrumb_context",
                 "books.context_processors.stats_context",
                 "books.context_processors.analytics_context",
+            ],
+            # Enable template caching for significant performance boost
+            # Templates are compiled once and cached, eliminating re-parsing overhead
+            # Disabled in DEBUG mode to allow template changes without restarting server
+            "loaders": [
+                (
+                    "django.template.loaders.cached.Loader",
+                    [
+                        "django.template.loaders.filesystem.Loader",
+                        "django.template.loaders.app_directories.Loader",
+                    ],
+                )
+            ] if not DEBUG else [
+                "django.template.loaders.filesystem.Loader",
+                "django.template.loaders.app_directories.Loader",
             ],
         },
     },
@@ -486,3 +518,28 @@ ROSETTA_ENABLE_TRANSLATION_SUGGESTIONS = False  # Set to True if you want Google
 
 # Number of days to consider a chapter as "new"
 NEW_CHAPTER_DAYS = int(os.getenv("NEW_CHAPTER_DAYS", "14"))
+
+# ==============================================================================
+# DJANGO SILK CONFIGURATION (Development Only)
+# ==============================================================================
+
+if IS_DEVELOPMENT:
+    # Silk request profiling settings
+    SILKY_PYTHON_PROFILER = True  # Enable Python cProfile integration
+    SILKY_PYTHON_PROFILER_BINARY = False  # Use text-based profiler output
+
+    # Profile all requests (100%)
+    SILKY_INTERCEPT_PERCENT = 100
+
+    # Limit stored requests to prevent DB bloat
+    SILKY_MAX_RECORDED_REQUESTS = 10000
+    SILKY_MAX_RECORDED_REQUESTS_CHECK_PERCENT = 10
+
+    # Authentication for Silk UI (optional - remove to allow all users)
+    # SILKY_AUTHENTICATION = True
+    # SILKY_AUTHORISATION = True
+
+    # Meta profiling (profile Silk itself - useful for debugging Silk)
+    SILKY_META = True
+
+    print("🔧 Silk profiling configured (visit /silk/ to view requests)")
