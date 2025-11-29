@@ -19,6 +19,36 @@ python manage.py collectstatic --noinput
 echo "Running database migrations..."
 python manage.py migrate --noinput
 
+# Load initial data fixtures (only if database is empty)
+echo "Checking if initial data needs to be loaded..."
+USER_COUNT=$(python manage.py shell -c "from accounts.models import User; print(User.objects.count())")
+LANGUAGE_COUNT=$(python manage.py shell -c "from books.models import Language; print(Language.objects.count())")
+SECTION_COUNT=$(python manage.py shell -c "from books.models import Section; print(Section.objects.count())")
+
+if [ "$USER_COUNT" = "0" ]; then
+    echo "Loading user fixture..."
+    python manage.py loaddata ./fixtures/users.json
+    echo "✅ Superuser loaded"
+else
+    echo "Users already exist, skipping superuser fixture load"
+fi
+
+if [ "$LANGUAGE_COUNT" = "0" ]; then
+    echo "Loading language fixtures..."
+    python manage.py loaddata ./fixtures/languages.json
+    echo "✅ Languages loaded"
+else
+    echo "Languages already exist, skipping fixture load"
+fi
+
+if [ "$SECTION_COUNT" = "0" ]; then
+    echo "Loading section fixtures..."
+    python manage.py loaddata ./fixtures/sections.json
+    echo "✅ Sections loaded"
+else
+    echo "Sections already exist, skipping fixture load"
+fi
+
 # Compile translation messages
 echo "Compiling translation messages..."
 python manage.py compilemessages || true

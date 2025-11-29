@@ -1,0 +1,78 @@
+[
+  {
+    "model": "books.section",
+    "pk": 1,
+    "fields": {
+      "name": "Fiction",
+      "slug": "fiction",
+      "description": "General fiction and fantasy novels",
+      "icon": "fa-book",
+      "order": 1,
+      "is_mature": false,
+      "translations": {
+        "en": "Fiction",
+        "zh-hans": "小说",
+        "zh-hant": "小說"
+      },
+      "created_at": "2024-01-01T00:00:00Z",
+      "updated_at": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "books.section",
+    "pk": 2,
+    "fields": {
+      "name": "BL",
+      "slug": "bl",
+      "description": "Boys' Love novels",
+      "icon": "fa-heart",
+      "order": 2,
+      "is_mature": true,
+      "translations": {
+        "en": "BL",
+        "zh-hans": "耽美",
+        "zh-hant": "耽美"
+      },
+      "created_at": "2024-01-01T00:00:00Z",
+      "updated_at": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "books.section",
+    "pk": 3,
+    "fields": {
+      "name": "GL",
+      "slug": "gl",
+      "description": "Girls' Love novels",
+      "icon": "fa-heart",
+      "order": 3,
+      "is_mature": true,
+      "translations": {
+        "en": "GL",
+        "zh-hans": "百合",
+        "zh-hant": "百合"
+      },
+      "created_at": "2024-01-01T00:00:00Z",
+      "updated_at": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "books.section",
+    "pk": 4,
+    "fields": {
+      "name": "Non-fiction",
+      "slug": "non-fiction",
+      "description": "Non-fiction books and essays",
+      "icon": "fa-graduation-cap",
+      "order": 4,
+      "is_mature": false,
+      "translations": {
+        "en": "Non-fiction",
+        "zh-hans": "非虚构",
+        "zh-hant": "非虛構"
+      },
+      "created_at": "2024-01-01T00:00:00Z",
+      "updated_at": "2024-01-01T00:00:00Z"
+    }
+  }
+]
