@@ -4,6 +4,6 @@
     "buildCommand": "pip install -r requirements.txt"
   },
   "deploy": {
-    "startCommand": "./start.sh"
+    "startCommand": "bash scripts/start-web-hobby.sh"
   }
 }
