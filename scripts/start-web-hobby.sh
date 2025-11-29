@@ -20,34 +20,17 @@ echo "Running database migrations..."
 python manage.py migrate --noinput
 
 # Load initial data fixtures (only if database is empty)
-echo "Checking if initial data needs to be loaded..."
-USER_COUNT=$(python manage.py shell -c "from accounts.models import User; print(User.objects.count())")
-LANGUAGE_COUNT=$(python manage.py shell -c "from books.models import Language; print(Language.objects.count())")
-SECTION_COUNT=$(python manage.py shell -c "from books.models import Section; print(Section.objects.count())")
+echo "Loading user fixture..."
+python manage.py loaddata ./fixtures/users.json
+echo "✅ Superuser loaded"
 
-if [ "$USER_COUNT" = "0" ]; then
-    echo "Loading user fixture..."
-    python manage.py loaddata ./fixtures/users.json
-    echo "✅ Superuser loaded"
-else
-    echo "Users already exist, skipping superuser fixture load"
-fi
+echo "Loading language fixtures..."
+python manage.py loaddata ./fixtures/languages.json
+echo "✅ Languages loaded"
 
-if [ "$LANGUAGE_COUNT" = "0" ]; then
-    echo "Loading language fixtures..."
-    python manage.py loaddata ./fixtures/languages.json
-    echo "✅ Languages loaded"
-else
-    echo "Languages already exist, skipping fixture load"
-fi
-
-if [ "$SECTION_COUNT" = "0" ]; then
-    echo "Loading section fixtures..."
-    python manage.py loaddata ./fixtures/sections.json
-    echo "✅ Sections loaded"
-else
-    echo "Sections already exist, skipping fixture load"
-fi
+echo "Loading section fixtures..."
+python manage.py loaddata ./fixtures/sections.json
+echo "✅ Sections loaded"
 
 # Compile translation messages
 echo "Compiling translation messages..."
