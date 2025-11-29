@@ -1,0 +1,197 @@
+[
+{
+  "model": "reader.styleconfig",
+  "pk": 1,
+  "fields": {
+    "created_at": "2025-11-20T20:49:21.803Z",
+    "updated_at": "2025-11-20T20:49:21.803Z",
+    "content_type": 33,
+    "object_id": 14,
+    "color": "#3498db",
+    "icon": "fas fa-book",
+    "custom_styles": {}
+  }
+},
+{
+  "model": "reader.styleconfig",
+  "pk": 2,
+  "fields": {
+    "created_at": "2025-11-20T20:49:21.808Z",
+    "updated_at": "2025-11-20T20:49:21.808Z",
+    "content_type": 33,
+    "object_id": 1,
+    "color": "#e91e63",
+    "icon": "fas fa-heart",
+    "custom_styles": {}
+  }
+},
+{
+  "model": "reader.styleconfig",
+  "pk": 3,
+  "fields": {
+    "created_at": "2025-11-20T20:49:21.813Z",
+    "updated_at": "2025-11-20T20:49:21.813Z",
+    "content_type": 33,
+    "object_id": 15,
+    "color": "#9c27b0",
+    "icon": "fas fa-rainbow",
+    "custom_styles": {}
+  }
+},
+{
+  "model": "reader.styleconfig",
+  "pk": 4,
+  "fields": {
+    "created_at": "2025-11-20T20:49:21.818Z",
+    "updated_at": "2025-11-20T20:49:21.818Z",
+    "content_type": 33,
+    "object_id": 16,
+    "color": "#4caf50",
+    "icon": "fas fa-graduation-cap",
+    "custom_styles": {}
+  }
+},
+{
+  "model": "reader.styleconfig",
+  "pk": 5,
+  "fields": {
+    "created_at": "2025-11-20T20:49:21.830Z",
+    "updated_at": "2025-11-20T20:49:21.830Z",
+    "content_type": 17,
+    "object_id": 54,
+    "color": "#9333ea",
+    "icon": "fa-wand-magic-sparkles",
+    "custom_styles": {}
+  }
+},
+{
+  "model": "reader.styleconfig",
+  "pk": 6,
+  "fields": {
+    "created_at": "2025-11-20T20:49:21.835Z",
+    "updated_at": "2025-11-20T20:49:21.835Z",
+    "content_type": 17,
+    "object_id": 55,
+    "color": "#ea580c",
+    "icon": "fa-yin-yang",
+    "custom_styles": {}
+  }
+},
+{
+  "model": "reader.styleconfig",
+  "pk": 7,
+  "fields": {
+    "created_at": "2025-11-20T20:49:21.839Z",
+    "updated_at": "2025-11-20T20:49:21.839Z",
+    "content_type": 17,
+    "object_id": 56,
+    "color": "#ec4899",
+    "icon": "fa-heart",
+    "custom_styles": {}
+  }
+},
+{
+  "model": "reader.styleconfig",
+  "pk": 8,
+  "fields": {
+    "created_at": "2025-11-20T20:49:21.844Z",
+    "updated_at": "2025-11-20T20:49:21.844Z",
+    "content_type": 17,
+    "object_id": 57,
+    "color": "#3b82f6",
+    "icon": "fa-rocket",
+    "custom_styles": {}
+  }
+},
+{
+  "model": "reader.styleconfig",
+  "pk": 9,
+  "fields": {
+    "created_at": "2025-11-20T20:49:21.849Z",
+    "updated_at": "2025-11-20T20:49:21.849Z",
+    "content_type": 17,
+    "object_id": 58,
+    "color": "#9333ea",
+    "icon": "fa-wand-magic-sparkles",
+    "custom_styles": {}
+  }
+},
+{
+  "model": "reader.styleconfig",
+  "pk": 10,
+  "fields": {
+    "created_at": "2025-11-20T20:49:21.854Z",
+    "updated_at": "2025-11-20T20:49:21.854Z",
+    "content_type": 17,
+    "object_id": 59,
+    "color": "#ea580c",
+    "icon": "fa-yin-yang",
+    "custom_styles": {}
+  }
+},
+{
+  "model": "reader.styleconfig",
+  "pk": 11,
+  "fields": {
+    "created_at": "2025-11-20T20:49:21.858Z",
+    "updated_at": "2025-11-20T20:49:21.858Z",
+    "content_type": 17,
+    "object_id": 60,
+    "color": "#06b6d4",
+    "icon": "fa-city",
+    "custom_styles": {}
+  }
+},
+{
+  "model": "reader.styleconfig",
+  "pk": 12,
+  "fields": {
+    "created_at": "2025-11-20T20:49:21.864Z",
+    "updated_at": "2025-11-20T20:49:21.864Z",
+    "content_type": 17,
+    "object_id": 61,
+    "color": "#9333ea",
+    "icon": "fa-wand-magic-sparkles",
+    "custom_styles": {}
+  }
+},
+{
+  "model": "reader.styleconfig",
+  "pk": 13,
+  "fields": {
+    "created_at": "2025-11-20T20:49:21.869Z",
+    "updated_at": "2025-11-20T20:49:21.869Z",
+    "content_type": 17,
+    "object_id": 62,
+    "color": "#06b6d4",
+    "icon": "fa-city",
+    "custom_styles": {}
+  }
+},
+{
+  "model": "reader.styleconfig",
+  "pk": 14,
+  "fields": {
+    "created_at": "2025-11-20T20:49:21.873Z",
+    "updated_at": "2025-11-20T20:49:21.873Z",
+    "content_type": 17,
+    "object_id": 63,
+    "color": "#059669",
+    "icon": "fa-user",
+    "custom_styles": {}
+  }
+},
+{
+  "model": "reader.styleconfig",
+  "pk": 15,
+  "fields": {
+    "created_at": "2025-11-20T20:49:21.879Z",
+    "updated_at": "2025-11-20T20:49:21.879Z",
+    "content_type": 17,
+    "object_id": 64,
+    "color": "#d97706",
+    "icon": "fa-landmark",
+    "custom_styles": {}
+  }
+}
+]

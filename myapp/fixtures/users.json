@@ -4,7 +4,7 @@
   "pk": 1,
   "fields": {
     "password": "pbkdf2_sha256$1000000$zKfzKaGDpBo2s9daw16jJZ$X/nX+9hLHu6I2gragjyjDXdbk78Fy3IKolNOGkaMZUs=",
-    "last_login": "2025-09-01T18:47:54Z",
+    "last_login": "2025-11-27T10:10:14.456Z",
     "is_superuser": true,
     "username": "admin",
     "first_name": "",
@@ -15,6 +15,26 @@
     "date_joined": "2025-09-01T18:47:05Z",
     "role": "admin",
     "pen_name": "",
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "accounts.user",
+  "pk": 4,
+  "fields": {
+    "password": "",
+    "last_login": null,
+    "is_superuser": false,
+    "username": "test_author",
+    "first_name": "",
+    "last_name": "",
+    "email": "test@example.com",
+    "is_staff": false,
+    "is_active": true,
+    "date_joined": "2025-11-15T12:04:42.677Z",
+    "role": "reader",
+    "pen_name": "Test Author",
     "groups": [],
     "user_permissions": []
   }

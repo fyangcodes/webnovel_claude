@@ -1,78 +1,97 @@
 [
-  {
-    "model": "books.section",
-    "pk": 1,
-    "fields": {
-      "name": "Fiction",
-      "slug": "fiction",
-      "description": "General fiction and fantasy novels",
-      "icon": "fa-book",
-      "order": 1,
-      "is_mature": false,
-      "translations": {
-        "en": "Fiction",
-        "zh-hans": "小说",
-        "zh-hant": "小說"
+{
+  "model": "books.section",
+  "pk": 1,
+  "fields": {
+    "created_at": "2025-11-14T10:35:45.623Z",
+    "updated_at": "2025-11-23T19:12:24.438Z",
+    "description": "Danmei (耽美) is a genre of Chinese fiction that centers on emotional or romantic relationships between male characters, and is often considered a branch of Boys’ Love (BL). While it was initially influenced by Japanese BL culture, danmei has since developed its own distinct style, featuring a wide range of genres such as modern romance, xianxia, historical epics, mystery, and fantasy. Danmei is known for its rich plots, deep emotional storytelling, and complex character dynamics.\r\nAlthough many readers and authors are women—some playfully referring to themselves using the Japanese term fujoshi (“rotten women”)—the genre today attracts a diverse and global audience.",
+    "translations": {
+      "de": {
+        "name": "Danmei",
+        "description": "Danmei ist ein Genre der chinesischen Literatur, das sich auf emotionale oder romantische Beziehungen zwischen männlichen Charakteren konzentriert und oft als eine Form von Boys’ Love (BL) betrachtet wird. Obwohl Danmei ursprünglich von der japanischen BL-Kultur beeinflusst wurde, hat es inzwischen seinen eigenen Stil entwickelt und umfasst eine Vielzahl von Genres, darunter moderne Romantik, Xianxia, historische Epen, Mystery und Fantasy. Danmei ist bekannt für seine vielschichtigen Handlungen, tiefgehende emotionale Erzählweise und komplexe Figurenbeziehungen.\nObwohl viele Leserinnen und Autorinnen Frauen sind – einige nennen sich scherzhaft mit dem japanischen Begriff Fujoshi („verfaulte Mädchen“) – zieht das Genre heute ein vielfältiges und internationales Publikum an."
       },
-      "created_at": "2024-01-01T00:00:00Z",
-      "updated_at": "2024-01-01T00:00:00Z"
-    }
-  },
-  {
-    "model": "books.section",
-    "pk": 2,
-    "fields": {
-      "name": "BL",
-      "slug": "bl",
-      "description": "Boys' Love novels",
-      "icon": "fa-heart",
-      "order": 2,
-      "is_mature": true,
-      "translations": {
-        "en": "BL",
-        "zh-hans": "耽美",
-        "zh-hant": "耽美"
-      },
-      "created_at": "2024-01-01T00:00:00Z",
-      "updated_at": "2024-01-01T00:00:00Z"
-    }
-  },
-  {
-    "model": "books.section",
-    "pk": 3,
-    "fields": {
-      "name": "GL",
-      "slug": "gl",
-      "description": "Girls' Love novels",
-      "icon": "fa-heart",
-      "order": 3,
-      "is_mature": true,
-      "translations": {
-        "en": "GL",
-        "zh-hans": "百合",
-        "zh-hant": "百合"
-      },
-      "created_at": "2024-01-01T00:00:00Z",
-      "updated_at": "2024-01-01T00:00:00Z"
-    }
-  },
-  {
-    "model": "books.section",
-    "pk": 4,
-    "fields": {
-      "name": "Non-fiction",
-      "slug": "non-fiction",
-      "description": "Non-fiction books and essays",
-      "icon": "fa-graduation-cap",
-      "order": 4,
-      "is_mature": false,
-      "translations": {
-        "en": "Non-fiction",
-        "zh-hans": "非虚构",
-        "zh-hant": "非虛構"
-      },
-      "created_at": "2024-01-01T00:00:00Z",
-      "updated_at": "2024-01-01T00:00:00Z"
-    }
+      "zh-hans": {
+        "name": "耽美",
+        "description": "耽美是一种以男性角色之间的情感或浪漫关系为核心的中国小说类型，通常也被视为“BL（Boys’ Love）”的一支。尽管耽美最初受到日本 BL 文化的影响，但如今它已经发展出独特的风格，涵盖现代言情、仙侠、历史传奇、悬疑及奇幻等多种类型。耽美以其丰富的情节、深刻的情感描写和复杂的人物关系而闻名。\n虽然耽美的读者和作者多为女性——其中一些人会戏称自己为日语中的“腐女”——但如今这一类型已经吸引了来自世界各地、多元而广泛的受众。"
+      }
+    },
+    "name": "BL",
+    "slug": "bl",
+    "order": 1,
+    "is_mature": false
   }
+},
+{
+  "model": "books.section",
+  "pk": 14,
+  "fields": {
+    "created_at": "2025-11-15T12:04:42.440Z",
+    "updated_at": "2025-11-22T10:15:35.692Z",
+    "description": "",
+    "translations": {
+      "es": {
+        "name": "Ficción"
+      },
+      "fr": {
+        "name": "Fiction"
+      },
+      "zh-hans": {
+        "name": "小说"
+      }
+    },
+    "name": "Fiction",
+    "slug": "fiction",
+    "order": 0,
+    "is_mature": false
+  }
+},
+{
+  "model": "books.section",
+  "pk": 15,
+  "fields": {
+    "created_at": "2025-11-15T12:04:42.449Z",
+    "updated_at": "2025-11-22T10:15:35.697Z",
+    "description": "",
+    "translations": {
+      "es": {
+        "name": "GL"
+      },
+      "fr": {
+        "name": "GL"
+      },
+      "zh-hans": {
+        "name": "百合"
+      }
+    },
+    "name": "GL",
+    "slug": "gl",
+    "order": 2,
+    "is_mature": false
+  }
+},
+{
+  "model": "books.section",
+  "pk": 16,
+  "fields": {
+    "created_at": "2025-11-15T12:04:42.453Z",
+    "updated_at": "2025-11-15T12:04:42.453Z",
+    "description": "",
+    "translations": {
+      "es": {
+        "name": "No Ficción"
+      },
+      "fr": {
+        "name": "Non-Fiction"
+      },
+      "zh-hans": {
+        "name": "非虚构"
+      }
+    },
+    "name": "Non-Fiction",
+    "slug": "non-fiction",
+    "order": 4,
+    "is_mature": false
+  }
+}
 ]
