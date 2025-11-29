@@ -20,12 +20,35 @@ from django.urls import include, path
 from django.views.generic import RedirectView
 from django.conf import settings
 from django.conf.urls.static import static
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 from django.contrib.sitemaps.views import sitemap
 from reader.sitemaps import sitemaps
+from django.db import connection
+
+
+def health_check(request):
+    """
+    Health check endpoint for Railway deployment.
+    Verifies that Django is running and database is accessible.
+    """
+    try:
+        # Test database connection
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT 1")
+
+        return JsonResponse({
+            "status": "healthy",
+            "database": "connected"
+        }, status=200)
+    except Exception as e:
+        return JsonResponse({
+            "status": "unhealthy",
+            "error": str(e)
+        }, status=503)
 
 
 urlpatterns = [
+    path("health/", health_check, name="health_check"),
     path("admin/", admin.site.urls),
     path("staff/", include("books.urls")),
     path("accounts/", include("accounts.urls")),
