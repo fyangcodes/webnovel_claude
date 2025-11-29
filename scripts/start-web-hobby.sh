@@ -28,13 +28,13 @@ echo "Loading language fixtures..."
 python manage.py loaddata ./fixtures/languages.json
 echo "✅ Languages loaded"
 
-echo "Loading section fixtures..."
-python manage.py loaddata ./fixtures/sections.json
-echo "✅ Sections loaded"
+#echo "Loading section fixtures..."
+#python manage.py loaddata ./fixtures/sections.json
+#echo "✅ Sections loaded"
 
-echo "Loading style config fixtures..."
-python manage.py loaddata ./fixtures/style_configs.json
-echo "✅ Sections loaded"
+#echo "Loading style config fixtures..."
+#python manage.py loaddata ./fixtures/style_configs.json
+#echo "✅ Sections loaded"
 
 # Compile translation messages
 echo "Compiling translation messages..."
