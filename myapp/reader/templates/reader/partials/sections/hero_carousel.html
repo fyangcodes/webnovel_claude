@@ -17,7 +17,7 @@
       <img src="{{ book.bookmaster.effective_hero_image }}" class="d-block w-100" style="max-height: 350px; object-fit: cover;" alt="{{ book.title }}" {% if forloop.first %}loading="eager" fetchpriority="high"{% else %}loading="lazy"{% endif %}>
       <div style="position: absolute; top: 0; left: 0; width: 35%; height: 100%; background: linear-gradient(to right, rgba(0, 0, 0, 0.7), transparent);"></div>
       <div class="carousel-caption" style="position: absolute; top: 50%; left: 2%; transform: translateY(-50%); text-align: left; width: 25%; right: auto; bottom: auto;">
-        <h4><a href="{% url 'reader:book_detail' current_language.code book.slug %}" class="text-white text-decoration-none">{{ book.title }}</a></h4>
+        <h4><a href="{% url 'reader:section_book_detail' current_language.code book.bookmaster.section.slug book.slug %}" class="text-white text-decoration-none">{{ book.title }}</a></h4>
         <div class="d-none d-md-block mb-2">
           {% if book.bookmaster.genres.all %}
             {% for genre in book.bookmaster.genres.all %}
@@ -26,7 +26,7 @@
           {% endif %}
         </div>
         <div class="d-none d-md-block">
-          <a href="{% url 'reader:book_detail' current_language.code book.slug %}" class="btn btn-outline-primary-custom">{% trans "Read Now" %}</a>
+          <a href="{% url 'reader:section_book_detail' current_language.code book.bookmaster.section.slug book.slug %}" class="btn btn-outline-primary-custom">{% trans "Read Now" %}</a>
         </div>
       </div>
     </div>

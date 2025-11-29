@@ -16,7 +16,7 @@ Parameters:
     {% if card_section %}
         <a href="{% url 'reader:section_book_detail' current_language.code card_section.slug book.slug %}" class="book-card-link">
     {% else %}
-        <a href="{% url 'reader:book_detail' current_language.code book.slug %}" class="book-card-link">
+        <a href="{% url 'reader:section_book_detail' current_language.code book.bookmaster.section.slug book.slug %}" class="book-card-link">
     {% endif %}
         <div class="book-card-image-wrapper">
             <img src="{{ book.effective_cover_image }}" alt="{{ book.title }}" class="book-card-image" loading="lazy">
@@ -103,7 +103,7 @@ Parameters:
                         {% trans "Read Now" %}
                     </a>
                 {% else %}
-                    <a href="{% url 'reader:book_detail' current_language.code book.slug %}" class="btn btn-primary-custom">
+                    <a href="{% url 'reader:section_book_detail' current_language.code book.bookmaster.section.slug book.slug %}" class="btn btn-primary-custom">
                         {% trans "Read Now" %}
                     </a>
                 {% endif %}
