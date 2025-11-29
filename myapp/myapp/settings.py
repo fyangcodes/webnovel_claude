@@ -62,8 +62,6 @@ INSTALLED_APPS = [
     "crispy_bootstrap5",
     "storages",
     "django_celery_beat",
-    # i18n management
-    "rosetta",
     # Local apps - simplified
     "books.apps.BooksConfig",
     "reader.apps.ReaderConfig",
@@ -75,10 +73,11 @@ INSTALLED_APPS = [
 # ===============================================================================
 if IS_DEVELOPMENT:
     INSTALLED_APPS += [
+        "rosetta",  # i18n translation management (development only)
         "silk",  # Request profiling and SQL query analysis
         "debug_toolbar",  # Django Debug Toolbar
     ]
-    print("🔧 Development mode: Silk and Debug Toolbar enabled")
+    print("🔧 Development mode: Rosetta, Silk and Debug Toolbar enabled")
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
