@@ -13,8 +13,9 @@ This package provides service classes for:
 
 from .base_ai_service import BaseAIService
 from .text_extraction import TextExtractor, decode_text
-from .chapter_analysis import ChapterAnalysisService, AnalysisError, APIError as AnalysisAPIError
-from .chapter_translation import (
+# Use new modular AI services with backward compatibility
+from .chapter_analysis_new import ChapterAnalysisService, AnalysisError, APIError as AnalysisAPIError
+from .chapter_translation_new import (
     ChapterTranslationService,
     TranslationError,
     TranslationValidationError,

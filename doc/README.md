@@ -9,6 +9,7 @@ This folder contains all project documentation organized by category.
 | Document | Purpose | When to Use |
 |----------|---------|-------------|
 | [OPTIMIZATION_SUMMARY.md](OPTIMIZATION_SUMMARY.md) | Query optimization patterns | When writing any code that queries the database |
+| [TRANSLATION_REFACTORING_SUMMARY.md](TRANSLATION_REFACTORING_SUMMARY.md) | AI services refactoring quick reference | When working with translation or AI features |
 | [DEVELOPMENT_TOOLS_SETUP.md](DEVELOPMENT_TOOLS_SETUP.md) | Silk & Locust setup | When doing performance testing (Day 16-17) |
 | [DOCKER_SETUP.md](DOCKER_SETUP.md) | Docker commands & config | When working with Docker containers |
 
@@ -18,12 +19,15 @@ This folder contains all project documentation organized by category.
 doc/
 ├── README.md                           # This file
 │
-├── OPTIMIZATION_SUMMARY.md             # ⭐ Query optimization quick reference
-├── DEVELOPMENT_TOOLS_SETUP.md          # Silk & Locust comprehensive guide
-├── DEVELOPMENT_TOOLS_README.md         # Silk & Locust quick reference
-├── DOCKER_SETUP.md                     # Docker configuration
-├── RELATIONSHIPS_DIAGRAM.md            # Database relationships
-├── TEMPLATE_TAG_QUERY_MIGRATION.md     # Template tag optimization
+├── OPTIMIZATION_SUMMARY.md                      # ⭐ Query optimization quick reference
+├── TRANSLATION_REFACTORING_SUMMARY.md           # AI services refactoring quick ref
+├── TRANSLATION_REFACTORING_PLAN.md              # AI services detailed plan
+├── AI_SERVICES_ARCHITECTURE_DIAGRAM.md          # AI services architecture diagrams
+├── DEVELOPMENT_TOOLS_SETUP.md                   # Silk & Locust comprehensive guide
+├── DEVELOPMENT_TOOLS_README.md                  # Silk & Locust quick reference
+├── DOCKER_SETUP.md                              # Docker configuration
+├── RELATIONSHIPS_DIAGRAM.md                     # Database relationships
+├── TEMPLATE_TAG_QUERY_MIGRATION.md              # Template tag optimization
 │
 ├── optimization/                       # Optimization planning documents
 │   ├── MASTER_OPTIMIZATION_PLAN.md     # Complete 3-week optimization plan
@@ -111,6 +115,51 @@ Use this when:
 - Migrating old template tags to use context
 - Understanding zero-query template patterns
 
+#### [TRANSLATION_REFACTORING_SUMMARY.md](TRANSLATION_REFACTORING_SUMMARY.md)
+**AI services refactoring quick reference**
+
+Use this when:
+- Working with translation or analysis features
+- Understanding the modular AI architecture
+- Switching between OpenAI and Gemini providers
+- Understanding provider abstraction
+
+Quick sections:
+- Current problems with OpenAI-only design
+- New modular architecture overview
+- Usage examples and configuration
+- Migration timeline
+
+#### [TRANSLATION_REFACTORING_PLAN.md](TRANSLATION_REFACTORING_PLAN.md)
+**Detailed AI services refactoring plan**
+
+Use this when:
+- Implementing the modular AI architecture
+- Understanding the 6-week implementation phases
+- Adding new AI providers
+- Deep dive into architecture decisions
+
+Covers:
+- Current architecture analysis
+- Proposed architecture with code examples
+- Phase-by-phase implementation plan
+- Testing strategy and success criteria
+
+#### [AI_SERVICES_ARCHITECTURE_DIAGRAM.md](AI_SERVICES_ARCHITECTURE_DIAGRAM.md)
+**Visual AI services architecture diagrams**
+
+Use this when:
+- Understanding data flow through the AI system
+- Visualizing provider abstraction
+- Understanding request/response flow
+- Seeing configuration hierarchy
+
+Includes:
+- High-level architecture diagram
+- Request flow diagrams
+- Provider implementation flows
+- Package structure visualization
+
 ## 📁 Historical Documentation
 
 ### Optimization Plans ([optimization/](optimization/))
@@ -176,6 +225,16 @@ SEO implementation documentation:
 1. Read [DOCKER_SETUP.md](DOCKER_SETUP.md)
 2. Run: `docker-compose up`
 
+### I need to work on translation or AI features
+1. Read [TRANSLATION_REFACTORING_SUMMARY.md](TRANSLATION_REFACTORING_SUMMARY.md) for overview
+2. Check [AI_SERVICES_ARCHITECTURE_DIAGRAM.md](AI_SERVICES_ARCHITECTURE_DIAGRAM.md) for visuals
+3. See [TRANSLATION_REFACTORING_PLAN.md](TRANSLATION_REFACTORING_PLAN.md) for detailed implementation
+
+### I need to switch from OpenAI to Gemini (or vice versa)
+1. Read configuration section in [TRANSLATION_REFACTORING_SUMMARY.md](TRANSLATION_REFACTORING_SUMMARY.md)
+2. Update settings or environment variables
+3. No code changes needed!
+
 ## 📖 Reading Order for New Developers
 
 If you're new to the codebase:
@@ -192,7 +251,14 @@ If you're new to the codebase:
 - Django Silk: https://github.com/jazzband/django-silk
 - Locust: https://docs.locust.io/
 
+## 📝 Document Update Log
+
+| Date | Document | Change |
+|------|----------|--------|
+| 2025-12-06 | Added AI services refactoring docs | TRANSLATION_REFACTORING_PLAN.md, TRANSLATION_REFACTORING_SUMMARY.md, AI_SERVICES_ARCHITECTURE_DIAGRAM.md |
+| 2025-11-29 | Initial structure | Core optimization and development docs |
+
 ---
 
-**Last Updated:** 2025-11-29
+**Last Updated:** 2025-12-06
 **Maintained By:** Project Team

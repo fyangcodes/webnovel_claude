@@ -232,22 +232,73 @@ else:
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-# OpenAI settings
+# ==============================================================================
+# AI SERVICES CONFIGURATION
+# ==============================================================================
+
+# Default provider for all AI services
+# Options: 'openai', 'gemini'
+AI_DEFAULT_PROVIDER = os.getenv('AI_DEFAULT_PROVIDER', 'openai')
+
+# ----------------------------------------------------------------------------
+# OpenAI Configuration
+# ----------------------------------------------------------------------------
+
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 
-# AI Model Configuration (using GPT-4o-mini for both analysis and translation)
-# GPT-4o-mini provides: 128K context window, 16K max output tokens, better performance, lower cost
-AI_MODEL = "gpt-4o-mini"
+# Default model for OpenAI (used if not overridden by service)
+OPENAI_DEFAULT_MODEL = 'gpt-4o-mini'
 
-# Analysis Service Settings
-ANALYSIS_MODEL = AI_MODEL
-ANALYSIS_MAX_TOKENS = 2000  # Sufficient for entity extraction JSON
-ANALYSIS_TEMPERATURE = 0.1  # Low temperature for consistent structured output
+# Analysis service configuration (OpenAI)
+OPENAI_ANALYSIS_MODEL = os.getenv('OPENAI_ANALYSIS_MODEL', 'gpt-4o-mini')
+OPENAI_ANALYSIS_MAX_TOKENS = int(os.getenv('OPENAI_ANALYSIS_MAX_TOKENS', 2000))
+OPENAI_ANALYSIS_TEMPERATURE = float(os.getenv('OPENAI_ANALYSIS_TEMPERATURE', 0.1))
 
-# Translation Service Settings
-TRANSLATION_MODEL = AI_MODEL
-TRANSLATION_MAX_TOKENS = 16000  # Increased from 4000 - GPT-4o-mini supports up to 16K output
-TRANSLATION_TEMPERATURE = 0.3  # Slightly higher for more natural translations
+# Translation service configuration (OpenAI)
+OPENAI_TRANSLATION_MODEL = os.getenv('OPENAI_TRANSLATION_MODEL', 'gpt-4o-mini')
+OPENAI_TRANSLATION_MAX_TOKENS = int(os.getenv('OPENAI_TRANSLATION_MAX_TOKENS', 16000))
+OPENAI_TRANSLATION_TEMPERATURE = float(os.getenv('OPENAI_TRANSLATION_TEMPERATURE', 0.3))
+
+# ----------------------------------------------------------------------------
+# Gemini Configuration
+# ----------------------------------------------------------------------------
+
+GEMINI_API_KEY = os.getenv('GEMINI_API_KEY', '')
+
+# Default model for Gemini (used if not overridden by service)
+GEMINI_DEFAULT_MODEL = 'gemini-2.5-flash'
+
+# Analysis service configuration (Gemini)
+GEMINI_ANALYSIS_MODEL = os.getenv('GEMINI_ANALYSIS_MODEL', 'gemini-2.5-flash')
+GEMINI_ANALYSIS_MAX_TOKENS = int(os.getenv('GEMINI_ANALYSIS_MAX_TOKENS', 16000))
+GEMINI_ANALYSIS_TEMPERATURE = float(os.getenv('GEMINI_ANALYSIS_TEMPERATURE', 0.1))
+
+# Translation service configuration (Gemini)
+GEMINI_TRANSLATION_MODEL = os.getenv('GEMINI_TRANSLATION_MODEL', 'gemini-2.5-flash')
+GEMINI_TRANSLATION_MAX_TOKENS = int(os.getenv('GEMINI_TRANSLATION_MAX_TOKENS', 16000))
+GEMINI_TRANSLATION_TEMPERATURE = float(os.getenv('GEMINI_TRANSLATION_TEMPERATURE', 0.3))
+
+# ----------------------------------------------------------------------------
+# Service-specific Provider Overrides (Optional)
+# ----------------------------------------------------------------------------
+
+# Override provider for specific services (if not set, uses AI_DEFAULT_PROVIDER)
+ANALYSIS_PROVIDER = os.getenv('ANALYSIS_PROVIDER', AI_DEFAULT_PROVIDER)
+TRANSLATION_PROVIDER = os.getenv('TRANSLATION_PROVIDER', AI_DEFAULT_PROVIDER)
+
+# ----------------------------------------------------------------------------
+# Legacy Settings (Backward Compatibility)
+# ----------------------------------------------------------------------------
+
+# These settings are kept for backward compatibility with old code
+# New code should use the provider-specific settings above
+AI_MODEL = OPENAI_DEFAULT_MODEL  # Legacy setting
+ANALYSIS_MODEL = OPENAI_ANALYSIS_MODEL  # Legacy setting
+ANALYSIS_MAX_TOKENS = OPENAI_ANALYSIS_MAX_TOKENS  # Legacy setting
+ANALYSIS_TEMPERATURE = OPENAI_ANALYSIS_TEMPERATURE  # Legacy setting
+TRANSLATION_MODEL = OPENAI_TRANSLATION_MODEL  # Legacy setting
+TRANSLATION_MAX_TOKENS = OPENAI_TRANSLATION_MAX_TOKENS  # Legacy setting
+TRANSLATION_TEMPERATURE = OPENAI_TRANSLATION_TEMPERATURE  # Legacy setting
 
 # ==============================================================================
 # GOOGLE ANALYTICS CONFIGURATION

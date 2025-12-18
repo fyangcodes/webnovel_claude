@@ -18,12 +18,14 @@ RUN apt-get update && apt-get install -y \
     gettext \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements first (for better caching)
-COPY requirements.txt .
+# Copy requirements directory (for better caching)
+COPY requirements/ requirements/
 
 # Install Python dependencies
+# Use development.txt for local Docker development
+# This includes base requirements + development tools (Silk, Debug Toolbar, etc.)
 RUN pip install --upgrade pip && \
-    pip install -r requirements.txt
+    pip install -r requirements/development.txt
 
 # Copy project files
 COPY . .

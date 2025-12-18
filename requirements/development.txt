@@ -5,6 +5,9 @@
 django-debug-toolbar>=4.4.0
 django-silk>=5.0.4
 
+# Internationalization management (development only)
+django-rosetta>=0.10.0
+
 # Load testing
 locust>=2.20.0
 

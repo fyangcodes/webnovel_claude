@@ -9,6 +9,8 @@ All project documentation is organized in the `doc/` folder:
 ### Reference Documentation (Use These)
 - **[doc/OPTIMIZATION_SUMMARY.md](doc/OPTIMIZATION_SUMMARY.md)** - Quick reference for query optimization patterns (use this first!)
 - **[doc/optimization/MASTER_OPTIMIZATION_PLAN.md](doc/optimization/MASTER_OPTIMIZATION_PLAN.md)** - Complete optimization roadmap
+- **[doc/TRANSLATION_REFACTORING_SUMMARY.md](doc/TRANSLATION_REFACTORING_SUMMARY.md)** - Quick reference for AI services refactoring
+- **[doc/TRANSLATION_REFACTORING_PLAN.md](doc/TRANSLATION_REFACTORING_PLAN.md)** - Detailed plan for modular AI services architecture
 - **[doc/DEVELOPMENT_TOOLS_SETUP.md](doc/DEVELOPMENT_TOOLS_SETUP.md)** - Silk and Locust setup guide
 - **[doc/DOCKER_SETUP.md](doc/DOCKER_SETUP.md)** - Docker configuration and commands
 - **[doc/RELATIONSHIPS_DIAGRAM.md](doc/RELATIONSHIPS_DIAGRAM.md)** - Database relationships overview

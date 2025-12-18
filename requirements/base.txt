@@ -23,6 +23,7 @@ django-crispy-forms==2.4
 
 # AI/Translation
 openai==1.102.0
+google-generativeai>=0.8.0
 
 # Stats and analytics
 redis>=5.0.0
@@ -31,9 +32,6 @@ celery>=5.3.0
 django-celery-beat>=2.6.0
 flower>=2.0.0
 hiredis>=2.2.0
-
-# Internationalization
-django-rosetta>=0.10.0
 
 # Utilities
 python-dateutil==2.9.0.post0

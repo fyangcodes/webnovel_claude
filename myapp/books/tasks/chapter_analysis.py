@@ -127,8 +127,16 @@ def analyze_chapter_entities(self, chapter_id, created_by_id=None):
         job.characters_found = len(result.get('characters', []))
         job.places_found = len(result.get('places', []))
         job.terms_found = len(result.get('terms', []))
-        job.status = ProcessingStatus.COMPLETED
-        job.error_message = ""
+
+        # Check for error details (validation failures that returned fallback results)
+        if 'error_details' in result:
+            job.status = ProcessingStatus.COMPLETED  # Still completed, but with warnings
+            job.error_message = result['error_details']
+            logger.warning(f"Analysis completed with validation errors for chapter {chapter_id}")
+        else:
+            job.status = ProcessingStatus.COMPLETED
+            job.error_message = ""
+
         job.save()
 
         logger.info(
