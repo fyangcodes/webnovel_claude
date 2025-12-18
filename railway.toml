@@ -6,8 +6,8 @@ builder = "nixpacks"
 
 [deploy]
 startCommand = "bash scripts/start-web-hobby.sh"
-healthcheckPath = "/health/"
-healthcheckTimeout = 300
+# healthcheckPath = "/health/"  # Disabled - Railway will monitor via HTTP only
+# healthcheckTimeout = 300
 restartPolicyType = "on_failure"
 restartPolicyMaxRetries = 10
 
