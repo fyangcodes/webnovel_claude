@@ -144,7 +144,13 @@ if os.getenv("DATABASE_URL"):
     # Railway/Production provides DATABASE_URL
     import dj_database_url
 
-    DATABASES = {"default": dj_database_url.parse(os.getenv("DATABASE_URL"))}
+    DATABASES = {
+        "default": dj_database_url.config(
+            default=os.getenv("DATABASE_URL"),
+            conn_max_age=600,  # Persist connections for 10 minutes
+            conn_health_checks=True,  # Test connections before reuse
+        )
+    }
 else:
     # Development - SQLite
     DATABASES = {
