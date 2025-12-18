@@ -22,10 +22,10 @@ RUN apt-get update && apt-get install -y \
 COPY requirements/ requirements/
 
 # Install Python dependencies
-# Use development.txt for local Docker development
-# This includes base requirements + development tools (Silk, Debug Toolbar, etc.)
+# Use production.txt for Railway deployment (includes gunicorn)
+# For local development, override with docker-compose
 RUN pip install --upgrade pip && \
-    pip install -r requirements/development.txt
+    pip install -r requirements/production.txt
 
 # Copy project files
 COPY . .

@@ -7,8 +7,12 @@ Adapts the Google Gemini API to the unified provider interface.
 import logging
 from typing import List, Optional, Dict, Any
 
-import google.generativeai as genai
-from google.generativeai.types import HarmCategory, HarmBlockThreshold
+from google import genai
+from google.genai.types import (
+    HarmCategory,
+    HarmBlockThreshold,
+    GenerateContentConfig,
+)
 
 from ai_services.core import (
     BaseAIProvider,
@@ -41,11 +45,8 @@ class GeminiProvider(BaseAIProvider):
         self.model_name = model
         self.kwargs = kwargs
 
-        # Configure Gemini with API key
-        genai.configure(api_key=api_key)
-
-        # Initialize model
-        self.model = genai.GenerativeModel(model)
+        # Initialize Gemini client with API key
+        self.client = genai.Client(api_key=api_key)
 
         logger.debug(f"Initialized GeminiProvider with model={model}")
 
@@ -102,47 +103,45 @@ class GeminiProvider(BaseAIProvider):
                 chat_history.append({"role": gemini_role, "parts": [msg.content]})
 
         try:
-            # Create model with system instruction if present
-            if system_instructions:
-                model = genai.GenerativeModel(
-                    self.model_name,
-                    system_instruction="\n".join(system_instructions),
-                )
-            else:
-                model = self.model
+            # Build config object
+            config = GenerateContentConfig(
+                **generation_config,
+                system_instruction="\n".join(system_instructions) if system_instructions else None,
+                safety_settings=[
+                    {
+                        "category": HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+                        "threshold": HarmBlockThreshold.BLOCK_NONE,
+                    },
+                    {
+                        "category": HarmCategory.HARM_CATEGORY_HARASSMENT,
+                        "threshold": HarmBlockThreshold.BLOCK_NONE,
+                    },
+                    {
+                        "category": HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
+                        "threshold": HarmBlockThreshold.BLOCK_NONE,
+                    },
+                    {
+                        "category": HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+                        "threshold": HarmBlockThreshold.BLOCK_NONE,
+                    },
+                ],
+            )
 
             logger.debug(f"Calling Gemini API with model={self.model_name}")
 
-            # Generate response
-            if len(chat_history) > 1:
-                # Multi-turn conversation: use chat with history
-                *history, last_message = chat_history
-                chat = model.start_chat(history=history if history else None)
-                response = chat.send_message(
-                    last_message["parts"][0],
-                    generation_config=generation_config,
-                    # Disable safety filters for content generation
-                    safety_settings={
-                        HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
-                        HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
-                        HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_NONE,
-                        HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE,
-                    },
-                )
-            elif chat_history:
-                # Single message: use generate_content
-                response = model.generate_content(
-                    chat_history[0]["parts"][0],
-                    generation_config=generation_config,
-                    safety_settings={
-                        HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
-                        HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
-                        HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_NONE,
-                        HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE,
-                    },
-                )
-            else:
+            # Generate response using new API
+            if not chat_history:
                 raise APIError("No messages provided to Gemini")
+
+            # Extract the last user message as the prompt
+            prompt = chat_history[-1]["parts"][0] if chat_history else ""
+
+            # Use generate_content with the new client API
+            response = self.client.models.generate_content(
+                model=self.model_name,
+                contents=prompt,
+                config=config,
+            )
 
             # Check if response was blocked
             if not response.candidates:
